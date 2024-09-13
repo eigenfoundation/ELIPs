@@ -1,4 +1,4 @@
-# EigenLayer Improvement Proposals
+# EigenLayer Improvement Proposals (ELIPs)
 
 This repository tracks ongoing improvements to EigenLayer core contracts. It contains:
 
