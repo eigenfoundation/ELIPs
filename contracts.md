@@ -1,9 +1,9 @@
-# EigenLayer Core Contracts
+# EigenLayer Governed Contracts
 
 ## EIGENLAYER -- CORE CONTRACTS	
-  Slasher -- implementation	0xf3234220163a757edf1e11a8a085638d9b236614
-  Slasher -- Transparent Upgradeable Proxy	0xD92145c07f8Ed1D392c1B88017934E301CC1c3Cd
-  DelegationManager -- implementation	0x1784be6401339fc0fedf7e9379409f5c1bfe9dda
+* Slasher -- implementation	0xf3234220163a757edf1e11a8a085638d9b236614
+* Slasher -- Transparent Upgradeable Proxy	0xD92145c07f8Ed1D392c1B88017934E301CC1c3Cd
+* DelegationManager -- implementation	0x1784be6401339fc0fedf7e9379409f5c1bfe9dda
   DelegationManager -- Transparent Upgradeable Proxy	0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A
   StrategyManager -- implementation	0x70f44c13944d49a236e3cd7a94f48f5dab6c619b
   StrategyManager -- Transparent Upgradeable Proxy	0x858646372CC42E1A627fcE94aa7A7033e7CF075A
