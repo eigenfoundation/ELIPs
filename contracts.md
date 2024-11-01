@@ -1,6 +1,6 @@
 # EigenLayer Governed Contracts
 
-## EIGENLAYER -- CORE CONTRACTS	
+### EIGENLAYER -- CORE CONTRACTS	
 * Slasher -- implementation	0xf3234220163a757edf1e11a8a085638d9b236614
 * Slasher -- Transparent Upgradeable Proxy	0xD92145c07f8Ed1D392c1B88017934E301CC1c3Cd
 * DelegationManager -- implementation	0x1784be6401339fc0fedf7e9379409f5c1bfe9dda
@@ -10,7 +10,7 @@
   RewardsCoordinator -- implementation	0x5bf7c13D5FAdba224ECB3D5C0a67A231D1628785
   RewardsCoordinator -- Transparent Upgradeable Proxy	0x7750d328b314EfFa365A0402CcfD489B80B0adda
 	
-## EIGENLAYER -- EIGENPODS CONTRACTS	
+### EIGENLAYER -- EIGENPODS CONTRACTS	
   EigenPod -- implementation	0x28144c53ba98b4e909df5bc7ca33eaf0404cffcc
   EigenPodBeacon (UpgradeableBeacon contract)	0x5a2a4F2F3C18f09179B6703e63D9eDD165909073
   EigenPodManager -- implementation	0xe4297e3dadbc7d99e26a2954820f514cb50c5762
@@ -20,7 +20,7 @@
   AVSDirectory -- implementation	0xdabdb3cd346b7d5f5779b0b614ede1cc9dcba5b7
   AVSDirectory -- Transparent Upgradeable Proxy	0x135dda560e946695d6f155dacafc6f1f25c1f5af
 	
-## EIGENLAYER -- STRATEGY CONTRACTS	
+### EIGENLAYER -- STRATEGY CONTRACTS	
   StrategyBaseTVLLimits -- implementation	0xdfdA04f980bE6A64E3607c95Ca26012Ab9aA46d3
   StrategyBaseTVLLimits -- TUP -- stETH	0x93c4b944D05dfe6df7645A86cd2206016c51564D
   StrategyBaseTVLLimits -- TUP -- rETH	0x1BeE69b7dFFfA4E2d53C2a2Df135C388AD25dCD2
@@ -38,6 +38,6 @@
   EigenStrategy -- Implementation	0x27e7a3a81741b9fcc5ad7edcbf9f8a72a5c00428
   EigenStrategy -- TUP - EIGEN	0xaCB55C530Acdb2849e6d4f36992Cd8c9D50ED8F7
 
-## EIGEN & bEIGEN – Token Contracts
-	EIGEN – 0xec53bf9167f50cdeb3ae105f56099aaab9061f83
-	bEIGEN – 0x83E9115d334D248Ce39a6f36144aEaB5b3456e75
+### EIGEN & bEIGEN – Token Contracts
+EIGEN – 0xec53bf9167f50cdeb3ae105f56099aaab9061f83
+bEIGEN – 0x83E9115d334D248Ce39a6f36144aEaB5b3456e75
