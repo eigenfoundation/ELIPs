@@ -11,11 +11,12 @@ EigenLayer Improvement Proposals (ELIPs) are the primary mechanisms for proposin
 
 Active proposals can be viewed in this repository's [pull requests](https://github.com/abbey-titcomb/test-eigenlayer-core-dev/pulls). 
 
-Please refer to [research.eigenlayer.xyz](https://research.eigenlayer.xyz/) for developer discussion around current and future ELIPs. To stay up to date with the governance of ELIPs, head to [forum.eigenlayer.xyz](https://forum.eigenlayer.xyz/).
-
 ### ELIP Process
 In the early stages, ideas for ELIPs and early drafts should be discussed on forum.eigenlayer.xyz. The following actions require an ELIP:
 
 * Upgrades/modifications to EigenLayer Core Contracts
 * Modifications to multisig governance architecture (i.e. transferring ownership / admin access)
 * Modifying minting rights over the bEIGEN token
+
+Please refer to [research.eigenlayer.xyz](https://research.eigenlayer.xyz/) for developer discussion around current and future ELIPs. To stay up to date with the governance of ELIPs, head to [forum.eigenlayer.xyz](https://forum.eigenlayer.xyz/).
+
