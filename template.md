@@ -20,9 +20,6 @@
 ## Impact Summary
 *[Summarize the expected impact on relevant stakeholders]*
 
-## Implementation
-*[Describe the expected plan for implementation]*
-
 ## Action Plan
 *[Outline the next steps for the proposal, including:]*
 *- Timeline (if applicable)*
