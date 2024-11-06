@@ -6,7 +6,7 @@ This repository tracks EigenLayer Improvement Proposals. These are discrete unit
 EigenLayer Improvement Proposals (ELIPs) are the primary mechanisms for proposing new features/upgrades to the EigenLayer core contracts. ELIPs are version-controlled design documents that detail the motivation, technical specification, rationale, implementation path, and impact evaluation of specific proposals impacting core contracts. ELIPs are used to:
 
 * Track progress while designing, building, and implementing new features
-* Publicly communicate new features, designs, and to create space for community input
+* Publicly communicate new features, designs, and create space for community input
 * Propose new features to the Protocol Council for approval & execution
 
 Active proposals can be viewed in this repository's [pull requests](https://github.com/abbey-titcomb/test-eigenlayer-core-dev/pulls). 
