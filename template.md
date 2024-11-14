@@ -1,4 +1,4 @@
-# Protocol Upgrade Proposal: [Title]
+# EigenLayer Improvement Proposal: [Title]
 
 | Author(s) | Created | Status | References | Discussions |
 |-------------|-----------|---------|------|----------|
@@ -9,7 +9,7 @@
 *[A brief overview of the proposal, its main features, and expected impact]*
 
 ## Motivation
-*[Explain why this propoal is necessary]*
+*[Explain why this proposal is necessary]*
 
 ## Specification & Rationale
 *[Detailed technical specification of the upgrade and explain the reasoning behind design decisions]*
@@ -26,5 +26,5 @@
 *- Required coordination with other teams or projects (if applicable)*
 
 ## References & Relevant Discussions
-*[List any relevant external references, relevant resources, and prior discussions]*
+*[List any relevant external references, resources, and prior discussions]*
 
