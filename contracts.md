@@ -1,4 +1,4 @@
-# EigenLayer Governed Contracts
+# EigenLayer Core Contracts
 
 ### EIGENLAYER -- CORE CONTRACTS	
 * Slasher -- implementation	0xf3234220163a757edf1e11a8a085638d9b236614
@@ -34,10 +34,12 @@
 * StrategyBaseTVLLimits -- TUP -- sfrxETH	0x8CA7A5d6f3acd3A7A8bC468a8CD0FB14B6BD28b6
 * StrategyBaseTVLLimits -- TUP -- lsETH	0xAe60d8180437b5C34bB956822ac2710972584473
 * StrategyBaseTVLLimits -- TUP -- mETH	0x298aFB19A105D59E74658C4C334Ff360BadE6dd2
-
 * EigenStrategy -- Implementation	0x27e7a3a81741b9fcc5ad7edcbf9f8a72a5c00428
 * EigenStrategy -- TUP - EIGEN	0xaCB55C530Acdb2849e6d4f36992Cd8c9D50ED8F7
 
 ### EIGEN & bEIGEN – Token Contracts
 * EIGEN – 0xec53bf9167f50cdeb3ae105f56099aaab9061f83
 * bEIGEN – 0x83E9115d334D248Ce39a6f36144aEaB5b3456e75
+
+*subject to change and additions*
+
