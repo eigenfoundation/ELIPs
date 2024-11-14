@@ -1,22 +1,27 @@
 # EigenLayer Improvement Proposals (ELIPs)
 
-This repository tracks EigenLayer Improvement Proposals. These are discrete units of protocol governance outlining ongoing improvements to EigenLayer core contracts.
+This repository tracks EigenLayer Improvement Proposals. These are discrete units of protocol governance outlining ongoing improvements to EigenLayer [core contracts](/contracts.md).
 
 ## What’s an ELIP?
 EigenLayer Improvement Proposals (ELIPs) are the primary mechanisms for proposing new features/upgrades to the EigenLayer core contracts. ELIPs are version-controlled design documents that detail the motivation, technical specification, rationale, implementation path, and impact evaluation of specific proposals impacting core contracts. ELIPs are used to:
 
 * Track progress while designing, building, and implementing new features
 * Publicly communicate new features, designs, and create space for community input
-* Propose new features to the Protocol Council for approval & execution
+* Propose new features for approval & execution
 
 Active proposals can be viewed in this repository's [pull requests](https://github.com/abbey-titcomb/test-eigenlayer-core-dev/pulls). 
 
 ## ELIP Process
-In the early stages, ideas for ELIPs and early drafts should be discussed on forum.eigenlayer.xyz. The following actions require an ELIP:
+In the early stages, ideas for ELIPs and early drafts should be discussed on [forum.eigenlayer.xyz](https://forum.eigenlayer.xyz/). The following actions require an ELIP:
 
-* Upgrades/modifications to EigenLayer Core Contracts
+* Upgrades/modifications to EigenLayer core contracts
 * Modifications to multisig governance architecture (i.e. transferring ownership / admin access)
 * Modifying minting rights over the bEIGEN token
 
-Please refer to [research.eigenlayer.xyz](https://research.eigenlayer.xyz/) for developer discussion around current and future ELIPs. To stay up to date with the governance of ELIPs, head to [forum.eigenlayer.xyz](https://forum.eigenlayer.xyz/).
+Please refer to [forum.eigenlayer.xyz](https://forum.eigenlayer.xyz/) for developer discussion around current and future ELIPs.
 
+## Who can submit ELIPs?
+In this early stage, [Eigen Labs](https://www.eigenlabs.org/) is the only entity that can propose improvements to the EigenLayer core contracts. The ELIP process is being introduced to provide the EigenLayer ecosystem with more transparency and clarity on upcoming changes.
+
+## Who manages the ELIP process?
+The [Eigen Foundation](https://eigenfoundation.org/) maintains the ELIP repository and process. 
