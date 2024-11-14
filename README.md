@@ -1,15 +1,15 @@
 # EigenLayer Improvement Proposals (ELIPs)
 
-This repository tracks EigenLayer Improvement Proposals. These are discrete units of protocol governance outlining ongoing improvements to EigenLayer [core contracts](/contracts.md).
+This repository tracks EigenLayer Improvement Proposals. These are discrete units of protocol governance outlining improvements to EigenLayer [core contracts](/contracts.md).
 
 ## What’s an ELIP?
-EigenLayer Improvement Proposals (ELIPs) are the primary mechanisms for proposing new features/upgrades to the EigenLayer core contracts. ELIPs are version-controlled design documents that detail the motivation, technical specification, rationale, implementation path, and impact evaluation of specific proposals impacting core contracts. ELIPs are used to:
+EigenLayer Improvement Proposals (ELIPs) are the primary mechanisms for proposing new features and upgrades to the EigenLayer core contracts. ELIPs are version-controlled design documents that detail the motivation, technical specification, rationale, implementation path, and impact evaluation of specific proposals impacting core contracts. ELIPs are used to:
 
 * Track progress while designing, building, and implementing new features
 * Publicly communicate new features, designs, and create space for community input
-* Propose new features for approval & execution
+* Propose new upgrades for approval & execution
 
-Active proposals can be viewed in this repository's [pull requests](https://github.com/abbey-titcomb/test-eigenlayer-core-dev/pulls). 
+To submit an ELIP, open a [pull request](https://github.com/abbey-titcomb/test-eigenlayer-core-dev/pulls). Ongoing and accepted proposals can be found in /elips. 
 
 ## ELIP Process
 In the early stages, ideas for ELIPs and early drafts should be discussed on [forum.eigenlayer.xyz](https://forum.eigenlayer.xyz/). The following actions require an ELIP:
