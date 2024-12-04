@@ -51,7 +51,7 @@ Rewards v2 is designed to be an ***optional*** and additive upgrade to the Rewar
    1. Batch-claiming for multiple claimants in a single transaction will help reduce gas costs.    
          
 4. **Utilizing existing infrastructure:**  
-   1. Only the \`RewardsCoordinator\` contract will be upgraded to support functionality for performance-based rewards distribution, setting operator fees per AVS and batch claiming.  
+   1. Only the `RewardsCoordinator` contract will be upgraded to support functionality for performance-based rewards distribution, setting operator fees per AVS and batch claiming.  
    2. The existing EigenLayer sidecar will be used to support the new rewards type and will factor that into the rewards calculation using the new operator fees. The rewards root calculation and rewards root posting infrastructure will remain the same.   
    3. The claim UX experience will remain the same for stakers and operators with the added benefit of batch-claiming being included. 
 
@@ -76,7 +76,7 @@ Rewards v2 is designed to be an ***optional*** and additive upgrade to the Rewar
    2. Richer information provides more insights into AVS, staker, and operator preferences, allowing contributors to better understand the state of the market and potentially design new targeted incentives to encourage more specific behaviors.  
    3. Allowing a permissioned set of addresses to send rewards to any operator will enable incentivization of a wide range of behaviors within the ecosystem.
 
-# Specification & Rationale
+# Features & Specification
 
 The key words “MUST”, “MUST NOT”, “REQUIRED”, “SHALL”, “SHALL NOT”, “SHOULD”, “SHOULD NOT”, “RECOMMENDED”, “MAY”, and “OPTIONAL” in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
@@ -86,24 +86,24 @@ The key words “MUST”, “MUST NOT”, “REQUIRED”, “SHALL”, “SHALL 
 
 The high level flow is as follows:
 
-1. Operators can set their per-AVS reward fee (called a “split”) by calling \`setOperatorAVSSplit()\` on the \`RewardsCoordinator\`. This is between 0% or 100% of AVS rewards. It’s valid after a 7-day activation delay. If they don’t set it, it will remain at the default of 10%.   
+1. Operators can set their per-AVS reward fee (called a “split”) by calling `setOperatorAVSSplit()` on the `RewardsCoordinator`. This is between 0% or 100% of AVS rewards. It’s valid after a 7-day activation delay. If they don’t set it, it will remain at the default of 10%.   
 2. AVSs calculate off-chain the appropriate rewards to be distributed to their registered operators:  
    1. They first give an ERC20 approval to their AVSServiceManager for the sum of all operator rewards.   
-   2. They then call \`createOperatorDirectedAVSRewardsSubmission()\` on the \`AVSServiceManager\` which proxies the call to the \`RewardsCoordinator\`. This initiates the performance-based rewards allocations and deposits the sum of all operator rewards in the allocations to the \`RewardsCoordinator\`.   
-   3. An \`OperatorDirectedAVSRewardsSubmissionCreated\` event is emitted.  
+   2. They then call `createOperatorDirectedAVSRewardsSubmission()` on the `AVSServiceManager` which proxies the call to the `RewardsCoordinator`. This initiates the performance-based rewards allocations and deposits the sum of all operator rewards in the allocations to the `RewardsCoordinator`.   
+   3. An `OperatorDirectedAVSRewardsSubmissionCreated` event is emitted.  
 3. The off-chain infrastructure of the existing Rewards v1 is reused for performance-based rewards as well:  
-   1. The [Sidecar](https://github.com/Layr-Labs/sidecar) listens for the  \`OperatorDirectedAVSRewardsSubmissionCreated\` event and stores it.  
+   1. The [Sidecar](https://github.com/Layr-Labs/sidecar) listens for the  `OperatorDirectedAVSRewardsSubmissionCreated` event and stores it.  
    2. The Sidecar generates reward roots on a daily basis taking into account the operator-directed rewards and the appropriate operator split (in addition to the other rewards events it’s already processing).  
-   3. The Root Updater retrieves the latest root from the sidecar and posts the root on a weekly basis by calling \`submitRoot()\` on the \`RewardsCoordinator\`.  
-4. Operators and Stakers then batch-claim all their rewards by calling \`processClaims()\` on the \`RewardsCoordinator\` contract, after the existing 7-day activation delay.
+   3. The Root Updater retrieves the latest root from the sidecar and posts the root on a weekly basis by calling `submitRoot()` on the `RewardsCoordinator`.  
+4. Operators and Stakers then batch-claim all their rewards by calling `processClaims()` on the `RewardsCoordinator` contract, after the existing 7-day activation delay.
 
 More details on the Sidecar can be found below.
 
 ## Low Level Specification
 
-### EigenLayer Protocol {#eigenlayer-protocol}
+### EigenLayer Protocol
 
-The \`RewardsCoordinator\` Transparent Proxy will be upgraded to point to a new implementation that includes the following logic. 
+The `RewardsCoordinator` Transparent Proxy will be upgraded to point to a new implementation that includes the following logic. 
 
 #### Distribution of Operator-directed Rewards
 
@@ -116,7 +116,7 @@ The AVS is free to use on-chain or off-chain data in reward attribution logic to
 
 ##### Interface
 
-The Operator-directed Rewards interface in the \`RewardsCoordinator\` can be found below.
+The Operator-directed Rewards interface in the `RewardsCoordinator` can be found below.
 
 ```
 /**
@@ -188,48 +188,48 @@ function createOperatorDirectedAVSRewardsSubmission(
 ##### Implementation
 
 1. Operator-directed rewards MUST include the above fields; none are OPTIONAL.  
-2. It is ONLY callable by the \`avs\` currently (It is future-proofed to be called by an avs delegated address). There needs to be a \`msg.sender \== avs\` check. Throw an error if the check fails.   
-3. For each \`operatorDirectedRewardsSubmissions\`:  
+2. It is ONLY callable by the `avs` currently (It is future-proofed to be called by an avs delegated address). There needs to be a `msg.sender == avs` check. Throw an error if the check fails.   
+3. For each `operatorDirectedRewardsSubmissions`:  
    1. Validate the following:  
-      1. Throw an error if length of \`strategiesAndMultipliers\` array is 0\. These are REQUIRED.  
-      2. Throw an error if length of \`operatorRewards\` array is 0\. These are REQUIRED.  
-      3. For each \`operatorReward\`, validate the following:  
-         1. Throw an error if \`operator\` is \`address(0)\`.  
+      1. Throw an error if length of `strategiesAndMultipliers` array is 0. These are REQUIRED.  
+      2. Throw an error if length of `operatorRewards` array is 0. These are REQUIRED.  
+      3. For each `operatorReward`, validate the following:  
+         1. Throw an error if `operator` is `address(0)`.  
          2. Throw an error if operator addresses are not in ascending order. This is to handle duplicates.  
-         3. Throw an error if \`amount\` is 0\.  
-      4. Sum of all amounts MUST be \<= \`MAX\_REWARDS\_AMOUNT\`. Throw an error otherwise.  
-      5. \`duration\` MUST be \<= \`MAX\_REWARDS\_DURATION\`. Throw an error otherwise.  
-      6. \`duration\` MUST be a multiple of \`CALCULATION\_INTERVAL\_SECONDS\`. Throw an error otherwise.  
-      7. \`duration\` MUST be a multiple of \`CALCULATION\_INTERVAL\_SECONDS\`. Throw an error otherwise.  
-      8. \`startTimestamp\` MUST be a multiple of \`CALCULATION\_INTERVAL\_SECONDS\`. Throw an error otherwise.  
-      9. \`startTimestamp\` MUST be \> \`GENESIS\_REWARDS\_TIMESTAMP\`. Throw an error otherwise.  
-      10. \`startTimestamp\` MUST be within the \`MAX\_RETROACTIVE\_LENGTH\` prior to \`block.timestamp\`. Throw an error otherwise.  
-      11. \`startTimestamp \+ duration\` MUST be \< \`block.timestamp\`. Throw an error otherwise. Performance-based rewards have to be strictly retroactive.  
-      12. For each \`strategyAndMultiplier\`, validate the following:  
-          1. \`strategy\` has to be whitelisted for deposit. Throw an error otherwise.  
+         3. Throw an error if `amount` is 0.  
+      4. Sum of all amounts MUST be <= `MAX_REWARDS_AMOUNT`. Throw an error otherwise.  
+      5. `duration` MUST be <= `MAX_REWARDS_DURATION`. Throw an error otherwise.  
+      6. `duration` MUST be a multiple of `CALCULATION_INTERVAL_SECONDS`. Throw an error otherwise.  
+      7. `duration` MUST be a multiple of `CALCULATION_INTERVAL_SECONDS`. Throw an error otherwise.  
+      8. `startTimestamp` MUST be a multiple of `CALCULATION_INTERVAL_SECONDS`. Throw an error otherwise.  
+      9. `startTimestamp` MUST be > `GENESIS_REWARDS_TIMESTAMP`. Throw an error otherwise.  
+      10. `startTimestamp` MUST be within the `MAX_RETROACTIVE_LENGTH` prior to `block.timestamp`. Throw an error otherwise.  
+      11. `startTimestamp + duration` MUST be < `block.timestamp`. Throw an error otherwise. Performance-based rewards have to be strictly retroactive.  
+      12. For each `strategyAndMultiplier`, validate the following:  
+          1. `strategy` has to be whitelisted for deposit. Throw an error otherwise.  
           2. Throw an error if strategy addresses are not in ascending order. This is to handle duplicates.  
-   2. Keccak256 hash the ABI encoding of \`avs\`, \`submissionNonce\` and \`operatorDirectedRewardsSubmission\`.  
+   2. Keccak256 hash the ABI encoding of `avs`, `submissionNonce` and `operatorDirectedRewardsSubmission`.  
    3. Store the hash and update the nonce.   
-   4. Transfer the total amount of rewards for the Performance Reward Submission token into the \`RewardsCoordinator\` contract.  
-   5. \`OperatorDirectedAVSRewardsSubmissionCreated\` event will be emitted.
+   4. Transfer the total amount of rewards for the Performance Reward Submission token into the `RewardsCoordinator` contract.  
+   5. `OperatorDirectedAVSRewardsSubmissionCreated` event will be emitted.
 
 ##### Caveats
 
-1. The \`avs\` is currently the respective \`AVSServiceManager\`.  
-2. The \`RewardsCoordinator\` contract needs a token approval of the sum of all \`operatorRewards\` in the \`operatorDirectedRewardsSubmissions\`, before calling \`createOperatorDirectedAVSRewardsSubmission\`.  
-3. The \`createOperatorDirectedAVSRewardsSubmission\` function mostly just does on-chain validation, depositing the total amount of rewards into the \`RewardsCoordinator\` contract and emitting the event.  
-4. When implemented along with the sidecar changes, each call to \`createOperatorDirectedAVSRewardsSubmission()\` would reward each \`operator\` and their stakers \`amount\` of \`token\` over \`duration\` since \`startTimestamp\`, on behalf of the \`avs\`. The operator would get their contract-configured split of the rewards, set in the \`RewardsCoordinator\` and the rest would be distributed to stakers proportional to the strategies and multipliers.   
+1. The `avs` is currently the respective `AVSServiceManager`.  
+2. The `RewardsCoordinator` contract needs a token approval of the sum of all `operatorRewards` in the `operatorDirectedRewardsSubmissions`, before calling `createOperatorDirectedAVSRewardsSubmission`.  
+3. The `createOperatorDirectedAVSRewardsSubmission` function mostly just does on-chain validation, depositing the total amount of rewards into the `RewardsCoordinator` contract and emitting the event.  
+4. When implemented along with the sidecar changes, each call to `createOperatorDirectedAVSRewardsSubmission()` would reward each `operator` and their stakers `amount` of `token` over `duration` since `startTimestamp`, on behalf of the `avs`. The operator would get their contract-configured split of the rewards, set in the `RewardsCoordinator` and the rest would be distributed to stakers proportional to the strategies and multipliers.   
 5. The rewards calculation is done off-chain in the sidecar. Further explained in the [EigenLayer Sidecar](#eigenlayer-sidecar) section. Check there to understand how operators and staker rewards are calculated for the given duration. 
 
 #### Variable Operator Fees
 
-After Rewards v2 is live, Operators will be able to change their take-home fee on a per-AVS granularity in the \`RewardsCoordinator\`. It’s valid after a 7-day activation delay to give stakers time to adjust their operator service providers as necessary based on the new take rate. If they don’t set the per-AVS rewards split, it will default to 10%. 
+After Rewards v2 is live, Operators will be able to change their take-home fee on a per-AVS granularity in the `RewardsCoordinator`. It’s valid after a 7-day activation delay to give stakers time to adjust their operator service providers as necessary based on the new take rate. If they don’t set the per-AVS rewards split, it will default to 10%. 
 
 This variable fee is provided with no constraints on its value between 0% and 100% of the AVS-paid rewards. AVSs may still choose to eject operators they believe are acting in bad faith by calling [deregisterOperatorFromAVS()](https://docs.eigenlayer.xyz/developers/avs-dashboard-onboarding) on the AVS Directory contract. We hope AVSs and Operators will engage in discussion with each other to discover the correct dynamics for different types of AVSs.
 
 ##### Interface
 
-Variable Operator Split Interface in the \`RewardsCoordinator\` can be found below.
+Variable Operator Split Interface in the `RewardsCoordinator` can be found below.
 
 ```
 /**
@@ -280,12 +280,12 @@ function getOperatorAVSSplit(address operator, address avs) external view return
 
 ##### Implementation
 
-1. \`setOperatorAVSSplit()\` MUST include all fields; none are OPTIONAL.   
-2. It is ONLY callable by the \`operator\` currently (It is future-proofed to be called by an operator delegated address). There needs to be a \`msg.sender \== operator\` check. Throw an error if the check fails.   
-3. Throw an error if \`split\` is strictly greater than \`10000\` (i.e 100%).  
-4. Each call to \`setOperatorAVSSplit()\` sets the \`split\` (in Bips) for the \`avs\` on behalf of the \`operator\`.   
-5. The \`split\` will be activated after a 7-day activation delay.   
-6. \`OperatorAVSSplitBipsSet\` event will be emitted.
+1. `setOperatorAVSSplit()` MUST include all fields; none are OPTIONAL.   
+2. It is ONLY callable by the `operator` currently (It is future-proofed to be called by an operator delegated address). There needs to be a `msg.sender == operator` check. Throw an error if the check fails.   
+3. Throw an error if `split` is strictly greater than `10000` (i.e 100%).  
+4. Each call to `setOperatorAVSSplit()` sets the `split` (in Bips) for the `avs` on behalf of the `operator`.   
+5. The `split` will be activated after a 7-day activation delay.   
+6. `OperatorAVSSplitBipsSet` event will be emitted.
 
 ##### Caveats
 
@@ -297,7 +297,7 @@ Eigen Foundation Programmatic Incentives will have a default Operator split of 1
 
 ##### Interface
 
-Operator Splits for Programmatic Incentives Interface in the \`RewardsCoordinator\` can be found below.
+Operator Splits for Programmatic Incentives Interface in the `RewardsCoordinator` can be found below.
 
 ```
 /**
@@ -344,12 +344,12 @@ function getOperatorPISplit(address operator) external view returns (uint16);
 
 ##### Implementation
 
-1. \`setOperatorPISplit()\` MUST include all fields; none are OPTIONAL.   
-2. It is ONLY callable by the \`operator\` currently (It is future-proofed to be called by an operator delegated address). There needs to be a \`msg.sender \== operator\` check. Throw an error if the check fails.   
-3. Throw an error if \`split\` is strictly greater than \`10000\` (i.e 100%).  
-4. Each call to \`setOperatorPISplit()\` sets the \`split\` (in Bips) for Programmatic Incentives on behalf of the \`operator\`.   
-5. The \`split\` will be activated after a 7-day activation delay.   
-6. \`OperatorPISplitBipsSet\` event will be emitted.
+1. `setOperatorPISplit()` MUST include all fields; none are OPTIONAL.   
+2. It is ONLY callable by the `operator` currently (It is future-proofed to be called by an operator delegated address). There needs to be a `msg.sender == operator` check. Throw an error if the check fails.   
+3. Throw an error if `split` is strictly greater than `10000` (i.e 100%).  
+4. Each call to `setOperatorPISplit()` sets the `split` (in Bips) for Programmatic Incentives on behalf of the `operator`.   
+5. The `split` will be activated after a 7-day activation delay.   
+6. `OperatorPISplitBipsSet` event will be emitted.
 
 ##### Caveats
 
@@ -357,11 +357,11 @@ function getOperatorPISplit(address operator) external view returns (uint16);
 
 #### Batch Reward Claiming 
 
-For a gas-efficient way to claim, Rewards v2 also ships a new interface for batch claiming (i.e \`processClaims()\`). The v1 interface (i.e \`processClaim()\`) will still be available. Currently, we only enable claiming per single earner. This interface provides a way to batch claims for multiple earners into a single transaction. 
+For a gas-efficient way to claim, Rewards v2 also ships a new interface for batch claiming (i.e `processClaims()`). The v1 interface (i.e `processClaim()`) will still be available. Currently, we only enable claiming per single earner. This interface provides a way to batch claims for multiple earners into a single transaction. 
 
 ##### Interface
 
-Batch Reward Claiming Interface in the \`RewardsCoordinator\` can be found below.
+Batch Reward Claiming Interface in the `RewardsCoordinator` can be found below.
 
 ```
 /**
@@ -436,25 +436,25 @@ function processClaims(RewardsMerkleClaim[] calldata claims, address recipient) 
 
 ##### Implementation
 
-1. \`processClaims()\` MUST include all fields; none are OPTIONAL.   
-2. All logic in the existing \`processClaim()\` external function will be refactored into a new \`\_processClaim()\` internal function. \`processClaim()\` will call \`\_processClaim()\`. This keeps the existing interface for \`processClaim()\` intact.  
-3. \`processClaims()\` is only only callable by the valid claimer, that is if \`claimerFor\[claim.earner\]\` is \`address(0)\` then only the earner can claim, otherwise only \`claimerFor\[claim.earner\]\` can claim the rewards.  
-4. \`processClaims()\` will iterate over the multiple \`claims\` and call \`\_processClaim()\` for each claim.  
-5. The rewards merkle tree is structured with the merkle root at the top and \`EarnerTreeMerkleLeaf\` as internal leaves in the tree. Each earner leaf has its own subtree with \`TokenTreeMerkleLeaf\` as leaves in the subtree. To prove a claim against a specified \`rootIndex\` (which specifies the distributionRoot being used),  the claim will first verify inclusion of the earner leaf in the tree against \`\_distributionRoots\[rootIndex\].root\`. Then for each token, it will verify inclusion of the token leaf in the earner's subtree against the earner's \`earnerTokenRoot\`.  
-6. \`RewardsClaimed\` event will be emitted for each claim.
+1. `processClaims()` MUST include all fields; none are OPTIONAL.   
+2. All logic in the existing `processClaim()` external function will be refactored into a new `_processClaim()` internal function. `processClaim()` will call `_processClaim()`. This keeps the existing interface for `processClaim()` intact.  
+3. `processClaims()` is only only callable by the valid claimer, that is if `claimerFor[claim.earner]` is `address(0)` then only the earner can claim, otherwise only `claimerFor[claim.earner]` can claim the rewards.  
+4. `processClaims()` will iterate over the multiple `claims` and call `_processClaim()` for each claim.  
+5. The rewards merkle tree is structured with the merkle root at the top and `EarnerTreeMerkleLeaf` as internal leaves in the tree. Each earner leaf has its own subtree with `TokenTreeMerkleLeaf` as leaves in the subtree. To prove a claim against a specified `rootIndex` (which specifies the distributionRoot being used),  the claim will first verify inclusion of the earner leaf in the tree against `_distributionRoots[rootIndex].root`. Then for each token, it will verify inclusion of the token leaf in the earner's subtree against the earner's `earnerTokenRoot`.  
+6. `RewardsClaimed` event will be emitted for each claim.
 
 ##### Caveats
 
-1. Earnings are cumulative, so earners don't have to claim against all distribution roots they have earnings for. They can simply claim against the latest root and the contract will calculate the difference between their \`cumulativeEarnings\` and \`cumulativeClaimed\`. This difference is then transferred to the \`recipient\` address.  
+1. Earnings are cumulative, so earners don't have to claim against all distribution roots they have earnings for. They can simply claim against the latest root and the contract will calculate the difference between their `cumulativeEarnings` and `cumulativeClaimed`. This difference is then transferred to the `recipient` address.  
 2. Each claim can specify which of the earner's earned tokens they want to claim (i.e not all tokens have to be claimed in a single claim)
 
 ### EigenLayer Middleware {#eigenlayer-middleware}
 
-The EigenLayer Middleware SHALL have a mandatory release as part of this ELIP to support performance-based rewards. AVSs MUST upgrade their respective \`AVSServiceManager\` contracts to inherit the new \`ServiceManagerBase\` implementation in order to be able to submit performance-based rewards.
+The EigenLayer Middleware SHALL have a mandatory release as part of this ELIP to support performance-based rewards. AVSs MUST upgrade their respective `AVSServiceManager` contracts to inherit the new `ServiceManagerBase` implementation in order to be able to submit performance-based rewards.
 
 ##### Interface
 
-The Operator-directed Rewards interface in the \`ServiceManagerBase\` can be found below:
+The Operator-directed Rewards interface in the `ServiceManagerBase` can be found below:
 
 ```
 /**
@@ -473,25 +473,25 @@ function setClaimerFor(address claimer) external;
 
 ##### Implementation
 
-1. \`createOperatorDirectedAVSRewardsSubmission()\` MUST include the above fields; none are OPTIONAL.   
-2. It is ONLY callable by the \`rewardsInitiator\`. Throw an error otherwise.  
-3. For each \`operatorDirectedRewardsSubmissions\`:  
-   1. Transfer the total amount of rewards to the \`AVSServiceManager\` in that token.  
-   2. Approve the \`RewardsCoordinator\` for the total amount of rewards in that token.  
-4. Call \`createOperatorDirectedAVSRewardsSubmission\` in the \`RewardsCoordinator\` contract.
+1. `createOperatorDirectedAVSRewardsSubmission()` MUST include the above fields; none are OPTIONAL.   
+2. It is ONLY callable by the `rewardsInitiator`. Throw an error otherwise.  
+3. For each `operatorDirectedRewardsSubmissions`:  
+   1. Transfer the total amount of rewards to the `AVSServiceManager` in that token.  
+   2. Approve the `RewardsCoordinator` for the total amount of rewards in that token.  
+4. Call `createOperatorDirectedAVSRewardsSubmission` in the `RewardsCoordinator` contract.
 
 ##### Caveats
 
-1. The \`operatorDirectedRewardsSubmission\`object has to adhere to the validations in \`RewardsCoordinator.createOperatorDirectedAVSRewardsSubmission\`  
-2. The \`AVSServiceManager\` contract needs a token approval of the sum of all \`operatorRewards\` in the \`operatorDirectedRewardsSubmissions\`, before calling \`createOperatorDirectedAVSRewardsSubmission\`.
+1. The `operatorDirectedRewardsSubmission`object has to adhere to the validations in `RewardsCoordinator.createOperatorDirectedAVSRewardsSubmission`  
+2. The `AVSServiceManager` contract needs a token approval of the sum of all `operatorRewards` in the `operatorDirectedRewardsSubmissions`, before calling `createOperatorDirectedAVSRewardsSubmission`.
 
-### EigenLayer Sidecar {#eigenlayer-sidecar}
+### EigenLayer Sidecar
 
 The EigenLayer Sidecar SHALL have a mandatory release as part of this ELIP to augment performance-based rewards. This is a critical part of the Rewards v2 flow.
 
 The following high-level features will be introduced:
 
-1. Ingest new Rewards v2 events and store them in the sidecar’s internal DB: \`OperatorDirectedAVSRewardsSubmissionCreated\`, \`OperatorAVSSplitBipsSet\`, \`OperatorPISplitBipsSet\`.  
+1. Ingest new Rewards v2 events and store them in the sidecar’s internal DB: `OperatorDirectedAVSRewardsSubmissionCreated`, `OperatorAVSSplitBipsSet`, `OperatorPISplitBipsSet`.  
 2. New Operator-directed rewards calculation that includes the per-avs operator split (if set).  
 3. Update Rewards MVP (v1) calculation to include the per-avs operator split (if set).   
 4. Update Programmatic Incentives rewards calculation to include the operator split for Programmatic Incentives (if set).  
@@ -499,7 +499,7 @@ The following high-level features will be introduced:
 
 #### EigenStateModel
 
-The Rewards v2 release will include state models for the 3 new events being supported: \`OperatorDirectedAVSRewardsSubmissionCreated\`, \`OperatorAVSSplitBipsSet\` and \`OperatorPISplitBipsSet\`.
+The Rewards v2 release will include state models for the 3 new events being supported: `OperatorDirectedAVSRewardsSubmissionCreated`, `OperatorAVSSplitBipsSet` and `OperatorPISplitBipsSet`.
 
 ##### Schema
 
@@ -562,8 +562,8 @@ Operator-directed rewards calculation will follow the existing implementation of
 With the addition of the following things:
 
 1. Operator commission is calculated according to the following logic:  
-   1. If an activated \`OperatorAVSSplit\` row exists in the \`operator\_avs\_split\` table for the particular \`operator\` at the current snapshot time, then use that \`split\` for the rewards calculation.   
-   2. Else, default to a \`split\` of 10%.  
+   1. If an activated `OperatorAVSSplit` row exists in the `operator_avs_split` table for the particular `operator` at the current snapshot time, then use that `split` for the rewards calculation.   
+   2. Else, default to a `split` of 10%.  
 2. In the edge case of operator-directed reward submissions including operators not registered to that specific AVS during the specific snapshot time, the operator amount for that snapshot is refunded to the AVS as a distribution leaf for that snapshot. The AVS can claim it using the regular claim process to get refunded. Reasoning for this is explained in the [Security Considerations](#security-considerations) section (under Preventing Rewards Distribution Tree bloat)
 
 #### Rewards MVP (v1) Calculation
@@ -572,8 +572,8 @@ The Rewards MVP calculation will be updated to include the per-avs operator spli
 
 ##### Implementation
 
-1. If an activated \`OperatorAVSSplit\` row exists in the \`operator\_avs\_split\` table for the particular \`operator\` at the current snapshot time, then use that \`split\` for the rewards calculation.   
-2. Else, default to a \`split\` of 10%. 
+1. If an activated `OperatorAVSSplit` row exists in the `operator_avs_split` table for the particular `operator` at the current snapshot time, then use that `split` for the rewards calculation.   
+2. Else, default to a `split` of 10%. 
 
 #### Programmatic Incentives Calculation
 
@@ -581,10 +581,10 @@ The Programmatic Incentives calculation will be updated to include the per-avs o
 
 ##### Implementation
 
-1. If an activated \`OperatorPISplit\` row exists in the \`operator\_pi\_split\` table for the particular \`operator\` at the current snapshot time, then use that \`split\` for the rewards calculation.   
-2. Else, default to a \`split\` of 10%.
+1. If an activated `OperatorPISplit` row exists in the `operator_pi_split` table for the particular `operator` at the current snapshot time, then use that `split` for the rewards calculation.   
+2. Else, default to a `split` of 10%.
 
-# Security Considerations {#security-considerations}
+# Security Considerations
 
 Key security considerations include:
 
@@ -620,8 +620,8 @@ Cons:
 
 The implementation of this ELIP will follow these key steps:
 
-1. **Upgrade EigenLayer Protocol**: Upgrade the \`[RewardsCoordinator](https://etherscan.io/address/0x7750d328b314EfFa365A0402CcfD489B80B0adda)\` Transparent Proxy to point to a new implementation contract that introduces logic specified [here](#eigenlayer-protocol).   
-2. **Update EigenLayer Middleware**: Cut a new release for \`[ServiceManagerBase](https://github.com/Layr-Labs/eigenlayer-middleware/blob/mainnet/src/ServiceManagerBase.sol)\` which introduces logic specified [here](#eigenlayer-middleware). AVSs MUST upgrade their respective \`AVSServiceManager\` contracts to inherit the new \`ServiceManagerBase\` implementation in order to be able to submit performance-based rewards.   
+1. **Upgrade EigenLayer Protocol**: Upgrade the `[RewardsCoordinator](https://etherscan.io/address/0x7750d328b314EfFa365A0402CcfD489B80B0adda)` Transparent Proxy to point to a new implementation contract that introduces logic specified [here](#eigenlayer-protocol).   
+2. **Update EigenLayer Middleware**: Cut a new release for `[ServiceManagerBase](https://github.com/Layr-Labs/eigenlayer-middleware/blob/mainnet/src/ServiceManagerBase.sol)` which introduces logic specified [here](#eigenlayer-middleware). AVSs MUST upgrade their respective `AVSServiceManager` contracts to inherit the new `ServiceManagerBase` implementation in order to be able to submit performance-based rewards.   
 3. **Update EigenLayer Sidecar**: Cut a new release for the [EigenLayer Sidecar](https://github.com/Layr-Labs/sidecar) which introduces logic specified [here](#eigenlayer-sidecar). All parties running the rewards calculation and verification MUST upgrade their EigenLayer sidecar to this release before the block height at which the EigenLayer protocol is upgraded for this ELIP. Not doing so will lead to incorrect calculations and possible halting of the sidecar. 
 
 This process will start first on the Eigen testnet and follow later on Mainnet after testing and integration by AVSs to ensure success. Following Mainnet, the up-take of Rewards v2 will be tracked by indexing the events of rewards on-chain. This can help determine the success of this ELIP and track the improvements to the protocol.
