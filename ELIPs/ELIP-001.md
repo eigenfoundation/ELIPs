@@ -5,7 +5,7 @@
 | Created | Oct 18, 2024 |
 | Status | Draft |
 | References | [EigenLayer Protocol PR](https://github.com/Layr-Labs/eigenlayer-contracts/pull/837) [EigenLayer Middleware PR](https://github.com/Layr-Labs/eigenlayer-middleware/pull/315) [EigenLayer Sidecar PR](https://github.com/Layr-Labs/sidecar/pull/106) |
-| Discussions | TO-ADD |
+| Discussions | [Forum Post](https://forum.eigenlayer.xyz/t/elip-001-rewards-v2/14196) |
 
 # Executive Summary
 
