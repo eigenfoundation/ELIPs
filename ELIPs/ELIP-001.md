@@ -448,7 +448,7 @@ function processClaims(RewardsMerkleClaim[] calldata claims, address recipient) 
 1. Earnings are cumulative, so earners don't have to claim against all distribution roots they have earnings for. They can simply claim against the latest root and the contract will calculate the difference between their `cumulativeEarnings` and `cumulativeClaimed`. This difference is then transferred to the `recipient` address.  
 2. Each claim can specify which of the earner's earned tokens they want to claim (i.e not all tokens have to be claimed in a single claim)
 
-### EigenLayer Middleware {#eigenlayer-middleware}
+### EigenLayer Middleware
 
 The EigenLayer Middleware SHALL have a mandatory release as part of this ELIP to support performance-based rewards. AVSs MUST upgrade their respective `AVSServiceManager` contracts to inherit the new `ServiceManagerBase` implementation in order to be able to submit performance-based rewards.
 
