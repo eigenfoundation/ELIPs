@@ -199,4 +199,4 @@ decentralization and protocolized governance over time.
 
 ### **EigenLayer Core Contracts**
 
-See [contracts.md](/contracts.md) for the up to date list.
+See [contracts.md](/contracts.md) for the current list of contracts.
