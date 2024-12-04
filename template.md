@@ -11,8 +11,11 @@
 ## Motivation
 *[Explain why this proposal is necessary]*
 
-## Specification & Rationale
-*[Detailed technical specification of the upgrade and explain the reasoning behind design decisions]*
+## Features & Specification
+*[Introduction of any new features with detailed technical specifications for the upgrade]*
+
+## Rationale
+*[Explanation for the reasoning behind design decisions]*
 
 ## Security Considerations
 *[Discuss security implications, potential risks, and how they are being addressed]*
@@ -27,4 +30,3 @@
 
 ## References & Relevant Discussions
 *[List any relevant external references, resources, and prior discussions]*
-
