@@ -4,6 +4,7 @@
 |-------------|-----------|---------|------|----------|
 | [Name(s) and contact information] | [Date in YYYY-MM-DD format] | [Draft/Review/Final] | [List of relevant work/PRs, if any] | [Link to discussion forum or thread] |
 
+*Note: This template may change slightly to suit the purpose and clarity of the proposal.*
 
 ## Executive Summary
 *[A brief overview of the proposal, its main features, and expected impact]*
