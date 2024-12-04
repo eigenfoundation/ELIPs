@@ -4,7 +4,7 @@
 |-------------|-----------|---------|------|----------|
 | [Name(s) and contact information] | [Date in YYYY-MM-DD format] | [Draft/Review/Final] | [List of relevant work/PRs, if any] | [Link to discussion forum or thread] |
 
-*Note: This template may change slightly to suit the purpose and clarity of the proposal.*
+*Note: This template may change slightly to suit the purpose and scope of the proposal.*
 
 ## Executive Summary
 *[A brief overview of the proposal, its main features, and expected impact]*
@@ -13,7 +13,7 @@
 *[Explain why this proposal is necessary]*
 
 ## Features & Specification
-*[Introduction of any new features with detailed technical specifications for the upgrade]*
+*[Introduction of any new features including detailed technical specifications for the proposed upgrade]*
 
 ## Rationale
 *[Explanation for the reasoning behind design decisions]*
