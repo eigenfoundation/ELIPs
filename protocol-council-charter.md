@@ -137,10 +137,10 @@ Prior to exercising voting and/or Multisig authority, the Council must
 review all relevant facts and circumstances among the members to
 determine whether a material conflict of interest may arise due to a
 member's family, social, financial, or professional interests
-or relationships ("**Personal Interests**"). A [conflict of interest
+or relationships ("**Personal Interests**"). A conflict of interest
 exists when a member's Personal Interests could compromise, or give the
 appearance of compromising, the member's judgment, decisions, or
-actions.]{.mark}
+actions.
 
 If a material conflict exists, the Council must take steps to ensure
 that its voting decision is based solely on the best interests of the
