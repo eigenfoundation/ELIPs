@@ -219,7 +219,7 @@ The EigenLayer Core Contracts include the following:
 * StrategyManager \-- Transparent Upgradeable Proxy
 0x858646372CC42E1A627fcE94aa7A7033e7CF075A
 
-RewardsCoordinator \-- implementation
+* RewardsCoordinator \-- implementation
 0x5bf7c13D5FAdba224ECB3D5C0a67A231D1628785
 
 * RewardsCoordinator \-- Transparent Upgradeable Proxy 0x7750d328b314EfFa365A0402CcfD489B80B0adda
