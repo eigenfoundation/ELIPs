@@ -5,7 +5,7 @@
 | Created | Oct 18, 2024 |
 | Status | Draft |
 | References | [EigenLayer Protocol PR](https://github.com/Layr-Labs/eigenlayer-contracts/pull/837) [EigenLayer Middleware PR](https://github.com/Layr-Labs/eigenlayer-middleware/pull/315) [EigenLayer Sidecar PR](https://github.com/Layr-Labs/sidecar/pull/106) |
-| Discussions | [Operator Working Group October 2024](https://docs.google.com/presentation/d/1MblGS03nvYN3W2e9EzjwXE646dcgyzwdeyNhX6cnp2U/edit#slide=id.g3093f8619a9_0_56) [AVS Working Group October 2024](https://docs.google.com/presentation/d/161sL-LCXJpNvdN56pB_Wzhtm0AcE9jYi5SNPm0iK6xQ/edit#slide=id.g301cec67d3a_0_7) |
+| Discussions | TO-ADD |
 
 # Executive Summary
 
