@@ -21,7 +21,7 @@ In the early stages, ideas for ELIPs and early drafts should be discussed on [fo
 Please refer to [forum.eigenlayer.xyz](https://forum.eigenlayer.xyz/) for developer discussion around current and future ELIPs.
 
 ## Who can submit ELIPs?
-In this early stage, [Eigen Foundation](https://eigenfoundation.org/) and [Eigen Labs](https://www.eigenlabs.org/) are the only enties that can accept proposals for improvements to the EigenLayer core contracts. The ELIP process is being introduced to provide the EigenLayer ecosystem with more transparency and clarity on upcoming changes. 
+In this early stage, [Eigen Foundation](https://eigenfoundation.org/) and [Eigen Labs](https://www.eigenlabs.org/) are the only entities that can accept proposals for improvements to the EigenLayer core contracts. The ELIP process is being introduced to provide the EigenLayer ecosystem with more transparency and clarity on upcoming changes. 
 
 ## Who manages the ELIP process?
 The [Eigen Foundation](https://eigenfoundation.org/) maintains the ELIP repository and process. 
