@@ -487,7 +487,7 @@ function setClaimerFor(address claimer) external;
 
 ### EigenLayer Sidecar
 
-The EigenLayer Sidecar is an open source, permissionless, verified indexer enabling anyone (AVS, operator, etc) to access EigenLayer’s protocol rewards in real-time. The EigenLayer Sidecar SHALL have a mandatory release as part of this ELIP to augment performance-based rewards. This is a critical part of the Rewards v2 flow.
+The EigenLayer Sidecar is an open source, permissionless, verified indexer enabling anyone (AVS, operator, etc) to access EigenLayer’s protocol rewards and EigenLayer state in real-time. The EigenLayer Sidecar SHALL have a mandatory release as part of this ELIP to augment performance-based rewards. This is a critical part of the Rewards v2 flow.
 
 The following high-level features will be introduced:
 
