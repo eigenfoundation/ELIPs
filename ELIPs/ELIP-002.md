@@ -3,7 +3,7 @@
 | Created | December 12th, 2024 |
 | Status | Draft |
 | References | [Slashing Feature Branch](https://github.com/Layr-Labs/eigenlayer-contracts/pull/679) |
-| Discussions | [Forum Post]() TOADD |
+| Discussions | [Research Forum Post](https://forum.eigenlayer.xyz/t/elip-002-slashing-via-unique-stake-operator-sets/14275) |
 
 # ELIP-002: Slashing via Unique Stake & Operator Sets
 
