@@ -1,8 +1,9 @@
-
-
-| Author(s) | Created | Status | References | Discussions |
-| :---- | :---- | :---- | :---- | :---- |
-| Matt Nelson Gautham Anant Yash Patil Matt Curtis Brett Palatiello | 2024/12/12 | Draft |  |  |
+| Author(s) | [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [Yash Patil](mailto:yash@eigenlabs.org), [Matt Curtis](mailto:matt.curtis@eigenlabs.org)[Gautham Anant](mailto:gautham@eigenlabs.org), [Brett Palatiello](mailto:brett@eigenlabs.org) |
+| :---- | :---- |
+| Created | December 12th, 2024 |
+| Status | Draft |
+| References | [Slashing Feature Branch](https://github.com/Layr-Labs/eigenlayer-contracts/pull/679) |
+| Discussions | [Forum Post]() TOADD |
 
 # ELIP: Slashing via Unique Stake & Operator Sets
 
