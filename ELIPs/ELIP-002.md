@@ -1,4 +1,4 @@
-| Author(s) | [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [Yash Patil](mailto:yash@eigenlabs.org), [Matt Curtis](mailto:matt.curtis@eigenlabs.org)[Gautham Anant](mailto:gautham@eigenlabs.org), [Brett Palatiello](mailto:brett@eigenlabs.org) |
+| Author(s) | [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [Yash Patil](mailto:yash@eigenlabs.org), [Matt Curtis](mailto:matt.curtis@eigenlabs.org), [Gautham Anant](mailto:gautham@eigenlabs.org), [Brett Palatiello](mailto:brett@eigenlabs.org) |
 | :---- | :---- |
 | Created | December 12th, 2024 |
 | Status | Draft |
@@ -125,7 +125,9 @@ To ensure community and incentive alignment, it is generally expected that AVSs 
 
 In order for Operators to join Operator Sets, there is a new registration process handled via the `AllocationManager`. Both AVSs and Operators will have control over who, how, and when Operators can register. After the instantiation of an Operator Set and its optional registrar contract by an AVS, Operators can begin the registration process. The flow follows the pattern illustrated below and is completed in one or two transactions: 
 
-![Operator Set Registration](../assets/elip-002/figure-1-a.png)*Registration*		![Operator Set Deregistration](../assets/elip-002/figure-1-b.png)*Deregistration*  
+*Registration* | *Deregistration* 
+:-------------------------:|:-------------------------:
+![Operator Set Registration](../assets/elip-002/figure-1-a.png) | ![Operator Set Deregistration](../assets/elip-002/figure-1-b.png) 
    
 ***Figure 1: The above registration/deregistration flows move away from the [EIP-1271](https://eips.ethereum.org/EIPS/eip-1271)-based process in the `AVSDirectory`.***
 
