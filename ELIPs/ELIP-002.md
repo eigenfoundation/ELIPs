@@ -5,7 +5,7 @@
 | References | [Slashing Feature Branch](https://github.com/Layr-Labs/eigenlayer-contracts/pull/679) |
 | Discussions | [Forum Post]() TOADD |
 
-# ELIP: Slashing via Unique Stake & Operator Sets
+# ELIP-002: Slashing via Unique Stake & Operator Sets
 
 ---
 
