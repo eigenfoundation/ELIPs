@@ -475,7 +475,7 @@ All Strategies supplied must be configured as part of the Operator Set. For all 
 
 Slashing proportionally reduces funds of all Stakers of the given Strategies that are delegated to the Operator, including funds in queued deallocations and withdrawals (that haven’t passed `WITHDRAWAL_DELAY`). Operator delegation is decreased directly in the `DelegationManager` in each Strategy. Changes are propagated to Staker withdrawals and view functions by referring to their delegated Operator’s Total Magnitude.
 
-When a slashing occurs, an event is emitted onchain, one for each slashing. Details are emitted identifying the Operator slashed, in what Operator Set, and across which Strategies, with fields for the amount slashed and meta-data:
+When a slashing occurs, an event is emitted onchain, one for each slashing. Details are emitted identifying the Operator slashed, in what Operator Set, and across which Strategies, with fields for the proportion slashed and meta-data:
 ```
 /// @notice Emitted when an operator is slashed by an operator set for a strategy
 /// `wadSlashed` is the proportion of the operator's total delegated stake that was slashed
