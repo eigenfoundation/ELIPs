@@ -475,6 +475,15 @@ All Strategies supplied must be configured as part of the Operator Set. For all 
 
 Slashing proportionally reduces funds of all Stakers of the given Strategies that are delegated to the Operator, including funds in queued deallocations and withdrawals (that haven’t passed `WITHDRAWAL_DELAY`). Operator delegation is decreased directly in the `DelegationManager` in each Strategy. Changes are propagated to Staker withdrawals and view functions by referring to their delegated Operator’s Total Magnitude.
 
+When a slashing occurs, an event is emitted onchain, one for each slashing. Details are emitted identifying the Operator slashed, in what Operator Set, and across which Strategies, with fields for the proportion slashed and meta-data:
+```
+/// @notice Emitted when an operator is slashed by an operator set for a strategy
+/// `wadSlashed` is the proportion of the operator's total delegated stake that was slashed
+event OperatorSlashed(
+    address operator, OperatorSet operatorSet, IStrategy[] strategies, uint256[] wadSlashed, string description
+);
+```
+
 Returning to our example from above, let’s assume that `AVS_1_Eigen` Operator Set slashes the Operator in question by 50%. Recall the final allocated magnitudes were the following:
 
 |  | Magnitude | Proportion | EIGEN |
@@ -684,7 +693,7 @@ All Operator actions are opt-in for the slashing release. In order to take part 
 
 ## Stakers
 
-Stakers will see changes to their risk and reward profile following this upgrade. Initially following the upgrade, if a Staker is already delegated to an Operator, its stake can become slashable as soon as the Operator opts-in to Operator Sets. This will create risk (and potential return).  Stakers therefore should review and confirm their risk tolerances for their continued delegations to operators.  If a Staker is planning on delegating in the future, they can view any Operator’s existing allocations to see the AVSs and risks they would be opting into via delegation. AVS and Operator slashing histories will be transparent and may be surfaced via user interfaces, like [app.eigenlayer.xyz](https://app.eigenlayer.xyz/), so Stakers may review the onchain history of slashing activity. Notification services can be built atop EigenLayer or may be provided at a later time.
+Stakers will see changes to their risk and reward profile following this upgrade. Initially following the upgrade, if a Staker is already delegated to an Operator, its stake can become slashable as soon as the Operator opts-in to Operator Sets and allocates stake. This will create risk (and potential return).  Stakers therefore should review and confirm their risk tolerances for their continued delegations to operators.  If a Staker is planning on delegating in the future, they can view any Operator’s existing allocations to see the AVSs and risks they would be opting into via delegation. AVS and Operator slashing histories will be transparent and may be surfaced via user interfaces, like [app.eigenlayer.xyz](https://app.eigenlayer.xyz/), so Stakers may review the onchain history of slashing activity. Notification services can be built atop EigenLayer or may be provided at a later time.
 
 # References & Relevant Discussions
 
