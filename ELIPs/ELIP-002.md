@@ -427,6 +427,60 @@ Now, a deposit occurs for an additional 100 EIGEN by a Staker who has delegated 
 
 Each Operator Set’s slashable stake and the overall non-slashable stake increase commensurately. This example is expanded in [this forum post](https://forum.eigenlayer.xyz/t/the-mechanics-of-allocating-and-slashing-unique-stake/13870#p-143651-allocation-3) with more details. We will reference this example again later in the context of slashing. 
 
+### Stake Introspection
+
+To accomodate for the changes introduced in flows moving between the `AllocationManager` and `DelegationManager`, Operator stake introspection has chaged. Primarily,  The `stakerStrategyShares` mapping in the `StrategyManager` has been renamed. Deposited stake in the `StrategyManager` & `EigenPodManager` are given by: 
+
+```solidity
+
+/// @notice Returns the current shares of `user` in `strategy`
+/// @dev strategy must be beaconChainETH when talking to the EigenPodManager
+/// @dev returns 0 if the user has negative shares.
+function stakerDepositShares(
+	address user, 
+	IStrategy strategy
+) external view returns (uint256 depositShares); 
+```
+
+For Operators to understand the *withdrawable* stake they may have, accounting for any slashings, `getWithdrawableShares` is provided:
+
+```solidity
+/**
+ * @notice Given a staker and a set of strategies, return the shares they can queue for withdrawal and the
+ * corresponding depositShares.
+ * This value depends on which operator the staker is delegated to.
+ * The shares amount returned is the actual amount of Strategy shares the staker would receive (subject
+ * to each strategy's underlying shares to token ratio).
+ */
+function getWithdrawableShares(
+    address staker,
+    IStrategy[] memory strategies
+) external view returns (uint256[] memory withdrawableShares, uint256[] memory depositShares);
+```
+
+This is read from the `DelegationManager` whereas `stakerDepositShares()` is read from the `StrategyManager`. The returned `uint256[] memory depositShares` in this `getWithdrawableShares` function returns the same `depositShares` from above. `getDelegatableShares` has been removed from the `DelegationManager`.
+
+```solidity
+    /**
+     * @notice Given a staker and a set of strategies, return the shares they can queue for withdrawal and the
+     * corresponding depositShares.
+     * This value depends on which operator the staker is delegated to.
+     * The shares amount returned is the actual amount of Strategy shares the staker would receive (subject
+     * to each strategy's underlying shares to token ratio).
+     */
+    function getWithdrawableShares(
+        address staker,
+        IStrategy[] memory strategies
+    ) external view returns (uint256[] memory withdrawableShares, uint256[] memory depositShares);
+    
+    /**
+     * @notice Returns the number of shares in storage for a staker and all their strategies
+     */
+    function getDepositedShares(
+        address staker
+    ) external view returns (IStrategy[] memory, uint256[] memory);
+```
+
 ### Deposits, Delegations, & Withdrawals
 
 Magnitude allocations make a proportion of an Operator’s delegated stake slashable by an AVS. As a result, new delegations and deposits are immediately slashable by the same proportion. There is no "activation delay". There is no change in the deposit and delegation interface. 
@@ -480,9 +534,8 @@ Queuing a withdrawal emits an event with a `withdrawal` struct that *currentl
 
 1. The event emitted when queuing a withdrawal changes (above).
 2. The `completeQueuedWithdrawal` parameters change (to remove an unused parameter).
-3. The struct will no longer be *strictly* necessary to complete withdrawals, but can be used.
 
-The new complete withdrawal interface is below. Specifically, we are removing the unused `uint256` parameter (`middlewareTimesIndex`) from both complete methods. The last method enables withdrawals to be completed without having to pass in the withdrawal struct, **eliminating the need to run an indexer to complete withdrawals.**
+The new complete withdrawal interface is below. Specifically, we are removing the unused `uint256` parameter (`middlewareTimesIndex`) from both complete methods. By using the `getQueuedWithdrawals` function to introspect stake, one can complete withdrawals just from RPC calls, **eliminating the need to run an indexer to complete withdrawals.**
 
 ```solidity
 // One withdrawal, which is obtained by indexing the withdrawal struct when queued (see queued withdrawals above)
@@ -507,7 +560,6 @@ function completeQueuedWithdrawals(
 	    uint256 numToComplete
 )
 ```
-
 
 ## Slashing of Unique Stake
 
