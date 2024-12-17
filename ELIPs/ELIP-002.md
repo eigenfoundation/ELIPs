@@ -433,6 +433,82 @@ Magnitude allocations make a proportion of an Operator’s delegated stake slash
 
 Withdrawals and undelegation, like deallocations and deregistrations, are slashable for the `WITHDRAWAL_DELAY` after they are queued and automatically become unslashable after the delay has passed. The escrow process remains unchanged: withdrawals must be queued and completed in separate transactions. When the withdrawal is completed, slashings are applied to the stake received. 
 
+There are a handful of changes to the way withdrawals are queued and completed. When queueing a withdrawal, the struct itself is changing slightly and the event emitted has been renamed to `SlashingWithdrawalQueued`:
+
+```solidity
+/**
+ * @notice Emitted when a new withdrawal is queued.
+ * @param withdrawalRoot Is the hash of the `withdrawal`.
+ * @param withdrawal Is the withdrawal itself.
+ * @param sharesToWithdraw Is an array of the expected shares that were queued for withdrawal corresponding to the strategies in the `withdrawal`.
+ */
+event SlashingWithdrawalQueued(
+			bytes32 withdrawalRoot, 
+			Withdrawal withdrawal, 
+			uint256[] sharesToWithdraw
+);
+
+/**
+ * Struct type used to specify an existing queued withdrawal. Rather than storing the entire struct, only a hash is stored.
+ * In functions that operate on existing queued withdrawals -- e.g. completeQueuedWithdrawal`, the data is resubmitted and the hash of the submitted
+ * data is computed by `calculateWithdrawalRoot` and checked against the stored hash in order to confirm the integrity of the submitted data.
+ */
+struct Withdrawal {
+    // The address that originated the Withdrawal
+    address staker;
+    // The address that the staker was delegated to at the time that the Withdrawal was created
+    address delegatedTo;
+    // The address that can complete the Withdrawal + will receive funds when completing the withdrawal
+    address withdrawer;
+    // Nonce used to guarantee that otherwise identical withdrawals have unique hashes
+    uint256 nonce;
+    // Blocknumber when the Withdrawal was created.
+    uint32 startBlock;
+    // Array of strategies that the Withdrawal contains
+    IStrategy[] strategies;
+    // Array containing the amount of staker's scaledShares for withdrawal in each Strategy in the `strategies` array
+    // Note that these scaledShares need to be multiplied by the operator's maxMagnitude and beaconChainScalingFactor at completion to include
+    // slashing occurring during the queue withdrawal delay. This is because scaledShares = sharesToWithdraw / (maxMagnitude * beaconChainScalingFactor)
+    // at queue time. beaconChainScalingFactor is simply equal to 1 if the strategy is not the beaconChainStrategy.
+    // To account for slashing, we later multiply scaledShares * maxMagnitude * beaconChainScalingFactor at the earliest possible completion time
+    // to get the withdrawn shares after applying slashing during the delay period.
+    uint256[] scaledShares;
+}
+```
+
+Queuing a withdrawal emits an event with a `withdrawal` struct that *currently* must be indexed and passed into the `completeQueuedWithdrawal` function after the `WITHDRAWAL_DELAY` period. [app.eigenlayer.xyz](app.eigenlayer.xyz) can be used to supply this calldata but is not strictly mandatory. With the slashing update:
+
+1. The event emitted when queuing a withdrawal changes (above).
+2. The `completeQueuedWithdrawal` parameters change (to remove an unused parameter).
+3. The struct will no longer be *strictly* necessary to complete withdrawals, but can be used.
+
+The new complete withdrawal interface is below. Specifically, we are removing the unused `uint256` parameter (`middlewareTimesIndex`) from both complete methods. The last method enables withdrawals to be completed without having to pass in the withdrawal struct, **eliminating the need to run an indexer to complete withdrawals.**
+
+```solidity
+// One withdrawal, which is obtained by indexing the withdrawal struct when queued (see queued withdrawals above)
+function completeQueuedWithdrawal(
+      Withdrawal calldata withdrawal,
+      IERC20[] calldata tokens,
+      bool receiveAsTokens
+)
+
+// Many withdrawals, which are obtained by indexing the withdrawals when queued 
+// (this is a modified version of the existing indexing-based code-path for withdrawals) 
+function completeQueuedWithdrawals(
+      Withdrawal[] calldata withdrawals,
+      IERC20[][] calldata tokens,
+      bool[] calldata receiveAsTokens
+)
+
+// Complete many withdrawals, without the need to index the withdrawal struct (net new functionality) 
+function completeQueuedWithdrawals(
+	    IERC20[][] calldata tokens,
+	    bool[] calldata receiveAsTokens,
+	    uint256 numToComplete
+)
+```
+
+
 ## Slashing of Unique Stake
 
 With Unique Stake allocated to Operator Sets, AVSs can begin assigning slashable tasks with economic commitments from their Operators. It is key to AVS designs to consider what is a slashable offense and to effectively communicate these conditions with Operators and Stakers. 
