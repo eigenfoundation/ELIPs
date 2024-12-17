@@ -705,7 +705,7 @@ For custom errors, we upgraded our solidity version from `^0.8.12` to `^0.8.27`.
 
 ### Operator Registration
 
-The `registerToOperator` function in the `DelegationManager` has been updated to take in the `allocationDelay` and the `initDelegationApprover`. The `OperatorDetails` struct is no longer passed in. 
+The `registerToOperator` function in the `DelegationManager` has been updated to take in the `allocationDelay` and the `initDelegationApprover`. The `OperatorDetails` struct is no longer passed in.
 
 ```solidity
 /**
@@ -760,28 +760,28 @@ function getWithdrawableShares(
 *Note: this is read from the `DelegationManager` whereas `stakerDepositShares()` is read from `StrategyManager`. The returned `uint256[] memory depositShares` in this `getWithdrawableShares` function also returns the same `depositShares` from above.* 
 
 `getDelegatableShares` has been removed from the `DelegationManager` in favor of two functions:
-- `getDepositedShares` for the raw amount a Staker has deposited
-- `getWithdrawableShares` for the Staker shares with beacon chain & AVS slashings applied to nominal share amounts. The sum of `getWithdrawableShares` for all the operator's stakers should be <= Operator shares.
+- `getDepositedShares` returns the raw amount a Staker has deposited,
+- `getWithdrawableShares` returns the the Staker-withdrawable amount with slashings applied. The sum of `getWithdrawableShares` for all of an Operator's stakers should be less than or equal to an Operator's delegated stake.
 
 ```solidity
-    /**
-     * @notice Given a staker and a set of strategies, return the shares they can queue for withdrawal and the
-     * corresponding depositShares.
-     * This value depends on which operator the staker is delegated to.
-     * The shares amount returned is the actual amount of Strategy shares the staker would receive (subject
-     * to each strategy's underlying shares to token ratio).
-     */
-    function getWithdrawableShares(
-        address staker,
-        IStrategy[] memory strategies
-    ) external view returns (uint256[] memory withdrawableShares, uint256[] memory depositShares);
-    
-    /**
-     * @notice Returns the number of shares in storage for a staker and all their strategies
-     */
-    function getDepositedShares(
-        address staker
-    ) external view returns (IStrategy[] memory, uint256[] memory);
+/**
+    * @notice Given a staker and a set of strategies, return the shares they can queue for withdrawal and the
+    * corresponding depositShares.
+    * This value depends on which operator the staker is delegated to.
+    * The shares amount returned is the actual amount of Strategy shares the staker would receive (subject
+    * to each strategy's underlying shares to token ratio).
+    */
+function getWithdrawableShares(
+    address staker,
+    IStrategy[] memory strategies
+) external view returns (uint256[] memory withdrawableShares, uint256[] memory depositShares);
+
+/**
+    * @notice Returns the number of shares in storage for a staker and all their strategies
+    */
+function getDepositedShares(
+    address staker
+) external view returns (IStrategy[] memory, uint256[] memory);
 ```
 
 ### Operator Details
@@ -830,9 +830,9 @@ The event when a withdrawal is queued is now named `SlashingWithdrawalQueued`. T
  * @param sharesToWithdraw Is an array of the expected shares that were queued for withdrawal corresponding to the strategies in the `withdrawal`.
  */
 event SlashingWithdrawalQueued(
-			bytes32 withdrawalRoot, 
-			Withdrawal withdrawal, 
-			uint256[] sharesToWithdraw
+	bytes32 withdrawalRoot, 
+	Withdrawal withdrawal, 
+	uint256[] sharesToWithdraw
 );
 
 /**
@@ -867,29 +867,29 @@ struct Withdrawal {
 
 Queuing a withdrawal emits an event with a `withdrawal` struct that *currently* must be indexed and passed into the `completeQueuedWithdrawal` function after the `WITHDRAWAL_DELAY` period. [app.eigenlayer.xyz](app.eigenlayer.xyz) can be used to supply this calldata but is not strictly mandatory. With the slashing update:
 
-1. The event emitted when queuing a withdrawal changes (above).
+1. The event emitted when queuing a withdrawal changes (as captured above).
 2. The `completeQueuedWithdrawal` parameters change (to remove an unused parameter).
 
-The new complete withdrawal interface is below. Specifically, the unused `uint256` parameter (`middlewareTimesIndex`) is removed from both complete methods. By using the `getQueuedWithdrawals` function to introspect stake, one can complete withdrawals just from RPC calls, **eliminating the need to run an indexer to complete withdrawals.**
+The new complete withdrawal interface is below. Specifically, the unused `uint256` parameter (`middlewareTimesIndex`) is removed from both complete methods. By using the `getQueuedWithdrawals` function to introspect stake, one can complete withdrawals just from RPC calls, **eliminating the need to run an indexer to complete withdrawals outside of the front-end application.**
 
 ```solidity
 // One withdrawal, which is obtained by indexing the withdrawal struct or calling `getQueuedWithdrawals`. 
 function completeQueuedWithdrawal(
-      Withdrawal calldata withdrawal,
-      IERC20[] calldata tokens,
-      bool receiveAsTokens
+    Withdrawal calldata withdrawal,
+    IERC20[] calldata tokens,
+    bool receiveAsTokens
 )
 
 // Many withdrawals, which are obtained by indexing the withdrawals when queued or calling `getQueuedWithdrawals`. 
 function completeQueuedWithdrawals(
-      Withdrawal[] calldata withdrawals,
-      IERC20[][] calldata tokens,
-      bool[] calldata receiveAsTokens
+    Withdrawal[] calldata withdrawals,
+    IERC20[][] calldata tokens,
+    bool[] calldata receiveAsTokens
 )
 
 // Introspect currently queued withdrawals. Only returns withdrawals queued, but not completed, post slashing upgrade. 
 function getQueuedWithdrawals(
-      address staker
+    address staker
 ) external view returns (Withdrawal[] memory withdrawals, uint256[][] memory shares)
 ```
 
