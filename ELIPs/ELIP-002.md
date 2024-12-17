@@ -108,7 +108,7 @@ As an Operator, Operator Sets unlock the ability to:
 
 This simple data structure is meant to provide an AVS flexible means for segmenting tasks, security, and types of Operators. Operator Sets are defined in the `AllocationManager` core contract. Below is the Operator Set primitive: 
 
-```
+```solidity
 struct OperatorSet {
 	address avs;
 	uint32 operatorSetId;
@@ -139,7 +139,7 @@ AVSs and Operators can both deregister from Operator Sets unilaterally. This is 
 
 Below is the [AllocationManager interface](https://github.com/Layr-Labs/eigenlayer-contracts/blob/725d3df10a82e46003dd5d78d8c814790fff13c1/src/contracts/interfaces/IAllocationManager.sol):
 
-```
+```solidity
 interface IAllocationManager {
 
     /**
@@ -293,7 +293,7 @@ Before allocating for their first Operator Set, an Operator is required to set a
 
 The `AllocationManager` interface handles all allocation and deallocation signals:
 
-```
+```solidity
 interface IAllocationManager {
 
    /**
@@ -443,9 +443,9 @@ There are a handful of changes to the way withdrawals are queued and completed. 
  * @param sharesToWithdraw Is an array of the expected shares that were queued for withdrawal corresponding to the strategies in the `withdrawal`.
  */
 event SlashingWithdrawalQueued(
-			bytes32 withdrawalRoot, 
-			Withdrawal withdrawal, 
-			uint256[] sharesToWithdraw
+	bytes32 withdrawalRoot, 
+	Withdrawal withdrawal, 
+	uint256[] sharesToWithdraw
 );
 
 /**
@@ -517,7 +517,7 @@ With Unique Stake allocated to Operator Sets, AVSs can begin assigning slashable
 
 The `AllocationManager` provides the interface for the slashing function: 
 
-```
+```solidity
     /**
      * @notice Called by an AVS to slash an operator in a given operator set
      */
@@ -552,7 +552,7 @@ All Strategies supplied must be configured as part of the Operator Set. For all 
 Slashing proportionally reduces funds of all Stakers of the given Strategies that are delegated to the Operator, including funds in queued deallocations and withdrawals (that haven’t passed `WITHDRAWAL_DELAY`). Operator delegation is decreased directly in the `DelegationManager` in each Strategy. Changes are propagated to Staker withdrawals and view functions by referring to their delegated Operator’s Total Magnitude.
 
 When a slashing occurs, an event is emitted onchain, one for each slashing. Details are emitted identifying the Operator slashed, in what Operator Set, and across which Strategies, with fields for the proportion slashed and meta-data:
-```
+```solidity
 /// @notice Emitted when an operator is slashed by an operator set for a strategy
 /// `wadSlashed` is the proportion of the operator's total delegated stake that was slashed
 event OperatorSlashed(
@@ -597,7 +597,7 @@ AVSs specify a set of Strategies for each of their Operator Sets. Reward submiss
 
 Below are the interface additions:
 
-```
+```solidity
 interface IRewardsCoordinator {
   /// @notice operatorSet parallel of AVSRewardsSubmissionCreated
   event OperatorSetRewardsSubmissionCreated(
