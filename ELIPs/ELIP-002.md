@@ -757,7 +757,7 @@ function getWithdrawableShares(
 ) external view returns (uint256[] memory withdrawableShares, uint256[] memory depositShares);
 ```
 
-*Note: this is read from the `DelegationManager` whereas `stakerDepositShares()` is read from `StrategyManager`. The returned `uint256[] memory depositShares` in this `getWithdrawableShares` function also returns the same `depositShares` from above. **`podOwnerShares` introspection in the `EigenPodManager` introspection has also been deprecated in lieu of above.*** 
+*Note: this is read from the `DelegationManager` whereas `stakerDepositShares()` is read from `StrategyManager`. The returned `uint256[] memory depositShares` in this `getWithdrawableShares` function also returns the same `depositShares` from above.* 
 
 `getDelegatableShares` has been removed from the `DelegationManager` in favor of two functions:
 - `getDepositedShares` for the raw amount a Staker has deposited
