@@ -108,7 +108,7 @@ As an Operator, Operator Sets unlock the ability to:
 
 This simple data structure is meant to provide an AVS flexible means for segmenting tasks, security, and types of Operators. Operator Sets are defined in the `AllocationManager` core contract. Below is the Operator Set primitive: 
 
-```
+```solidity
 struct OperatorSet {
 	address avs;
 	uint32 operatorSetId;
@@ -139,7 +139,7 @@ AVSs and Operators can both deregister from Operator Sets unilaterally. This is 
 
 Below is the [AllocationManager interface](https://github.com/Layr-Labs/eigenlayer-contracts/blob/725d3df10a82e46003dd5d78d8c814790fff13c1/src/contracts/interfaces/IAllocationManager.sol):
 
-```
+```solidity
 interface IAllocationManager {
 
     /**
@@ -293,7 +293,7 @@ Before allocating for their first Operator Set, an Operator is required to set a
 
 The `AllocationManager` interface handles all allocation and deallocation signals:
 
-```
+```solidity
 interface IAllocationManager {
 
    /**
@@ -441,7 +441,7 @@ With Unique Stake allocated to Operator Sets, AVSs can begin assigning slashable
 
 The `AllocationManager` provides the interface for the slashing function: 
 
-```
+```solidity
     /**
      * @notice Called by an AVS to slash an operator in a given operator set
      */
@@ -521,7 +521,7 @@ AVSs specify a set of Strategies for each of their Operator Sets. Reward submiss
 
 Below are the interface additions:
 
-```
+```solidity
 interface IRewardsCoordinator {
   /// @notice operatorSet parallel of AVSRewardsSubmissionCreated
   event OperatorSetRewardsSubmissionCreated(
@@ -695,6 +695,204 @@ All Operator actions are opt-in for the slashing release. In order to take part 
 
 Stakers will see changes to their risk and reward profile following this upgrade. Initially following the upgrade, if a Staker is already delegated to an Operator, its stake can become slashable as soon as the Operator opts-in to Operator Sets and allocates stake. This will create risk (and potential return).  Stakers therefore should review and confirm their risk tolerances for their continued delegations to operators.  If a Staker is planning on delegating in the future, they can view any Operator’s existing allocations to see the AVSs and risks they would be opting into via delegation. AVS and Operator slashing histories will be transparent and may be surfaced via user interfaces, like [app.eigenlayer.xyz](https://app.eigenlayer.xyz/), so Stakers may review the onchain history of slashing activity. Notification services can be built atop EigenLayer or may be provided at a later time.
 
+## Breaking Changes
+
+### Custom Errors
+
+All errors, except those originating from externally inherited contracts (eg. OpenZeppelin), have been updated from strings to [custom errors](https://soliditylang.org/blog/2021/04/21/custom-errors/). 
+
+For custom errors, we upgraded our solidity version from `^0.8.12` to `^0.8.27`. Interfaces remain `>=0.5.0`. 
+
+### Operator Registration
+
+The `registerToOperator` function in the `DelegationManager` has been updated to take in the `allocationDelay` and the `initDelegationApprover`. The `OperatorDetails` struct is no longer passed in.
+
+```solidity
+/**
+ * @notice Registers the caller as an operator in EigenLayer.
+ * @param initDelegationApprover is an address that, if set, must provide a signature when stakers delegate
+ * to an operator.
+ * @param allocationDelay The delay before allocations take effect.
+ * @param metadataURI is a URI for the operator's metadata, i.e. a link providing more details on the operator.
+ *
+ * @dev Once an operator is registered, they cannot 'deregister' as an operator, and they will forever be considered "delegated to themself".
+ * @dev This function will revert if the caller is already delegated to an operator.
+ * @dev Note that the `metadataURI` is *never stored * and is only emitted in the `OperatorMetadataURIUpdated` event
+ */
+function registerAsOperator(
+    address initDelegationApprover,
+    uint32 allocationDelay,
+    string calldata metadataURI
+) external;
+```
+
+### Stake Introspection
+
+The `stakerStrategyShares` mapping in the `StrategyManager` has been renamed. Deposited stake in the `StrategyManager` is given by: 
+
+```solidity
+
+/// @notice Returns the current shares of `user` in `strategy`
+/// @dev strategy must be beaconChainETH when talking to the EigenPodManager
+/// @dev returns 0 if the user has negative shares.
+function stakerDepositShares(
+	address user, 
+	IStrategy strategy
+) external view returns (uint256 depositShares); 
+```
+
+Withdrawable stake is given by:
+
+```solidity
+/**
+ * @notice Given a staker and a set of strategies, return the shares they can queue for withdrawal and the
+ * corresponding depositShares.
+ * This value depends on which operator the staker is delegated to.
+ * The shares amount returned is the actual amount of Strategy shares the staker would receive (subject
+ * to each strategy's underlying shares to token ratio).
+ */
+function getWithdrawableShares(
+    address staker,
+    IStrategy[] memory strategies
+) external view returns (uint256[] memory withdrawableShares, uint256[] memory depositShares);
+```
+
+*Note: this is read from the `DelegationManager` whereas `stakerDepositShares()` is read from `StrategyManager`. The returned `uint256[] memory depositShares` in this `getWithdrawableShares` function also returns the same `depositShares` from above.* 
+
+`getDelegatableShares` has been removed from the `DelegationManager` in favor of two functions:
+- `getDepositedShares` returns the raw amount a Staker has deposited,
+- `getWithdrawableShares` returns the the Staker-withdrawable amount with slashings applied. The sum of `getWithdrawableShares` for all of an Operator's stakers should be less than or equal to an Operator's delegated stake.
+
+```solidity
+/**
+    * @notice Given a staker and a set of strategies, return the shares they can queue for withdrawal and the
+    * corresponding depositShares.
+    * This value depends on which operator the staker is delegated to.
+    * The shares amount returned is the actual amount of Strategy shares the staker would receive (subject
+    * to each strategy's underlying shares to token ratio).
+    */
+function getWithdrawableShares(
+    address staker,
+    IStrategy[] memory strategies
+) external view returns (uint256[] memory withdrawableShares, uint256[] memory depositShares);
+
+/**
+    * @notice Returns the number of shares in storage for a staker and all their strategies
+    */
+function getDepositedShares(
+    address staker
+) external view returns (IStrategy[] memory, uint256[] memory);
+```
+
+### Operator Details
+
+The `getOperatorDetails` getter been removed as the only relevant “detail” is the delegation approver. The `delegationApprover(address operator)` function can be used to retrieve this value. 
+
+The `modifyOperatorDetails` function has been updated to reflect that the only Operator information to modify is the delegation approver:
+
+```solidity
+/**
+ * @notice Updates an operator's stored `delegationApprover`.
+ * @param operator is the operator to update the delegationApprover for
+ * @param newDelegationApprover is the new delegationApprover for the operator
+ *
+ * @dev The caller must have previously registered as an operator in EigenLayer.
+ */
+function modifyOperatorDetails(
+	address operator, 
+	address newDelegationApprover
+) external;
+```
+
+### Withdrawal Delay
+
+**The functions `strategyWithdrawalDelayBlocks(IStrategy strategy)` and `getWithdrawalDelay(IStrategy calldata strategies)` are removed.** You can introspect the delay with the following function on the `DelegationManager`:
+
+```solidity
+/**
+ * @notice Returns the minimum withdrawal delay in blocks to pass for withdrawals queued to be completable.
+ * Also applies to legacy withdrawals so any withdrawals not completed prior to the slashing upgrade will be subject
+ * to this longer delay.
+ * @dev Backwards-compatible interface to return the `MIN_WITHDRAWAL_DELAY_BLOCKS` value
+ */
+function minWithdrawalDelayBlocks() external view returns (uint32);
+```
+
+### Queueing Withdrawals
+
+The event when a withdrawal is queued is now named `SlashingWithdrawalQueued`. The updated Withdrawal event and struct are below:
+
+```solidity
+/**
+ * @notice Emitted when a new withdrawal is queued.
+ * @param withdrawalRoot Is the hash of the `withdrawal`.
+ * @param withdrawal Is the withdrawal itself.
+ * @param sharesToWithdraw Is an array of the expected shares that were queued for withdrawal corresponding to the strategies in the `withdrawal`.
+ */
+event SlashingWithdrawalQueued(
+	bytes32 withdrawalRoot, 
+	Withdrawal withdrawal, 
+	uint256[] sharesToWithdraw
+);
+
+/**
+ * Struct type used to specify an existing queued withdrawal. Rather than storing the entire struct, only a hash is stored.
+ * In functions that operate on existing queued withdrawals -- e.g. completeQueuedWithdrawal`, the data is resubmitted and the hash of the submitted
+ * data is computed by `calculateWithdrawalRoot` and checked against the stored hash in order to confirm the integrity of the submitted data.
+ */
+struct Withdrawal {
+    // The address that originated the Withdrawal
+    address staker;
+    // The address that the staker was delegated to at the time that the Withdrawal was created
+    address delegatedTo;
+    // The address that can complete the Withdrawal + will receive funds when completing the withdrawal
+    address withdrawer;
+    // Nonce used to guarantee that otherwise identical withdrawals have unique hashes
+    uint256 nonce;
+    // Blocknumber when the Withdrawal was created.
+    uint32 startBlock;
+    // Array of strategies that the Withdrawal contains
+    IStrategy[] strategies;
+    // Array containing the amount of staker's scaledShares for withdrawal in each Strategy in the `strategies` array
+    // Note that these scaledShares need to be multiplied by the operator's maxMagnitude and beaconChainScalingFactor at completion to include
+    // slashing occurring during the queue withdrawal delay. This is because scaledShares = sharesToWithdraw / (maxMagnitude * beaconChainScalingFactor)
+    // at queue time. beaconChainScalingFactor is simply equal to 1 if the strategy is not the beaconChainStrategy.
+    // To account for slashing, we later multiply scaledShares * maxMagnitude * beaconChainScalingFactor at the earliest possible completion time
+    // to get the withdrawn shares after applying slashing during the delay period.
+    uint256[] scaledShares;
+}
+```
+
+### Completing Withdrawals
+
+Queuing a withdrawal emits an event with a `withdrawal` struct that *currently* must be indexed and passed into the `completeQueuedWithdrawal` function after the `WITHDRAWAL_DELAY` period. [app.eigenlayer.xyz](app.eigenlayer.xyz) can be used to supply this calldata but is not strictly mandatory. With the slashing update:
+
+1. The event emitted when queuing a withdrawal changes (as captured above).
+2. The `completeQueuedWithdrawal` parameters change (to remove an unused parameter).
+
+The new complete withdrawal interface is below. Specifically, the unused `uint256` parameter (`middlewareTimesIndex`) is removed from both complete methods. By using the `getQueuedWithdrawals` function to introspect queued withdrawals, one can complete withdrawals just from RPC calls, **eliminating the need to run an indexer to complete withdrawals outside of the front-end application.**
+
+```solidity
+// One withdrawal, which is obtained by indexing the withdrawal struct or calling `getQueuedWithdrawals`. 
+function completeQueuedWithdrawal(
+    Withdrawal calldata withdrawal,
+    IERC20[] calldata tokens,
+    bool receiveAsTokens
+)
+
+// Many withdrawals, which are obtained by indexing the withdrawals when queued or calling `getQueuedWithdrawals`. 
+function completeQueuedWithdrawals(
+    Withdrawal[] calldata withdrawals,
+    IERC20[][] calldata tokens,
+    bool[] calldata receiveAsTokens
+)
+
+// Introspect currently queued withdrawals. Only returns withdrawals queued, but not completed, post slashing upgrade. 
+function getQueuedWithdrawals(
+    address staker
+) external view returns (Withdrawal[] memory withdrawals, uint256[][] memory shares)
+```
+
 # References & Relevant Discussions
 
 [The Mechanics of Allocating and Slashing Unique Stake - Protocol Research - EigenLayer Forum](https://forum.eigenlayer.xyz/t/the-mechanics-of-allocating-and-slashing-unique-stake/13870)  
@@ -712,7 +910,7 @@ Stakers will see changes to their risk and reward profile following this upgrade
 | Deposits | Staker-added assets in EigenLayer, used as security in order to receive rewards.  |
 | Burn | The removal of a token from circulation. |
 | Core Contract | Contracts deployed and controlled by EigenLayer and its governance processes. |
-| Delegation | The process by which a Staker assigns their staked tokens to a chosen Operator, granting them the authority to use the value of those tokens for validating AVSs. The Operator cannot directly access the delegated tokens, but can cause them to be slashed by an AVS. Delegations themselves are the Operator’s summed  |
+| Delegation | The process by which a Staker assigns their staked tokens to a chosen Operator, granting them the authority to use the value of those tokens for validating AVSs. The Operator cannot directly access the delegated tokens, but can cause them to be slashed by an AVS. Delegations themselves are the sum of a given Operator’s delegated stake from Stakers. |
 | `DelegationManager` | A contract used to track staked assets in strategies delegated to Operators. These tie in to allocation logic and rewards. |
 | Magnitude | The accounting tool used to track Operator allocations to Operator Sets. Represented as `wads` in the `AllocationManager`. Magnitudes represent proportions of an Operator’s delegations for a specific Strategy. The sum of all of an Operator’s Magnitudes cannot exceed the `INITIAL_TOTAL_MAGNITUDE`. |
 | M2  | [Release 0.4.3](https://github.com/Layr-Labs/eigenlayer-contracts/releases/tag/v0.4.3-mainnet-rewards-foundation-incentives) of the EigenLayer Protocol. |
