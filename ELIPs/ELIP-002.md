@@ -870,7 +870,7 @@ Queuing a withdrawal emits an event with a `withdrawal` struct that *currentl
 1. The event emitted when queuing a withdrawal changes (as captured above).
 2. The `completeQueuedWithdrawal` parameters change (to remove an unused parameter).
 
-The new complete withdrawal interface is below. Specifically, the unused `uint256` parameter (`middlewareTimesIndex`) is removed from both complete methods. By using the `getQueuedWithdrawals` function to introspect stake, one can complete withdrawals just from RPC calls, **eliminating the need to run an indexer to complete withdrawals outside of the front-end application.**
+The new complete withdrawal interface is below. Specifically, the unused `uint256` parameter (`middlewareTimesIndex`) is removed from both complete methods. By using the `getQueuedWithdrawals` function to introspect queued withdrawals, one can complete withdrawals just from RPC calls, **eliminating the need to run an indexer to complete withdrawals outside of the front-end application.**
 
 ```solidity
 // One withdrawal, which is obtained by indexing the withdrawal struct or calling `getQueuedWithdrawals`. 
@@ -910,7 +910,7 @@ function getQueuedWithdrawals(
 | Deposits | Staker-added assets in EigenLayer, used as security in order to receive rewards.  |
 | Burn | The removal of a token from circulation. |
 | Core Contract | Contracts deployed and controlled by EigenLayer and its governance processes. |
-| Delegation | The process by which a Staker assigns their staked tokens to a chosen Operator, granting them the authority to use the value of those tokens for validating AVSs. The Operator cannot directly access the delegated tokens, but can cause them to be slashed by an AVS. Delegations themselves are the Operator’s summed  |
+| Delegation | The process by which a Staker assigns their staked tokens to a chosen Operator, granting them the authority to use the value of those tokens for validating AVSs. The Operator cannot directly access the delegated tokens, but can cause them to be slashed by an AVS. Delegations themselves are the sum of a given Operator’s delegated stake from Stakers. |
 | `DelegationManager` | A contract used to track staked assets in strategies delegated to Operators. These tie in to allocation logic and rewards. |
 | Magnitude | The accounting tool used to track Operator allocations to Operator Sets. Represented as `wads` in the `AllocationManager`. Magnitudes represent proportions of an Operator’s delegations for a specific Strategy. The sum of all of an Operator’s Magnitudes cannot exceed the `INITIAL_TOTAL_MAGNITUDE`. |
 | M2  | [Release 0.4.3](https://github.com/Layr-Labs/eigenlayer-contracts/releases/tag/v0.4.3-mainnet-rewards-foundation-incentives) of the EigenLayer Protocol. |
