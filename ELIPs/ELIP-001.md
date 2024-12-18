@@ -118,7 +118,7 @@ The AVS is free to use on-chain or off-chain data in reward attribution logic to
 
 The Operator-directed Rewards interface in the `RewardsCoordinator` can be found below.
 
-```
+```solidity
 /**
  * @notice A linear combination of strategies and multipliers for AVSs to weigh EigenLayer strategies.
  * @param strategy The EigenLayer strategy to be used for the rewards submission.
@@ -231,7 +231,7 @@ This variable fee is provided with no constraints on its value between 0% and 10
 
 Variable Operator Split Interface in the `RewardsCoordinator` can be found below.
 
-```
+```solidity
 /**
  * @notice A split struct for an Operator
  * @param oldSplitBips The old split in basis points. This is the split that is active if `block.timestamp < activatedAt`
@@ -299,7 +299,7 @@ Eigen Foundation Programmatic Incentives will have a default Operator split of 1
 
 Operator Splits for Programmatic Incentives Interface in the `RewardsCoordinator` can be found below.
 
-```
+```solidity
 /**
  * @notice A split struct for an Operator
  * @param oldSplitBips The old split in basis points. This is the split that is active if `block.timestamp < activatedAt`
@@ -363,7 +363,7 @@ For a gas-efficient way to claim, Rewards v2 also ships a new interface for batc
 
 Batch Reward Claiming Interface in the `RewardsCoordinator` can be found below.
 
-```
+```solidity
 /**
  * @notice Internal leaf in the merkle tree for the earner's account leaf.
  * @param earner The address of the earner.
@@ -460,7 +460,7 @@ The EigenLayer Middleware SHALL have a mandatory release as part of this ELIP to
 
 The Operator-directed Rewards interface in the `ServiceManagerBase` can be found below:
 
-```
+```solidity
 /**
  * @notice Creates a new operator-directed rewards submission, to be split amongst the operators and set of stakers delegated to operators who are registered to this `avs`.
  * @param operatorDirectedRewardsSubmissions The operator-directed rewards submissions being created
@@ -507,7 +507,7 @@ The Rewards v2 release will include state models for the 3 new events being supp
 
 ##### Schema
 
-```
+```solidity
 // Eigen State Schema for `OperatorDirectedAVSRewardsSubmissionCreated` event
 type OperatorDirectedRewardSubmission struct {
 	Avs             string
@@ -624,8 +624,8 @@ Cons:
 
 The implementation of this ELIP will follow these key steps:
 
-1. **Upgrade EigenLayer Protocol**: Upgrade the `[RewardsCoordinator](https://etherscan.io/address/0x7750d328b314EfFa365A0402CcfD489B80B0adda)` Transparent Proxy to point to a new implementation contract that introduces logic specified [here](#eigenlayer-protocol).   
-2. **Update EigenLayer Middleware**: Cut a new release for `[ServiceManagerBase](https://github.com/Layr-Labs/eigenlayer-middleware/blob/mainnet/src/ServiceManagerBase.sol)` which introduces logic specified [here](#eigenlayer-middleware). AVSs MUST upgrade their respective `AVSServiceManager` contracts to inherit the new `ServiceManagerBase` implementation in order to be able to submit performance-based rewards.   
+1. **Upgrade EigenLayer Protocol**: Upgrade the [`RewardsCoordinator`](https://etherscan.io/address/0x7750d328b314EfFa365A0402CcfD489B80B0adda) Transparent Proxy to point to a new implementation contract that introduces logic specified [here](#eigenlayer-protocol).   
+2. **Update EigenLayer Middleware**: Cut a new release for [`ServiceManagerBase`](https://github.com/Layr-Labs/eigenlayer-middleware/blob/mainnet/src/ServiceManagerBase.sol) which introduces logic specified [here](#eigenlayer-middleware). AVSs MUST upgrade their respective `AVSServiceManager` contracts to inherit the new `ServiceManagerBase` implementation in order to be able to submit performance-based rewards.   
 3. **Update EigenLayer Sidecar**: Cut a new release for the [EigenLayer Sidecar](https://github.com/Layr-Labs/sidecar) which introduces logic specified [here](#eigenlayer-sidecar). All parties running the rewards calculation and verification MUST upgrade their EigenLayer sidecar to this release before the block height at which the EigenLayer protocol is upgraded for this ELIP. Not doing so will lead to incorrect calculations and possible halting of the sidecar. 
 
 This process will start first on the Eigen testnet and follow later on Mainnet after testing and integration by AVSs to ensure success. Following Mainnet, the up-take of Rewards v2 will be tracked by indexing the events of rewards on-chain. This can help determine the success of this ELIP and track the improvements to the protocol.
