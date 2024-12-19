@@ -110,8 +110,8 @@ This simple data structure is meant to provide an AVS flexible means for segment
 
 ```solidity
 struct OperatorSet {
-	address avs;
-	uint32 operatorSetId;
+    address avs;
+    uint32 operatorSetId;
 }
 ```
 
@@ -141,7 +141,6 @@ Below is the [AllocationManager interface](https://github.com/Layr-Labs/eigenlay
 
 ```solidity
 interface IAllocationManager {
-
     /**
      * @notice Allows an operator to register for one or more operator sets for an AVS. If the operator
      * has any stake allocated to these operator sets, it immediately becomes slashable.
@@ -149,8 +148,8 @@ interface IAllocationManager {
      * registration. This call MUST succeed in order for registration to be successful.
      */
     function registerForOperatorSets(
-address operator, 
-RegisterParams calldata params
+	address operator, 
+	RegisterParams calldata params
     ) external;
 
     /**
@@ -178,8 +177,8 @@ RegisterParams calldata params
      * @param registrar the new registrar address
      */
     function setAVSRegistrar(
-address avs, 
-IAVSRegistrar registrar
+	address avs, 
+	IAVSRegistrar registrar
     ) external;
 
     /**
@@ -189,14 +188,17 @@ IAVSRegistrar registrar
      *
      *  @dev Note that the `metadataURI` is *never stored* and is only emitted in the `AVSMetadataURIUpdated` event.
      */
-    function updateAVSMetadataURI(address avs, string calldata metadataURI) external;
+    function updateAVSMetadataURI(
+	address avs,
+	string calldata metadataURI
+    ) external;
 
     /**
      * @notice Allows an AVS to create new operator sets, defining strategies that the operator set uses
      */
     function createOperatorSets(
-address avs, 
-CreateSetParams[] calldata params
+	address avs, 
+	CreateSetParams[] calldata params
     ) external
 
     /**
@@ -207,9 +209,9 @@ CreateSetParams[] calldata params
      * @param strategies the strategies to add
      */
     function addStrategiesToOperatorSet(
-address avs, 
-uint32 operatorSetId, 
-IStrategy[] calldata strategies
+	address avs, 
+	uint32 operatorSetId, 
+	IStrategy[] calldata strategies
     ) external;
 
     /**
@@ -316,8 +318,8 @@ interface IAllocationManager {
      * @param delay the allocation delay in blocks
      */
     function setAllocationDelay(
-address operator, 
-uint32 delay
+	address operator, 
+	uint32 delay
     ) external;
 
     /**
@@ -330,8 +332,8 @@ uint32 delay
      * @dev msg.sender is used as operator
      */
     function modifyAllocations(
-  address operator, 
-  AllocateParams[] calldata params
+	address operator, 
+	AllocateParams[] calldata params
     ) external;
 
     /**
@@ -544,7 +546,7 @@ interface IRewardsCoordinator {
   /// @notice operatorSet parallel of createAVSRewardsSubmission
   /// @dev sender must be the avs of the given operatorSet
   function createOperatorSetRewardsSubmission(
-RewardsSubmission[] calldata rewardsSubmissions
+      RewardsSubmission[] calldata rewardsSubmissions
   ) external;
   
   /// @notice operatorSet parallel of createAVSPerformanceRewardsSubmission
@@ -736,8 +738,8 @@ The `stakerStrategyShares` mapping in the `StrategyManager` has been renamed. De
 /// @dev strategy must be beaconChainETH when talking to the EigenPodManager
 /// @dev returns 0 if the user has negative shares.
 function stakerDepositShares(
-	address user, 
-	IStrategy strategy
+    address user, 
+    IStrategy strategy
 ) external view returns (uint256 depositShares); 
 ```
 
@@ -799,8 +801,8 @@ The `modifyOperatorDetails` function has been updated to reflect that the only O
  * @dev The caller must have previously registered as an operator in EigenLayer.
  */
 function modifyOperatorDetails(
-	address operator, 
-	address newDelegationApprover
+    address operator, 
+    address newDelegationApprover
 ) external;
 ```
 
@@ -830,9 +832,9 @@ The event when a withdrawal is queued is now named `SlashingWithdrawalQueued`. T
  * @param sharesToWithdraw Is an array of the expected shares that were queued for withdrawal corresponding to the strategies in the `withdrawal`.
  */
 event SlashingWithdrawalQueued(
-	bytes32 withdrawalRoot, 
-	Withdrawal withdrawal, 
-	uint256[] sharesToWithdraw
+    bytes32 withdrawalRoot, 
+    Withdrawal withdrawal, 
+    uint256[] sharesToWithdraw
 );
 
 /**
