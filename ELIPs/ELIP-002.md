@@ -679,7 +679,7 @@ From time to time, buggy slashing logic may be deployed by AVSs, regardless of t
 
 ## AVSs 
 
-Existing AVSs are strongly recommended to migrate away from the `AVSDirectory` towards using the Operator Sets feature. This will be required to slash. In order to make this migration, we recommend that AVSs:
+Existing AVSs are strongly recommended to migrate away from any existing Quorums and the use of the `AVSDirectory`, towards using the `AllocationManager` and Operator Set features. This will be required to slash. In order to make this migration, we recommend that AVSs:
 
 1. Upgrade their contracts to handle the callback from the `AllocationManager`  
 2. Communicate to Operators regarding registering for Operator Sets via the new registration pathway  
