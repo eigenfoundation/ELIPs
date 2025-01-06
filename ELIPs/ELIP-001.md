@@ -9,29 +9,29 @@
 
 # Executive Summary
 
-This proposal introduces an iteration to EigenLayer **Rewards (v2)**, an upgrade designed to enhance the flexibility of rewards within the EigenLayer ecosystem. Through feedback from AVSs and operators following the release of [the first iteration of Rewards](https://docs.eigenlayer.xyz/eigenlayer/rewards-claiming/rewards-claiming-overview), we are proposing an expansion to platform rewards functionalities. Rewards v2 is a lightweight addition to the rewards structures and contracts that address key rewards use-cases: 
+This proposal introduces an iteration to EigenLayer **Rewards (v2)**, an upgrade designed to enhance the flexibility of rewards within the EigenLayer ecosystem. Through feedback from AVSs and Operators following the release of [the first iteration of Rewards](https://docs.eigenlayer.xyz/eigenlayer/rewards-claiming/rewards-claiming-overview), we are proposing an expansion to platform rewards functionalities. Rewards v2 is a lightweight addition to the rewards structures and contracts that address key rewards use-cases: 
 
-* Performance-based and directed rewards from AVSs to operators,   
-* Variable operator fee on AVS rewards,  
+* Performance-based and directed rewards from AVSs to Operators,   
+* Variable Operator fee on AVS rewards,  
 * Operator split for Programmatic Incentives specifically,  
-* Batch rewards claiming for stakers and operators.
+* Batch rewards claiming for Stakers and Operators.
 
-Together, these changes will help enable broad flexibility in the ecosystem: more AVSs can reward operators, more operators can run different AVSs with variable fee rates, and stakers will have data to discover which services and forms of security AVSs value. 
+Together, these changes will help enable broad flexibility in the ecosystem: more AVSs can reward Operators, more Operators can run different AVSs with variable fee rates, and Stakers will have data to discover which services and forms of security AVSs value. 
 
 # Motivation
 
-Rewards v2 addresses key challenges identified in the EigenLayer Rewards MVP (v1), particularly the need for operator-directed rewards via external logic and flexibility for operators in setting different fee rates to better cover operating costs or attract more stake when running different AVS types. The growing demand from AVSs for more performance-based rewards prompted this new proposal, ensuring EigenLayer’s rewards protocol can serve a wider variety of scenarios. 
+Rewards v2 addresses key challenges identified in the EigenLayer Rewards MVP (v1), particularly the need for Operator-directed rewards via external logic and flexibility for Operators in setting different fee rates to better cover operating costs or attract more stake when running different AVS types. The growing demand from AVSs for more performance-based rewards prompted this new proposal, ensuring EigenLayer’s rewards protocol can serve a wider variety of scenarios. 
 
 Following discussions with AVSs, this proposal seeks to quickly iterate on EigenLayer Rewards to serve the following use-cases:
 
-* Operator-directed rewards from AVSs, allowing AVSs to segment and reward specific operators. This gives AVSs the flexibility to set custom logic for rewards to individual operators, based on work completed or anything else they may design or desire (*e.g.*, more equal distribution of operator support for decentralization or security reasons).   
-  * Variable operator fee per AVS, set by the operators, allowing operators to take less or more than the 10% default fee on rewards. This keeps EigenLayer fee-agnostic as a protocol and unlocks flexibility via a variable take rate for operators in choosing which AVS to run and in attracting new stake.  
-  * This also better serves integrated staker-operators like LRTs by allowing them to streamline their reward-claiming process, and unlocks more flexibility in programmatically splitting rewards, which may enable new use cases.  
-* Batch rewards claiming for stakers and operators, allowing a gas efficient way to claim on behalf of multiple earners in a single transaction. 
+* Operator-directed rewards from AVSs, allowing AVSs to segment and reward specific Operators. This gives AVSs the flexibility to set custom logic for rewards to individual Operators, based on work completed or anything else they may design or desire (*e.g.*, more equal distribution of Operator support for decentralization or security reasons).   
+  * Variable Operator fee per AVS, set by the Operators, allowing Operators to take less or more than the 10% default fee on rewards. This keeps EigenLayer fee-agnostic as a protocol and unlocks flexibility via a variable take rate for Operators in choosing which AVS to run and in attracting new stake.  
+  * This also better serves integrated Staker-Operators like LRTs by allowing them to streamline their reward-claiming process, and unlocks more flexibility in programmatically splitting rewards, which may enable new use cases.  
+* Batch rewards claiming for Stakers and Operators, allowing a gas efficient way to claim on behalf of multiple earners in a single transaction. 
 
 The above iteration will enable more flexibility in how rewards flow from AVSs to Operators. 
 
-AVSs have sought ways to add additional incentive functionality to the token lifecycle managed by the EigenLayer protocol, like staker-directed rewards. This functionality is out-of-scope for this proposal.
+AVSs have sought ways to add additional incentive functionality to the token lifecycle managed by the EigenLayer protocol, like Staker-directed rewards. This functionality is out-of-scope for this proposal.
 
 ## Design Goals
 
@@ -43,21 +43,21 @@ Rewards v2 is designed to be an ***optional*** and additive upgrade to the Rewar
    
 
 2. **Flexibility for AVSs and Operator infrastructure:**  
-   1. Operators can set their fee per AVS, and signal to both the AVS and stakers on how much their services are worth and what fees they’ll be taking in exchange for the work involved. Any fee change is time-delayed for seven days to give stakers time to adjust their operator service providers as necessary based on the new take rate.   
+   1. Operators can set their fee per AVS, and signal to both the AVS and Stakers on how much their services are worth and what fees they’ll be taking in exchange for the work involved. Any fee change is time-delayed for seven days to give Stakers time to adjust their Operator service providers as necessary based on the new take rate.   
    2. AVSs can reward the Operators based on the work they have performed over a certain period, with rewards being priced by AVSs for work provided by Operators. This will create an iterative adjustment process to reach equilibrium.  
-   3. AVSs can signal to stakers the services and form of security they value and by what weight. 
+   3. AVSs can signal to Stakers the services and form of security they value and by what weight. 
 
 3. **Cheaper batch-claiming:**  
    1. Batch-claiming for multiple claimants in a single transaction will help reduce gas costs.    
          
 4. **Utilizing existing infrastructure:**  
-   1. Only the `RewardsCoordinator` contract will be upgraded to support functionality for performance-based rewards distribution, setting operator fees per AVS and batch claiming.  
-   2. The existing EigenLayer sidecar will be used to support the new rewards type and will factor that into the rewards calculation using the new operator fees. The rewards root calculation and rewards root posting infrastructure will remain the same.   
-   3. The claim UX experience will remain the same for stakers and operators with the added benefit of batch-claiming being included. 
+   1. Only the `RewardsCoordinator` contract will be upgraded to support functionality for performance-based rewards distribution, setting Operator fees per AVS and batch claiming.  
+   2. The existing EigenLayer sidecar will be used to support the new rewards type and will factor that into the rewards calculation using the new Operator fees. The rewards root calculation and rewards root posting infrastructure will remain the same.   
+   3. The claim UX experience will remain the same for Stakers and Operators with the added benefit of batch-claiming being included. 
 
 5. **Attribution of Rewards**   
-   1. The on-chain nature of performance-based or directed operator rewards, along with the inclusion of strategies and multipliers and integration with the sidecar, enables attribution and reward rate calculations. This helps in populating user-facing information and attracting stake to operators and AVSs.  
-      1. Attribution is defined as the on-chain guarantee that the rewards are split amongst stakers according to stake weight. This guarantees attributions of the form "Staker-A earned X amount of Token-B on AVS-C because they staked Y amount of Token-D”
+   1. The on-chain nature of performance-based or directed Operator rewards, along with the inclusion of strategies and multipliers and integration with the sidecar, enables attribution and reward rate calculations. This helps in populating user-facing information and attracting stake to Operators and AVSs.  
+      1. Attribution is defined as the on-chain guarantee that the rewards are split amongst Stakers according to stake weight. This guarantees attributions of the form "Staker-A earned X amount of Token-B on AVS-C because they staked Y amount of Token-D”
 
    
 
@@ -68,13 +68,13 @@ Rewards v2 is designed to be an ***optional*** and additive upgrade to the Rewar
    
 
 7. **Preventing Rewards Distribution Tree bloat:**  
-   1. There will be validation in the sidecar to ensure that operators being rewarded during the specified duration had been registered to the AVS for at least a portion of that duration. This will keep the Rewards Tree free of bloat from non-registered operators and their respective stakers.  
+   1. There will be validation in the sidecar to ensure that Operators being rewarded during the specified duration had been registered to the AVS for at least a portion of that duration. This will keep the Rewards Tree free of bloat from non-registered Operators and their respective Stakers.  
    2. Further explained in the ‘Security Considerations’ section.
 
 8. **Enabling Programmatic Incentives**:  
-   1. More flexibility in rewards and operator fees better enables the protocol to allocate incentives in the ecosystem based on inputs from AVSs, stakers, and operators.   
-   2. Richer information provides more insights into AVS, staker, and operator preferences, allowing contributors to better understand the state of the market and potentially design new targeted incentives to encourage more specific behaviors.  
-   3. Allowing a permissioned set of addresses to send rewards to any operator will enable incentivization of a wide range of behaviors within the ecosystem.
+   1. More flexibility in rewards and Operator fees better enables the protocol to allocate incentives in the ecosystem based on inputs from AVSs, Stakers, and Operators.   
+   2. Richer information provides more insights into AVS, Staker, and Operator preferences, allowing contributors to better understand the state of the market and potentially design new targeted incentives to encourage more specific behaviors.  
+   3. Allowing a permissioned set of addresses to send rewards to any Operator will enable incentivization of a wide range of behaviors within the ecosystem.
 
 # Features & Specification
 
@@ -87,13 +87,13 @@ The key words “MUST”, “MUST NOT”, “REQUIRED”, “SHALL”, “SHALL 
 The high level flow is as follows:
 
 1. Operators can set their per-AVS reward fee (called a “split”) by calling `setOperatorAVSSplit()` on the `RewardsCoordinator`. This is between 0% or 100% of AVS rewards. It’s valid after a 7-day activation delay. If they don’t set it, it will remain at the default of 10%. An Operator may only have one pending split configuration at a time. 
-2. AVSs calculate off-chain the appropriate rewards to be distributed to their registered operators:  
-   1. They first give an ERC20 approval to their AVSServiceManager for the sum of all operator rewards.   
-   2. They then call `createOperatorDirectedAVSRewardsSubmission()` on the `AVSServiceManager` which proxies the call to the `RewardsCoordinator`. This initiates the performance-based rewards allocations and deposits the sum of all operator rewards in the allocations to the `RewardsCoordinator`.   
+2. AVSs calculate off-chain the appropriate rewards to be distributed to their registered Operators:  
+   1. They first give an ERC20 approval to their AVSServiceManager for the sum of all Operator rewards.   
+   2. They then call `createOperatorDirectedAVSRewardsSubmission()` on the `AVSServiceManager` which proxies the call to the `RewardsCoordinator`. This initiates the performance-based rewards allocations and deposits the sum of all Operator rewards in the allocations to the `RewardsCoordinator`.   
    3. An `OperatorDirectedAVSRewardsSubmissionCreated` event is emitted.  
 3. The off-chain infrastructure of the existing Rewards v1 is reused for performance-based rewards as well:  
    1. The [Sidecar](https://github.com/Layr-Labs/sidecar) listens for the  `OperatorDirectedAVSRewardsSubmissionCreated` event and stores it.  
-   2. The Sidecar generates reward roots on a daily basis taking into account the operator-directed rewards and the appropriate operator split (in addition to the other rewards events it’s already processing).  
+   2. The Sidecar generates reward roots on a daily basis taking into account the Operator-directed rewards and the appropriate Operator split (in addition to the other rewards events it’s already processing).  
    3. The Root Updater retrieves the latest root from the sidecar and posts the root on a weekly basis by calling `submitRoot()` on the `RewardsCoordinator`.  
 4. Operators and Stakers then batch-claim all their rewards by calling `processClaims()` on the `RewardsCoordinator` contract, after the existing 7-day activation delay.
 
@@ -112,7 +112,7 @@ The design is largely built atop the existing Rewards v1 interface with addition
 1. Enable attributable rewards from AVSs to Operators.  
 2. Future-proofs the interface for AVS delegation.
 
-The AVS is free to use on-chain or off-chain data in reward attribution logic to determine the reward amount per Operator. This can be custom to the work performed by Operators during a certain period of time, can be a flat reward rate, or some other structure based on the AVS’s economic model. This would enable AVSs’ flexibility in rewarding different operators for performance and other variables while maintaining the same easily calculable reward rate for stakers delegating to the same operator and strategy. The AVS can submit multiple performance-based rewards denominated in different tokens for even more flexibility. 
+The AVS is free to use on-chain or off-chain data in reward attribution logic to determine the reward amount per Operator. This can be custom to the work performed by Operators during a certain period of time, can be a flat reward rate, or some other structure based on the AVS’s economic model. This would enable AVSs’ flexibility in rewarding different Operators for performance and other variables while maintaining the same easily calculable reward rate for Stakers delegating to the same Operator and strategy. The AVS can submit multiple performance-based rewards denominated in different tokens for even more flexibility. 
 
 ##### Interface
 
@@ -195,7 +195,7 @@ function createOperatorDirectedAVSRewardsSubmission(
       2. Throw an error if length of `operatorRewards` array is 0. These are REQUIRED.  
       3. For each `operatorReward`, validate the following:  
          1. Throw an error if `operator` is `address(0)`.  
-         2. Throw an error if operator addresses are not in ascending order. This is to handle duplicates.  
+         2. Throw an error if Operator addresses are not in ascending order. This is to handle duplicates.  
          3. Throw an error if `amount` is 0.  
       4. Sum of all amounts MUST be <= `MAX_REWARDS_AMOUNT`. Throw an error otherwise.  
       5. `duration` MUST be <= `MAX_REWARDS_DURATION`. Throw an error otherwise.  
@@ -218,14 +218,14 @@ function createOperatorDirectedAVSRewardsSubmission(
 1. The `avs` is currently the respective `AVSServiceManager`.  
 2. The `RewardsCoordinator` contract needs a token approval of the sum of all `operatorRewards` in the `operatorDirectedRewardsSubmissions`, before calling `createOperatorDirectedAVSRewardsSubmission`.  
 3. The `createOperatorDirectedAVSRewardsSubmission` function mostly just does on-chain validation, depositing the total amount of rewards into the `RewardsCoordinator` contract and emitting the event.  
-4. When implemented along with the sidecar changes, each call to `createOperatorDirectedAVSRewardsSubmission()` would reward each `operator` and their stakers `amount` of `token` over `duration` since `startTimestamp`, on behalf of the `avs`. The operator would get their contract-configured split of the rewards, set in the `RewardsCoordinator` and the rest would be distributed to stakers proportional to the strategies and multipliers.   
-5. The rewards calculation is done off-chain in the sidecar. Further explained in the [EigenLayer Sidecar](#eigenlayer-sidecar) section. Check there to understand how operators and staker rewards are calculated for the given duration. 
+4. When implemented along with the sidecar changes, each call to `createOperatorDirectedAVSRewardsSubmission()` would reward each `operator` and their Stakers `amount` of `token` over `duration` since `startTimestamp`, on behalf of the `avs`. The Operator would get their contract-configured split of the rewards, set in the `RewardsCoordinator` and the rest would be distributed to Stakers proportional to the strategies and multipliers.   
+5. The rewards calculation is done off-chain in the sidecar. Further explained in the [EigenLayer Sidecar](#eigenlayer-sidecar) section. Check there to understand how Operators and Staker rewards are calculated for the given duration. 
 
 #### Variable Operator Fees
 
-After Rewards v2 is live, Operators will be able to change their take-home fee on a per-AVS granularity in the `RewardsCoordinator`. It’s valid after a 7-day activation delay to give stakers time to adjust their operator service providers as necessary based on the new take rate. If they don’t set the per-AVS rewards split, it will default to 10%. 
+After Rewards v2 is live, Operators will be able to change their take-home fee on a per-AVS granularity in the `RewardsCoordinator`. It’s valid after a 7-day activation delay to give Stakers time to adjust their Operator service providers as necessary based on the new take rate. If they don’t set the per-AVS rewards split, it will default to 10%. 
 
-This variable fee is provided with no constraints on its value between 0% and 100% of the AVS-paid rewards. AVSs may still choose to eject operators they believe are acting in bad faith by calling [deregisterOperatorFromAVS()](https://docs.eigenlayer.xyz/developers/avs-dashboard-onboarding) on the AVS Directory contract. We hope AVSs and Operators will engage in discussion with each other to discover the correct dynamics for different types of AVSs.
+This variable fee is provided with no constraints on its value between 0% and 100% of the AVS-paid rewards. AVSs may still choose to eject Operators they believe are acting in bad faith by calling [deregisterOperatorFromAVS()](https://docs.eigenlayer.xyz/developers/avs-dashboard-onboarding) on the AVS Directory contract. We hope AVSs and Operators will engage in discussion with each other to discover the correct dynamics for different types of AVSs.
 
 ##### Interface
 
@@ -281,7 +281,7 @@ function getOperatorAVSSplit(address operator, address avs) external view return
 ##### Implementation
 
 1. `setOperatorAVSSplit()` MUST include all fields; none are OPTIONAL.   
-2. It is ONLY callable by the `operator` currently (It is future-proofed to be called by an operator delegated address). There needs to be a `msg.sender == operator` check. Throw an error if the check fails.   
+2. It is ONLY callable by the `operator` currently (It is future-proofed to be called by an Operator delegated address). There needs to be a `msg.sender == operator` check. Throw an error if the check fails.   
 3. Throw an error if `split` is strictly greater than `10000` (i.e 100%).  
 4. Each call to `setOperatorAVSSplit()` sets the `split` (in Bips) for the `avs` on behalf of the `operator`.   
 5. The `split` will be activated after a 7-day activation delay.   
@@ -293,7 +293,7 @@ function getOperatorAVSSplit(address operator, address avs) external view return
 
 #### Operator Splits for Programmatic Incentives
 
-Eigen Foundation Programmatic Incentives will have a default Operator split of 10% with a variable split to ensure operators of all sizes and stakes are rewarded for their participation. It’s valid after a 7-day activation delay. It can be set independently of other AVSs, with the same reward distribution dynamics for operator-delegated stakers as v2 rewards. 
+Eigen Foundation Programmatic Incentives will have a default Operator split of 10% with a variable split to ensure Operators of all sizes and stakes are rewarded for their participation. It’s valid after a 7-day activation delay. It can be set independently of other AVSs, with the same reward distribution dynamics for Operator-delegated Stakers as v2 rewards. 
 
 ##### Interface
 
@@ -345,7 +345,7 @@ function getOperatorPISplit(address operator) external view returns (uint16);
 ##### Implementation
 
 1. `setOperatorPISplit()` MUST include all fields; none are OPTIONAL.   
-2. It is ONLY callable by the `operator` currently (It is future-proofed to be called by an operator delegated address). There needs to be a `msg.sender == operator` check. Throw an error if the check fails.   
+2. It is ONLY callable by the `operator` currently (It is future-proofed to be called by an Operator delegated address). There needs to be a `msg.sender == operator` check. Throw an error if the check fails.   
 3. Throw an error if `split` is strictly greater than `10000` (i.e 100%).  
 4. Each call to `setOperatorPISplit()` sets the `split` (in Bips) for Programmatic Incentives on behalf of the `operator`.   
 5. The `split` will be activated after a 7-day activation delay.   
@@ -462,7 +462,7 @@ The Operator-directed Rewards interface in the `ServiceManagerBase` can be found
 
 ```solidity
 /**
- * @notice Creates a new operator-directed rewards submission, to be split amongst the operators and set of stakers delegated to operators who are registered to this `avs`.
+ * @notice Creates a new operator-directed rewards submission, to be split amongst the operators and set of Stakers delegated to operators who are registered to this `avs`.
  * @param operatorDirectedRewardsSubmissions The operator-directed rewards submissions being created
  */
 function createOperatorDirectedAVSRewardsSubmission(IRewardsCoordinator.OperatorDirectedRewardsSubmission[] calldata operatorDirectedRewardsSubmissions) external;
@@ -491,14 +491,14 @@ function setClaimerFor(address claimer) external;
 
 ### EigenLayer Sidecar
 
-The EigenLayer Sidecar is an open source, permissionless, verified indexer enabling anyone (AVS, operator, etc) to access EigenLayer’s protocol rewards and EigenLayer state in real-time. The EigenLayer Sidecar SHALL have a mandatory release as part of this ELIP to augment performance-based rewards. This is a critical part of the Rewards v2 flow.
+The EigenLayer Sidecar is an open source, permissionless, verified indexer enabling anyone (AVS, Operator, etc) to access EigenLayer’s protocol rewards and EigenLayer state in real-time. The EigenLayer Sidecar SHALL have a mandatory release as part of this ELIP to augment performance-based rewards. This is a critical part of the Rewards v2 flow.
 
 The following high-level features will be introduced:
 
 1. Ingest new Rewards v2 events and store them in the sidecar’s internal DB: `OperatorDirectedAVSRewardsSubmissionCreated`, `OperatorAVSSplitBipsSet`, `OperatorPISplitBipsSet`.  
-2. New Operator-directed rewards calculation that includes the per-avs operator split (if set).  
-3. Update Rewards MVP (v1) calculation to include the per-avs operator split (if set).   
-4. Update Programmatic Incentives rewards calculation to include the operator split for Programmatic Incentives (if set).  
+2. New Operator-directed rewards calculation that includes the per-avs Operator split (if set).  
+3. Update Rewards MVP (v1) calculation to include the per-avs Operator split (if set).   
+4. Update Programmatic Incentives rewards calculation to include the Operator split for Programmatic Incentives (if set).  
    
 
 #### EigenStateModel
@@ -557,7 +557,7 @@ Each of the new events will be ingested by the sidecar, processed and stored in 
 
 #### Operator-directed Rewards Calculation
 
-Rewards v2 release will include a new Operator-directed Rewards Calculation that takes into account the per-avs operator split. 
+Rewards v2 release will include a new Operator-directed Rewards Calculation that takes into account the per-avs Operator split. 
 
 ##### Implementation
 
@@ -568,11 +568,11 @@ With the addition of the following things:
 1. Operator commission is calculated according to the following logic:  
    1. If an activated `OperatorAVSSplit` row exists in the `operator_avs_split` table for the particular `operator` at the current snapshot time, then use that `split` for the rewards calculation.   
    2. Else, default to a `split` of 10%.  
-2. In the edge case of operator-directed reward submissions including operators not registered to that specific AVS during the specific snapshot time, the operator amount for that snapshot is refunded to the AVS as a distribution leaf for that snapshot. The AVS can claim it using the regular claim process to get refunded. Reasoning for this is explained in the [Security Considerations](#security-considerations) section (under Preventing Rewards Distribution Tree bloat)
+2. In the edge case of Operator-directed reward submissions including Operators not registered to that specific AVS during the specific snapshot time, the Operator amount for that snapshot is refunded to the AVS as a distribution leaf for that snapshot. The AVS can claim it using the regular claim process to get refunded. Reasoning for this is explained in the [Security Considerations](#security-considerations) section (under Preventing Rewards Distribution Tree bloat)
 
 #### Rewards MVP (v1) Calculation
 
-The Rewards MVP calculation will be updated to include the per-avs operator split being released as part of Rewards v2. 
+The Rewards MVP calculation will be updated to include the per-avs Operator split being released as part of Rewards v2. 
 
 ##### Implementation
 
@@ -581,7 +581,7 @@ The Rewards MVP calculation will be updated to include the per-avs operator spli
 
 #### Programmatic Incentives Calculation
 
-The Programmatic Incentives calculation will be updated to include the per-avs operator split being released as part of Rewards v2. 
+The Programmatic Incentives calculation will be updated to include the per-avs Operator split being released as part of Rewards v2. 
 
 ##### Implementation
 
@@ -598,8 +598,8 @@ Key security considerations include:
    3. The sidecar will witness and verify that the updated root in the RewardsCoordinator is correct using its existing calculations.  
         
 2. **Preventing Rewards Distribution Tree bloat:**  
-   1. There will be validation in the sidecar to ensure that operators being rewarded during the specified duration had been registered to the AVS for at least a portion of that duration. This will keep the Rewards Tree free of bloat from non-registered operators and their respective stakers.  
-   2. In case there is an on-chain reward to a non-registered operator during the specific snapshot time, the amount for the non-registered operator for that snapshot is refunded to the AVS as a distribution leaf for that snapshot. The AVS can then claim those funds as part of the regular claim process.
+   1. There will be validation in the sidecar to ensure that Operators being rewarded during the specified duration had been registered to the AVS for at least a portion of that duration. This will keep the Rewards Tree free of bloat from non-registered Operators and their respective Stakers.  
+   2. In case there is an on-chain reward to a non-registered Operator during the specific snapshot time, the amount for the non-registered Operator for that snapshot is refunded to the AVS as a distribution leaf for that snapshot. The AVS can then claim those funds as part of the regular claim process.
 
 # Impact Summary
 
@@ -608,17 +608,17 @@ The expected impacts of Rewards v2 include:
 Pros:
 
 1. **Enhance Flexibility**: AVSs gain more flexible control over reward logic, enabling customized and diverse reward mechanisms that can be attributed on-chain.  
-2. **Increase Adoption by AVS:** By supporting operator-directed reward systems, Rewards v2 will make Eigenlayer more useful to AVSs.  
-3. **Encourage Operators to Run more AVSs**: By providing a variable operator fee structure per AVS, operators have more economic flexibility when choosing an AVS to run.   
+2. **Increase Adoption by AVS:** By supporting Operator-directed reward systems, Rewards v2 will make Eigenlayer more useful to AVSs.  
+3. **Encourage Operators to Run more AVSs**: By providing a variable Operator fee structure per AVS, Operators have more economic flexibility when choosing an AVS to run.   
 4. **Improve Rewards Release Velocity**: Operator-directed rewards decouples reward logic from core protocol contracts, enabling AVSs to iterate rewards logic faster and reducing bottlenecks in protocol updates.  
 5. **Permissionless Verifiability**: All aspects of Rewards v2 can be independently verified.  
-6. **Batching gas savings**: By enabling batching for rewards claims, operators and stakers with many addresses can save on redemptions.   
+6. **Batching gas savings**: By enabling batching for rewards claims, Operators and Stakers with many addresses can save on redemptions.   
    
 
 Cons:
 
-1. **Gas Cost**: As Operator-directed rewards remain on-chain to keep the property of attribution of rewards, gas costs of the reward submission will increase linearly as operator set sizes increase.   
-2. **No direct-to-staker rewards or incentive structures**: The trade-off of on-chain attribution removed the wholly flexible structure for distribution. This removes the use-case for EigenLayer as an incentives distribution mechanism and token lifecycle tool for AVSs.
+1. **Gas Cost**: As Operator-directed rewards remain on-chain to keep the property of attribution of rewards, gas costs of the reward submission will increase linearly as AVSs reward more Operators.   
+2. **No direct-to-Staker rewards or incentive structures**: The trade-off of on-chain attribution removed the wholly flexible structure for distribution. This removes the use-case for EigenLayer as an incentives distribution mechanism and token lifecycle tool for AVSs.
 
 # Action Plan
 
