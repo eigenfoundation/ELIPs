@@ -195,8 +195,8 @@ implementation; and ultimately, (vi) the Council in its current form
 should be made obsolete, reflecting our commitment to responsible
 decentralization and protocolized governance over time.
 
-## **Exhibit A**
+##**Exhibit A**
 
 ### **EigenLayer Core Contracts**
 
-See [contracts.md](/contracts.md) for the current list of contracts.
+See the [eigenlayer-contracts repository](https://github.com/Layr-Labs/eigenlayer-contracts/blob/dev/README.md#deployments) for a comprehensive list of EigenLayer Core Contracts. This repository is used for much of the development of new EigenLayer protocol features, which is managed primarily by Eigen Labs.[contracts.md](/contracts.md). 
