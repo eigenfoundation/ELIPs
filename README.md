@@ -9,7 +9,7 @@ EigenLayer Improvement Proposals (ELIPs) are the primary mechanisms for proposin
 * Publicly communicate new features, designs, and create space for community input
 * Propose new upgrades for approval & execution
 
-To submit an ELIP, open a [pull request](https://github.com/abbey-titcomb/test-eigenlayer-core-dev/pulls). Ongoing and accepted proposals can be found in /elips. 
+To submit an ELIP, open a [pull request](https://github.com/eigenfoundation/ELIPs/pulls). Ongoing and accepted proposals can be found in /elips. 
 
 ## ELIP Process
 In the early stages, ideas for ELIPs and early drafts should be discussed on [forum.eigenlayer.xyz](https://forum.eigenlayer.xyz/). The following actions require an ELIP:
