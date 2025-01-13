@@ -3,7 +3,7 @@
 | Author(s) | [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [Rajath Alex](mailto:rajath@eigenlabs.org), [Scott Conner](mailto:scott@eigenlabs.org), [Sean McGary](mailto:sean@eigenlabs.org) |
 | :---- | :---- |
 | Created | Oct 18, 2024 |
-| Status | Draft |
+| Status | Final |
 | References | [EigenLayer Protocol PR](https://github.com/Layr-Labs/eigenlayer-contracts/pull/837) [EigenLayer Middleware PR](https://github.com/Layr-Labs/eigenlayer-middleware/pull/315) [EigenLayer Sidecar PR](https://github.com/Layr-Labs/sidecar/pull/106) |
 | Discussions | [Forum Post](https://forum.eigenlayer.xyz/t/elip-001-rewards-v2/14196) |
 
