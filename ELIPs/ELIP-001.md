@@ -522,6 +522,7 @@ type OperatorDirectedRewardSubmission struct {
 	StartTimestamp  *time.Time
 	EndTimestamp    *time.Time
 	Duration        uint64
+	Description     string
 	BlockNumber     uint64
 	TransactionHash string
 	LogIndex        uint64
