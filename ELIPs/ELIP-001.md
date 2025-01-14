@@ -283,9 +283,10 @@ function getOperatorAVSSplit(address operator, address avs) external view return
 1. `setOperatorAVSSplit()` MUST include all fields; none are OPTIONAL.   
 2. It is ONLY callable by the `operator` currently (It is future-proofed to be called by an Operator delegated address). There needs to be a `msg.sender == operator` check. Throw an error if the check fails.   
 3. Throw an error if `split` is strictly greater than `10000` (i.e 100%).  
-4. Each call to `setOperatorAVSSplit()` sets the `split` (in Bips) for the `avs` on behalf of the `operator`.   
-5. The `split` will be activated after a 7-day activation delay.   
-6. `OperatorAVSSplitBipsSet` event will be emitted.
+4. Throw an error if an earlier split for a given `operator` and `avs` has not been activated yet.
+5. Each call to `setOperatorAVSSplit()` sets the `split` (in Bips) for the `avs` on behalf of the `operator`.
+6. The `split` will be activated after a 7-day activation delay.
+7. `OperatorAVSSplitBipsSet` event will be emitted.
 
 ##### Caveats
 
@@ -347,9 +348,10 @@ function getOperatorPISplit(address operator) external view returns (uint16);
 1. `setOperatorPISplit()` MUST include all fields; none are OPTIONAL.   
 2. It is ONLY callable by the `operator` currently (It is future-proofed to be called by an Operator delegated address). There needs to be a `msg.sender == operator` check. Throw an error if the check fails.   
 3. Throw an error if `split` is strictly greater than `10000` (i.e 100%).  
-4. Each call to `setOperatorPISplit()` sets the `split` (in Bips) for Programmatic Incentives on behalf of the `operator`.   
-5. The `split` will be activated after a 7-day activation delay.   
-6. `OperatorPISplitBipsSet` event will be emitted.
+4. Throw an error if an earlier split for a given `operator` has not been activated yet.
+5. Each call to `setOperatorPISplit()` sets the `split` (in Bips) for Programmatic Incentives on behalf of the `operator`.
+6. The `split` will be activated after a 7-day activation delay.
+7. `OperatorPISplitBipsSet` event will be emitted.
 
 ##### Caveats
 
