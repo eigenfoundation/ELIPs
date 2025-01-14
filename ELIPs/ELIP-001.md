@@ -571,7 +571,8 @@ With the addition of the following things:
 1. Operator commission is calculated according to the following logic:  
    1. If an activated `OperatorAVSSplit` row exists in the `operator_avs_split` table for the particular `operator` at the current snapshot time, then use that `split` for the rewards calculation.   
    2. Else, use the default split (currently set to 10%).
-2. In the edge case of Operator-directed reward submissions including Operators not registered to that specific AVS during the specific snapshot time, the Operator amount for that snapshot is refunded to the AVS as a distribution leaf for that snapshot. The AVS can claim it using the regular claim process to get refunded. Reasoning for this is explained in the [Security Considerations](#security-considerations) section (under Preventing Rewards Distribution Tree bloat)
+2. The specified Operator amounts in the Operator-directed rewards submission are evenly distributed across days the Operator is registered to that specific AVS. The Operator gets no reward for the days it's not registered to that specific AVS.
+3. In the edge case of Operator-directed reward submissions including Operators not registered to that specific AVS for the entire specified duration, the Operator amounts for the snapshots during that duration are refunded to the AVS as a distribution leaf for the particular snapshot. The AVS can claim it using the regular claim process to get refunded. Reasoning for this is explained in the [Security Considerations](#security-considerations) section (under Preventing Rewards Distribution Tree bloat)
 
 #### Rewards MVP (v1) Calculation
 
