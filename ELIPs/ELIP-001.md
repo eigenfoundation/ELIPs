@@ -602,6 +602,11 @@ Key security considerations include:
    1. There will be validation in the sidecar to ensure that Operators being rewarded during the specified duration had been registered to the AVS for at least a portion of that duration. This will keep the Rewards Tree free of bloat from non-registered Operators and their respective Stakers.  
    2. In case there is an on-chain reward to a non-registered Operator during the specific snapshot time, the amount for the non-registered Operator for that snapshot is refunded to the AVS as a distribution leaf for that snapshot. The AVS can then claim those funds as part of the regular claim process.
 
+There were 2 audits conducted for Rewards v2:
+
+1. A holistic audit of the Core Protocol, Middleware and Sidecar components by SigmaPrime: [Audit Report](https://github.com/Layr-Labs/eigenlayer-contracts/blob/dev/audits/Rewards%20v2%20-%20SigmaPrime%20-%20Dec%202024.pdf)
+2. A SQL audit of the Rewards calculation by OpenBlock : [Audit Report](https://github.com/Layr-Labs/sidecar/blob/testnet/audits/Rewards%20v2%20-%20OpenBlock%20-%20Dec%202024.pdf)
+
 # Impact Summary
 
 The expected impacts of Rewards v2 include:
