@@ -252,7 +252,7 @@ In figure 3 below, Operator 1 has a delegation of 100 staked ETH for the ETH Str
 ![Operator Allocations to Operator Sets](../assets/elip-002/figure-3.png)  
 ***Figure 3: Operator Allocations to Operator Sets***
 
-The 85 allocated ETH is slashable exclusively by the AVS originating each Operator Set. In this case, AVS 2, 3, and 4 can slash their associated Operator Sets 2, 3, and 4, respectively. 
+The 85 allocated ETH is slashable exclusively by the AVS originating each Operator Set. In this case, AVS 2, 3, and 4 can slash their associated Operator Sets 3, 4, 5, and 6, respectively. 
 
 Let’s consider another example with three Operators. Figure 4 illustrates two Operator Sets instantiated by AVS 1. AVS 1 has created two Operator Sets for different tasks. For example, this AVS may use Operator Set 1 for assigning generation of ZK proofs to Operators, an expensive computation, and Operator Set 2 for verification of those proofs, a cheaper computation. 
 
