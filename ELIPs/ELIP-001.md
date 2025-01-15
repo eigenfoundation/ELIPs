@@ -283,9 +283,10 @@ function getOperatorAVSSplit(address operator, address avs) external view return
 1. `setOperatorAVSSplit()` MUST include all fields; none are OPTIONAL.   
 2. It is ONLY callable by the `operator` currently (It is future-proofed to be called by an Operator delegated address). There needs to be a `msg.sender == operator` check. Throw an error if the check fails.   
 3. Throw an error if `split` is strictly greater than `10000` (i.e 100%).  
-4. Each call to `setOperatorAVSSplit()` sets the `split` (in Bips) for the `avs` on behalf of the `operator`.   
-5. The `split` will be activated after a 7-day activation delay.   
-6. `OperatorAVSSplitBipsSet` event will be emitted.
+4. Throw an error if an earlier split for a given `operator` and `avs` has not been activated yet.
+5. Each call to `setOperatorAVSSplit()` sets the `split` (in Bips) for the `avs` on behalf of the `operator`.
+6. The `split` will be activated after a 7-day activation delay.
+7. `OperatorAVSSplitBipsSet` event will be emitted.
 
 ##### Caveats
 
@@ -347,9 +348,10 @@ function getOperatorPISplit(address operator) external view returns (uint16);
 1. `setOperatorPISplit()` MUST include all fields; none are OPTIONAL.   
 2. It is ONLY callable by the `operator` currently (It is future-proofed to be called by an Operator delegated address). There needs to be a `msg.sender == operator` check. Throw an error if the check fails.   
 3. Throw an error if `split` is strictly greater than `10000` (i.e 100%).  
-4. Each call to `setOperatorPISplit()` sets the `split` (in Bips) for Programmatic Incentives on behalf of the `operator`.   
-5. The `split` will be activated after a 7-day activation delay.   
-6. `OperatorPISplitBipsSet` event will be emitted.
+4. Throw an error if an earlier split for a given `operator` has not been activated yet.
+5. Each call to `setOperatorPISplit()` sets the `split` (in Bips) for Programmatic Incentives on behalf of the `operator`.
+6. The `split` will be activated after a 7-day activation delay.
+7. `OperatorPISplitBipsSet` event will be emitted.
 
 ##### Caveats
 
@@ -522,6 +524,7 @@ type OperatorDirectedRewardSubmission struct {
 	StartTimestamp  *time.Time
 	EndTimestamp    *time.Time
 	Duration        uint64
+	Description     string
 	BlockNumber     uint64
 	TransactionHash string
 	LogIndex        uint64
@@ -567,8 +570,9 @@ With the addition of the following things:
 
 1. Operator commission is calculated according to the following logic:  
    1. If an activated `OperatorAVSSplit` row exists in the `operator_avs_split` table for the particular `operator` at the current snapshot time, then use that `split` for the rewards calculation.   
-   2. Else, default to a `split` of 10%.  
-2. In the edge case of Operator-directed reward submissions including Operators not registered to that specific AVS during the specific snapshot time, the Operator amount for that snapshot is refunded to the AVS as a distribution leaf for that snapshot. The AVS can claim it using the regular claim process to get refunded. Reasoning for this is explained in the [Security Considerations](#security-considerations) section (under Preventing Rewards Distribution Tree bloat)
+   2. Else, use the default split (currently set to 10%).
+2. The specified Operator amounts in the Operator-directed rewards submission are evenly distributed across days the Operator is registered to that specific AVS. The Operator gets no reward for the days it's not registered to that specific AVS.
+3. In the edge case of Operator-directed reward submissions including Operators not registered to that specific AVS for the entire specified duration, the Operator amounts for the snapshots during that duration are refunded to the AVS as a distribution leaf for the particular snapshot. The AVS can claim it using the regular claim process to get refunded. Reasoning for this is explained in the [Security Considerations](#security-considerations) section (under Preventing Rewards Distribution Tree bloat)
 
 #### Rewards MVP (v1) Calculation
 
@@ -577,7 +581,7 @@ The Rewards MVP calculation will be updated to include the per-avs Operator spli
 ##### Implementation
 
 1. If an activated `OperatorAVSSplit` row exists in the `operator_avs_split` table for the particular `operator` at the current snapshot time, then use that `split` for the rewards calculation.   
-2. Else, default to a `split` of 10%. 
+2. Else, use the default split (currently set to 10%).
 
 #### Programmatic Incentives Calculation
 
@@ -586,7 +590,7 @@ The Programmatic Incentives calculation will be updated to include the per-avs O
 ##### Implementation
 
 1. If an activated `OperatorPISplit` row exists in the `operator_pi_split` table for the particular `operator` at the current snapshot time, then use that `split` for the rewards calculation.   
-2. Else, default to a `split` of 10%.
+2. Else, use the default split (currently set to 10%).
 
 # Security Considerations
 
@@ -600,6 +604,11 @@ Key security considerations include:
 2. **Preventing Rewards Distribution Tree bloat:**  
    1. There will be validation in the sidecar to ensure that Operators being rewarded during the specified duration had been registered to the AVS for at least a portion of that duration. This will keep the Rewards Tree free of bloat from non-registered Operators and their respective Stakers.  
    2. In case there is an on-chain reward to a non-registered Operator during the specific snapshot time, the amount for the non-registered Operator for that snapshot is refunded to the AVS as a distribution leaf for that snapshot. The AVS can then claim those funds as part of the regular claim process.
+
+There were 2 audits conducted for Rewards v2:
+
+1. A holistic audit of the Core Protocol, Middleware and Sidecar components by SigmaPrime: [Audit Report](https://github.com/Layr-Labs/eigenlayer-contracts/blob/dev/audits/Rewards%20v2%20-%20SigmaPrime%20-%20Dec%202024.pdf)
+2. A SQL audit of the Rewards calculation by OpenBlock : [Audit Report](https://github.com/Layr-Labs/sidecar/blob/testnet/audits/Rewards%20v2%20-%20OpenBlock%20-%20Dec%202024.pdf)
 
 # Impact Summary
 
