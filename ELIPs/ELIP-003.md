@@ -268,12 +268,12 @@ By allowing for flexible setting of addresses for each action, we anticipate a v
 The following is a breaking change. We are updating interfaces to add the OperatorID as an input to several functions. This includes \`updateOperatorMetadataURI\` and \`modifyOperatorDetails\`.
 
 ```solidity  
- /\*\*  
-  \* @notice Called by an operator to emit an \`OperatorMetadataURIUpdated\` event indicating the information has updated.  
-  \* @param operator The operator to update metadata for  
-  \* @param metadataURI The URI for metadata associated with an Operator  
-  \* @dev Note that the \`metadataURI\` is \*never stored \* and is only emitted in the \`OperatorMetadataURIUpdated\` event  
-  \*/  
+ /**  
+  * @notice Called by an operator to emit an \`OperatorMetadataURIUpdated\` event indicating the information has updated.  
+  * @param operator The operator to update metadata for  
+  * @param metadataURI The URI for metadata associated with an Operator  
+  * @dev Note that the \`metadataURI\` is \*never stored \* and is only emitted in the \`OperatorMetadataURIUpdated\` event  
+  */  
  function updateOperatorMetadataURI(  
      address operator,  
      string calldata metadataURI  
