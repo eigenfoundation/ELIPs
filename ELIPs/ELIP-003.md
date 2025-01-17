@@ -1,6 +1,6 @@
 | Author(s) | Created | Status | References | Discussions |
 | :---- | :---- | :---- | :---- | :---- |
-| [Matt Nelson](mailto:matt.nelson@eigenlabs.org)[Zeyad Rajabi](mailto:zeyad@eigenlabs.org)[Yash Patil](mailto:yash@eigenlabs.org) | 2024-11-20 | Draft | [PRD: UAM](https://www.notion.so/eigen-labs/PRD-User-Access-Management-Key-Management-12913c11c3e080cab606d629b2ad7be3) |  |
+| [Matt Nelson](mailto:matt.nelson@eigenlabs.org)[Zeyad Rajabi](mailto:zeyad@eigenlabs.org)[Yash Patil](mailto:yash@eigenlabs.org) | 2024-11-20 | Draft | |  |
 
 # ELIP-003: User Access Management (UAM)
 
