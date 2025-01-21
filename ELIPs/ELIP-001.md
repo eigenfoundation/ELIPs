@@ -454,6 +454,10 @@ function processClaims(RewardsMerkleClaim[] calldata claims, address recipient) 
 
 `CALCULATION_INTERVAL_SECONDS` will be updated from 1 week to 1 day to reflect the daily rewards calculation happening in the sidecar. This will enable AVSs to submit rewards with `startTimestamp` and `duration` that are multiples of 1 day instead of 1 week.
 
+#### Renaming `globalOperatorCommissionBips` to `defaultOperatorSplitBips`
+
+This is a BREAKING CHANGE in the interface. The `globalOperatorCommissionBips` public storage variable will be renamed to `defaultOperatorSplitBips` in all occurrences in the `RewardsCoordinator` contract.
+
 ### EigenLayer Middleware
 
 The EigenLayer Middleware SHALL have a mandatory release as part of this ELIP to support performance-based rewards. AVSs MUST upgrade their respective `AVSServiceManager` contracts to inherit the new `ServiceManagerBase` implementation in order to be able to submit performance-based rewards.
@@ -608,7 +612,7 @@ Key security considerations include:
 There were 2 audits conducted for Rewards v2:
 
 1. A holistic audit of the Core Protocol, Middleware and Sidecar components by SigmaPrime: [Audit Report](https://github.com/Layr-Labs/eigenlayer-contracts/blob/dev/audits/Rewards%20v2%20-%20SigmaPrime%20-%20Dec%202024.pdf)
-2. A SQL audit of the Rewards calculation by OpenBlock : [Audit Report](https://github.com/Layr-Labs/sidecar/blob/testnet/audits/Rewards%20v2%20-%20OpenBlock%20-%20Dec%202024.pdf)
+2. A SQL audit of the Rewards calculation by OpenBlock : [Audit Report](https://github.com/Layr-Labs/sidecar/blob/master/audits/Rewards%20v2%20-%20OpenBlock%20-%20Dec%202024.pdf)
 
 # Impact Summary
 
