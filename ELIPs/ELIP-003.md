@@ -1,6 +1,6 @@
 | Author(s) | Created | Status | References | Discussions |
 | :---- | :---- | :---- | :---- | :---- |
-| [Matt Nelson](mailto:matt.nelson@eigenlabs.org) [Zeyad Rajabi](mailto:zeyad@eigenlabs.org) [Yash Patil](mailto:yash@eigenlabs.org) | 2024-11-20 | Draft | |  |
+| [Matt Nelson](mailto:matt.nelson@eigenlabs.org) [Zeyad Rajabi](mailto:zeyad@eigenlabs.org) [Yash Patil](mailto:yash@eigenlabs.org) | 2024-11-20 | Draft | | [Forum Post](https://forum.eigenlayer.xyz/t/elip-003-user-access-management-uam/14353) |
 
 # ELIP-003: User Access Management (UAM)
 
