@@ -619,9 +619,9 @@ Allocation and registration to an Operator Set are not atomic. This is problemat
 
 To combat the non-atomicity of the allocation and registration flow and to enable agility of stake in the protocol, Operators can instantly deallocate non-slashable allocations. Stake in a Strategy is considered non-slashable if the Operator is not registered for the Operator Set or if the Strategy is not part of the Operator Set. 
 
-### Why did we choose magnitude values of 1x1018?
+### Why did we choose magnitude values of 1x10^18?
 
-At this time, the EVM does not support floating point arithmetic. Thus, the protocol uses fixed point arithmetic with 18 decimals. 1×1018 , also known as WAD, is a common measure of 1 unit across the DeFi ecosystem and is sufficient to represent proportions of stake.
+At this time, the EVM does not support floating point arithmetic. Thus, the protocol uses fixed point arithmetic with 18 decimals. 1×10^18 , also known as WAD, is a common measure of 1 unit across the DeFi ecosystem and is sufficient to represent proportions of stake.
 
 ## Deposits, Delegation & Withdrawals
 
