@@ -1,7 +1,7 @@
 | Author(s) | [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [Yash Patil](mailto:yash@eigenlabs.org), [Matt Curtis](mailto:matt.curtis@eigenlabs.org), [Gautham Anant](mailto:gautham@eigenlabs.org), [Brett Palatiello](mailto:brett@eigenlabs.org) |
 | :---- | :---- |
 | Created | December 12th, 2024 |
-| Status | Draft |
+| Status | Testing |
 | References | [Slashing Feature Branch](https://github.com/Layr-Labs/eigenlayer-contracts/pull/679) |
 | Discussions | [Research Forum Post](https://forum.eigenlayer.xyz/t/elip-002-slashing-via-unique-stake-operator-sets/14275) |
 
