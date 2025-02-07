@@ -519,42 +519,77 @@ In this release, when funds are slashed by an AVS, the EigenLayer core contracts
 
 AVSs, taking advantage of Unique Stake, may wish to reward Operator Sets with more granularity in connection to any additional tasks or slashing conditions. This release provides additional functionality in the `RewardsCoordinator` interface for AVSs to specify an Operator Set in rewards submissions to improve the flexibility of incentives and rewards they can provide. The interface will become the sole rewards distribution mechanism with the deprecation of M2 Registration and the `AVSDirectory` at a later date. It is additive with regards to existing [Rewards functionality](https://github.com/eigenfoundation/ELIPs/blob/main/ELIPs/ELIP-001.md#eigenlayer-improvement-proposal-001-rewards-v2).
 
-AVSs specify a set of Strategies for each of their Operator Sets. Reward submissions are verified to only be made to the Strategies in the Operator Set at the time of submission. In addition, reward types are added for making rewards on behalf of an Operator Set as opposed to an AVS. Operators can granularly set their fee on an Operator Set level. If they haven’t, any rewards use the AVS-level fee, or the global default of 10% if nothing has been configured. Programmatic Incentive calculations will be modified to include Operators that have registered to Operator Sets in addition to ones that have registered to AVSs.
+AVSs specify a set of Strategies for each of their Operator Sets. Reward submissions are verified to only be made to the Strategies in the Operator Set for each of the rewards snapshots in the rewards duration, in the Eigen Sidecar rewards calculation. If there are strategies submitted that are not specified in the Operator Set, then they are ignored and the remaining strategies specified are rebalanced based on the specified multipliers. In addition, reward types are added for making rewards on behalf of an Operator Set as opposed to an AVS. Operators can granularly set their fee on an Operator Set level. If they haven’t, any rewards use the global default of 10% if nothing has been configured. Programmatic Incentive calculations will be modified to include Operators that have registered to Operator Sets in addition to ones that have registered to AVSs. If there are Operator Set reward submissions with durations prior to the slashing release, those particular reward snapshots will be refunded to the AVS.
 
 Below are the interface additions:
 
 ```solidity
 interface IRewardsCoordinator {
-  /// @notice operatorSet parallel of AVSRewardsSubmissionCreated
-  event OperatorSetRewardsSubmissionCreated(
-      OperatorSet indexed operatorSet,
-      uint256 indexed submissionNonce,
-      bytes32 indexed rewardsSubmissionHash,
-      RewardsSubmission rewardsSubmission
-  );
+    /**
+     * @notice Emitted when an AVS creates a valid `OperatorDirectedRewardsSubmission` for an operator set.
+     * @param caller The address calling `createOperatorDirectedOperatorSetRewardsSubmission`.
+     * @param operatorDirectedRewardsSubmissionHash Keccak256 hash of (`avs`, `submissionNonce` and `operatorDirectedRewardsSubmission`).
+     * @param operatorSet The operatorSet on behalf of which the operator-directed rewards are being submitted.
+     * @param submissionNonce Current nonce of the avs. Used to generate a unique submission hash.
+     * @param operatorDirectedRewardsSubmission The Operator-Directed Rewards Submission. Contains the token, start timestamp, duration, operator rewards, description and, strategy and multipliers.
+     */
+    event OperatorDirectedOperatorSetRewardsSubmissionCreated(
+        address indexed caller,
+        bytes32 indexed operatorDirectedRewardsSubmissionHash,
+        OperatorSet operatorSet,
+        uint256 submissionNonce,
+        OperatorDirectedRewardsSubmission operatorDirectedRewardsSubmission
+    );
 
-  /// @notice operatorSet parallel of AVSPerformanceRewardsSubmissionCreated
-  event AVSPerformanceRewardsSubmissionCreated(
-      OperatorSet indexed operatorSet,
-      uint256 submissionNonce,
-      bytes32 indexed performanceRewardsSubmissionHash,
-      PerformanceRewardsSubmission performanceRewardsSubmission
-  );
-  
-  /// @notice sets the operator's split for a given operatorSet
-  function setOperatorSetOperatorSplit(OperatorSet operatorSet, uint16 splitBips) external;
-  /// @notice operatorSet parallel of createAVSRewardsSubmission
-  /// @dev sender must be the avs of the given operatorSet
-  function createOperatorSetRewardsSubmission(
-      RewardsSubmission[] calldata rewardsSubmissions
-  ) external;
-  
-  /// @notice operatorSet parallel of createAVSPerformanceRewardsSubmission
-  /// @dev sender must be the avs of the given operatorSet
-  function createOperatorSetPerformanceRewardsSubmission(
-      OperatorSet calldata operatorSet,
-      PerformanceRewardsSubmission[] calldata performanceRewardsSubmissions
-  ) external;
+    /**
+     * @notice Creates a new operator-directed rewards submission for an operator set, to be split amongst the operators and
+     * set of stakers delegated to operators who are part of the operator set.
+     * @param operatorSet The operator set for which the rewards are being submitted
+     * @param operatorDirectedRewardsSubmissions The operator-directed rewards submissions being created
+     * @dev Expected to be called by the AVS that created the operator set
+     * @dev The duration of the `rewardsSubmission` cannot exceed `MAX_REWARDS_DURATION`
+     * @dev The tokens are sent to the `RewardsCoordinator` contract
+     * @dev The `RewardsCoordinator` contract needs a token approval of sum of all `operatorRewards` in the `operatorDirectedRewardsSubmissions`, before calling this function
+     * @dev Strategies must be in ascending order of addresses to check for duplicates
+     * @dev Operators must be in ascending order of addresses to check for duplicates
+     * @dev This function will revert if the `operatorDirectedRewardsSubmissions` is malformed
+     */
+    function createOperatorDirectedOperatorSetRewardsSubmission(
+        OperatorSet calldata operatorSet,
+        OperatorDirectedRewardsSubmission[] calldata operatorDirectedRewardsSubmissions
+    ) external;
+
+    /**
+     * @notice Emitted when the operator split for a given operatorSet is set.
+     * @param caller The address calling `setOperatorSetSplit`.
+     * @param operator The operator on behalf of which the split is being set.
+     * @param operatorSet The operatorSet for which the split is being set.
+     * @param activatedAt The timestamp at which the split will be activated.
+     * @param oldOperatorSetSplitBips The old split for the operator for the operatorSet.
+     * @param newOperatorSetSplitBips The new split for the operator for the operatorSet.
+     */
+    event OperatorSetSplitBipsSet(
+        address indexed caller,
+        address indexed operator,
+        OperatorSet operatorSet,
+        uint32 activatedAt,
+        uint16 oldOperatorSetSplitBips,
+        uint16 newOperatorSetSplitBips
+    );
+
+    /**
+     * @notice Sets the split for a specific operator for a specific operatorSet.
+     * @param operator The operator who is setting the split.
+     * @param operatorSet The operatorSet for which the split is being set by the operator.
+     * @param split The split for the operator for the specific operatorSet in bips.
+     * @dev Only callable by the operator
+     * @dev Split has to be between 0 and 10000 bips (inclusive)
+     * @dev The split will be activated after the activation delay
+     */
+    function setOperatorSetSplit(address operator, OperatorSet calldata operatorSet, uint16 split) external;
+
+    /// @notice Returns the split for a specific `operator` for a given `operatorSet`
+    function getOperatorSetSplit(address operator, OperatorSet calldata operatorSet) external view returns (uint16);
 }
 ```
 
