@@ -54,7 +54,7 @@ EigenPods are unique in that they have to account for slashings that are interna
 
 When an EigenPod's checkpoint is completed, a negative balance delta no longer reduces stake accounting directly. Instead, the proportional change in the EigenPod owner’s new and previous balances is accumulated in the `beaconChainSlashingFactor`. This is now used to keep track of how many assets the Pod's shares actually correspond to ([link to code](https://github.com/Layr-Labs/eigenlayer-contracts/blob/slashing-magnitudes/src/contracts/pods/EigenPodManager.sol#L104-L131)):
 
-```
+```solidity
 /**
  * @notice Returns the historical sum of proportional balance decreases a pod owner has experienced when
  * updating their pod's balance.
@@ -67,10 +67,6 @@ function beaconChainSlashingFactor(
 The `beaconChainSlashingFactor` is initialized at `INITAL_BEACON_CHAIN_SLASHING_FACTOR` for each `EigenPod` contract. This factor is treated similarly to the Operator’s `INITIAL_TOTAL_MAGNITUDE` of a given ERC-20 Strategy. The beaconChainSlashingFactor is reduced (e.g. from 1.0 to 0.8) with any decreases in the ETH of an EigenPod and attached validators proven in completed checkpoints. This decrease in the beaconChainSlashingFactor is proportional to the decrease in the proven aggregate balance (a 20% reduction in the previous example).
 
 A "balance decrease" specifically means the sum of the Pod’s native ETH balance *plus* the sum of its validator balances is *strictly less* than it was the last time a checkpoint or withdrawal from the EigenPod was completed. The following formula gives Pod Balance: 
-
-$$​​\\Delta \\text{podShares} \= \\Delta \\text{podBalance} \+ \\sum\_{i=0}^{n} \\Delta \\text{beaconBalance}\[ v(i) \]
-
-![][image1]
 
 In practice, the `beaconChainSlashingFactor` should only be impacted if any of the validators suffer from inactivity penalties or are slashed on the beacon chain. Any functions using the `beaconChainSlashingFactor` are atomic. They will properly handle any accounting of both full and partial withdrawals *on the beacon chain*. As the `beaconBalance` in the above formula will decrease as a function of any validator exit, the increase in the `podBalance` will mirror this change, keeping the slashing factor consistent if no penalties occurred. 
 
@@ -88,7 +84,7 @@ Withdrawals will remain largely the same when functionality is presented to node
 
 Below is the new withdrawal interface. Stake introspection is handled with some modifications below. The function `getWithdrawableShares` has been moved from the `EigenPodManager` to the `DelegationManager`:
 
-```
+```solidity
 /**
  * @notice Given a staker and a set of strategies, return the shares they can queue for withdrawal and the
  * corresponding depositShares.
@@ -115,7 +111,7 @@ This function should be considered the source of truth when reviewing the amount
 
 The event when a withdrawal is queued is now named `SlashingWithdrawalQueued` . The updated Withdrawal event and struct are below:
 
-```
+```solidity
 /**
  * @notice Emitted when a new withdrawal is queued.
  * @param withdrawalRoot Is the hash of the `withdrawal`.
@@ -168,7 +164,7 @@ Queuing a withdrawal emits an event with a `withdrawal` struct that *currently* 
 
 The new complete withdrawal interface is below. Specifically, we are removing the unused `uint256` parameter (`middlewareTimesIndex`) from both complete methods. By using the `getQueuedWithdrawals` function to introspect withdrawals, one can complete withdrawals just from RPC calls, **eliminating the need to run an indexer to complete withdrawals.**
 
-```
+```solidity
 // One withdrawal, which is obtained by indexing the withdrawal struct or calling `getQueuedWithdrawals`. 
 function completeQueuedWithdrawal(
       Withdrawal calldata withdrawal,
@@ -195,7 +191,7 @@ The introduction of Beacon Chain Slashing requires a new checkpoint structure an
 
 Below is the new checkpoint structure in the `EigenPod` contract:
 
-```
+```solidity
 struct Checkpoint {
   bytes32 beaconBlockRoot;
   uint24 proofsRemaining;
