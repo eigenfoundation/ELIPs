@@ -72,6 +72,7 @@ A "balance decrease" specifically means the sum of the Pod’s native ETH balanc
 \Delta \text{podShares} = \Delta \text{podBalance} + \sum_{i=0}^{n} \Delta \text{beaconBalance}[ v(i) ]
 ```
 
+
 In practice, the `beaconChainSlashingFactor` should only be impacted if any of the validators suffer from inactivity penalties or are slashed on the beacon chain. Any functions using the `beaconChainSlashingFactor` are atomic. They will properly handle any accounting of both full and partial withdrawals *on the beacon chain*. As the `beaconBalance` in the above formula will decrease as a function of any validator exit, the increase in the `podBalance` will mirror this change, keeping the slashing factor consistent if no penalties occurred. 
 
 While native Restakers are primarily impacted by these changes, there are some caveats Operators and AVSs should be aware of:
