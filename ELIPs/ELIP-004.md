@@ -206,7 +206,12 @@ struct Checkpoint {
 }
 ```
 
-**This change is not backward compatible with existing uncompleted checkpoints.** **Checkpoint creation will be paused before the slashing upgrade.** All outstanding checkpoints will be completed before the upgrade. After the upgrade occurs, checkpoint creation will be resumed. Timelines will be communicated carefully with the community and with ample time. 
+**This change is not backward compatible with existing uncompleted checkpoints.** **Checkpoint creation will be paused before the slashing upgrade.** All outstanding checkpoints will be completed before the upgrade. After the upgrade occurs, checkpoint creation will be resumed. Timelines will be communicated carefully with the community and with ample time. The procedure will look like the following, and begin ~6 hours before each network forks on L1: 
+
+1. Pause new checkpoint creation & credential proof generation
+2. Upgrade the core contracts (on each network)
+3. Set the Pectra fork timestamp after it has elapsed. This must be done in our contracts in the next available block we can include a transaction
+4. Unpause checkpoint creation & credential proof generation
 
 All EigenPods with negative balances must complete their withdrawals to ensure non-negative balances before processing new checkpoints. This will impact a very small number of EigenPods, as this state can only currently occur if validators are slashed/penalized after a withdrawal is queued. To check if you need to complete a withdrawal prior to the release of the upgrade, query `EigenPodManager.podOwnerDepositShares`. If this query returns a negative value, you will need to complete the withdrawal. After the upgrade, any EigenPods with negative balance will need to complete withdrawals with the flag `receiveAsTokens == false` to resolve the negative balance. This will leave any remaining ETH in the EigenPod and re-enable checkpointing, which must be completed prior to queuing a new withdrawal.
 
@@ -216,7 +221,7 @@ All EigenPods with negative balances must complete their withdrawals to ensure n
 
 Pectra causes a breaking change to the [EigenPod Proof Generation Library](https://github.com/Layr-Labs/eigenpod-proofs-generation), necessitating an update to the on-chain proof processing and the off-chain library. Existing validators (`0x01`) and validators with the new `0x02` [compounding withdrawal credentials](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-7804.md#abstract) will be supported in the library release when generating proofs. 
 
-Prior to the Pectra hard fork, starting checkpoint and credential proofs on EigenPods will be paused. During the paused period, checkpoints that were started are still completable. Post hard-fork, the EigenPods will be upgraded, after which credential and checkpoint proofs will become unpaused.
+Prior to the Pectra hard fork, starting checkpoint and credential proofs on EigenPods will be paused. During the paused period, checkpoints that were started are still completable. Post hard-fork, the EigenPods will be upgraded, after which credential and checkpoint proofs will become unpaused. 
 
 The upgrade to support this breaking change is dependent on the timing of the Pectra hard fork. Libraries will be updated in advance of the various forks on test and main networks. The timestamp at which these changes take effect will be incorporated into the upgrade once released by the Ethereum Foundation. 
 
@@ -245,7 +250,7 @@ An upgrade makes the system more consistent and reduces implementation complexit
 
 The checkpoint code is modified post-upgrade and is not compatible with existing uncompleted checkpoints. In order to accommodate the changes to EigenPods, we will be performing a migration just before the slashing release. The process roughly comprises:
 
-* \~1-2 hours before the slashing release is live on mainnet, the `EigenPod.startCheckpoint` method will be paused for all EigenPods.  
+* \~6 hours before the slashing release is live on mainnet, the `EigenPod.startCheckpoint` method will be paused for all EigenPods.  
 * When the slashing release is executed, `EigenPod.startCheckpoint` will be unpaused and normal operations can resume.
 
 ### Why must checkpoint completion be blocked until shares are nonnegative?
