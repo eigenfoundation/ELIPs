@@ -206,7 +206,7 @@ struct Checkpoint {
 }
 ```
 
-**This change is not backward compatible with existing uncompleted checkpoints.** **Checkpoint creation will be paused before the slashing upgrade.** All outstanding checkpoints will be completed before the upgrade. After the upgrade occurs, checkpoint creation will be resumed. Timelines will be communicated carefully with the community and with ample time. The procedure will look like the following, and begin ~6 hours before each network forks on L1: 
+**This change is not backward compatible with existing uncompleted checkpoints.** **Checkpoint creation will be paused before the slashing upgrade.** All outstanding checkpoints will be completed before the upgrade. After the upgrade occurs, checkpoint creation will be resumed. Timelines will be communicated carefully with the community and with ample time. The procedure will look like the following, and begin ~6 hours before each network fork on Ethereum L1: 
 
 1. Pause new checkpoint creation & credential proof generation
 2. Upgrade the core contracts (on each network)
