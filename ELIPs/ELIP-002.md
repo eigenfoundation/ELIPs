@@ -72,9 +72,13 @@ Slashing unlocks the creativity of AVSs to design the protocols they need to ser
 
 To achieve these goals, this proposal introduces the following specific features on EigenLayer:
 
+* AVS Metadata
 * Operator Sets,  
 * Unique Stake Allocation and Deallocation,  
 * Slashing of Unique Stake.
+
+
+AVSs now are required to register their metadata as the initial step to onboard to EigenLayer, a step that was optional previously. This helps ensure AVSs declare themselves, make all ecosystem participants informed and enable verification, and eventually protect the ecosystem. The format of AVS metadata stays the same as before.
 
 An Operator Set is a logical and segmented set of Operators created by the AVS. These groups of Operators may be split up for whatever reason an AVS can think of. AVSs may assign arbitrary “tasks” to Operator Sets that can represent anything Operators may be asked to do. Tasks could include computation, proof verification, signature aggregation, liveness pings, or something entirely creative. Operator Sets are the exclusive organizational level at which Operators allocate Unique Stake as slashable security for AVSs and where AVSs slash stake in the case of faults.
 
@@ -88,6 +92,41 @@ This upgrade adds new protocol interfaces and primitives for Operator Sets, Uniq
 * A new, iterative rewards mechanism for AVSs to reward Operators based on tasks tied to Operator Sets and slashable Unique Stake.
 
 These are provided through the introduction of the `AllocationManager` contract and changes to the `DelegationManager` to make use of the Unique Security model. The AVS middleware contracts are also updated. First, we will describe Operator Sets and how they give fine-grained, opt-in control of slashable Unique Stake to Operators and how they provide some key guarantees to AVSs.
+
+## AVS Metadata
+
+AVSs must register their metadata to declare themselves who they are as the first step, before they can create operator sets or register operators into operator sets. `AllocationManager` keeps track of AVSs that have registered metadata.
+
+
+```solidity
+/**
+ *  @notice Called by an AVS to emit an `AVSMetadataURIUpdated` event indicating the information has updated.
+ *
+ *  @param metadataURI The URI for metadata associated with an AVS.
+ *
+ *  @dev Note that the `metadataURI` is *never stored* and is only emitted in the `AVSMetadataURIUpdated` event.
+ */
+function updateAVSMetadataURI(
+    address avs, 
+    string calldata metadataURI
+) 
+    external
+    checkCanCall(avs)
+```
+
+
+Below is the format AVSs should use when updating their metadata URI initially. This is not validated onchain.
+
+```json
+{
+    "name": "AVS",
+    "website": "https.avs.xyz/",
+    "description": "Some description about",
+    "logo": "http://github.com/logo.png",
+    "twitter": "https://twitter.com/avs",
+}
+```
+
 
 ## Operator Sets
 
