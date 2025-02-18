@@ -1,4 +1,4 @@
-| Author(s) | [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [Yash Patil](mailto:yash@eigenlabs.org), [Matt Curtis](mailto:matt.curtis@eigenlabs.org), [Gautham Anant](mailto:gautham@eigenlabs.org), [Brett Palatiello](mailto:brett@eigenlabs.org) |
+| Author(s) | [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [Yash Patil](mailto:yash@eigenlabs.org), [Matt Curtis](mailto:matt.curtis@eigenlabs.org), [Gautham Anant](mailto:gautham@eigenlabs.org), [Brett Palatiello](mailto:brett@eigenlabs.org), [Bowen Li](mailto:bowen.li@eigenlabs.org)  |
 | :---- | :---- |
 | Created | December 12th, 2024 |
 | Status | Testing |
@@ -716,11 +716,12 @@ From time to time, buggy slashing logic may be deployed by AVSs, regardless of t
 
 Existing AVSs are strongly recommended to migrate away from any existing Quorums and the use of the `AVSDirectory`, towards using the `AllocationManager` and Operator Set features. This will be required to slash. In order to make this migration, we recommend that AVSs:
 
-1. Upgrade their contracts to handle the callback from the `AllocationManager`  
-2. Communicate to Operators regarding registering for Operator Sets via the new registration pathway  
+1. Register metadata in `AllocationManager`
+2. Upgrade their contracts to handle the callback from the `AllocationManager`  
+3. Communicate to Operators regarding registering for Operator Sets via the new registration pathway  
    1. For slashable Operator Sets, Operators should also allocate slashable stake  
    2. AVSs should consider requirements for the `AVSRegistrar` contract  
-3. Migrate to using new Operator Set-registered operators to distribute tasks based on delegated and slashable stake
+4. Migrate to using new Operator Set-registered operators to distribute tasks based on delegated and slashable stake
 
 This allows AVSs to reach a state where each of their quorums is reflected exactly in their Operator Sets in the core protocol. After this migration has occurred, integrations with slashing can go live.
 
