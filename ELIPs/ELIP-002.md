@@ -1,4 +1,4 @@
-| Author(s) | [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [Yash Patil](mailto:yash@eigenlabs.org), [Matt Curtis](mailto:matt.curtis@eigenlabs.org), [Gautham Anant](mailto:gautham@eigenlabs.org), [Brett Palatiello](mailto:brett@eigenlabs.org) |
+| Author(s) | [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [Yash Patil](mailto:yash@eigenlabs.org), [Matt Curtis](mailto:matt.curtis@eigenlabs.org), [Gautham Anant](mailto:gautham@eigenlabs.org), [Brett Palatiello](mailto:brett@eigenlabs.org), [Bowen Li](mailto:bowen.li@eigenlabs.org)  |
 | :---- | :---- |
 | Created | December 12th, 2024 |
 | Status | Testing |
@@ -76,6 +76,8 @@ To achieve these goals, this proposal introduces the following specific features
 * Unique Stake Allocation and Deallocation,  
 * Slashing of Unique Stake.
 
+
+
 An Operator Set is a logical and segmented set of Operators created by the AVS. These groups of Operators may be split up for whatever reason an AVS can think of. AVSs may assign arbitrary “tasks” to Operator Sets that can represent anything Operators may be asked to do. Tasks could include computation, proof verification, signature aggregation, liveness pings, or something entirely creative. Operator Sets are the exclusive organizational level at which Operators allocate Unique Stake as slashable security for AVSs and where AVSs slash stake in the case of faults.
 
 Unique Stake is an accounting tool defined on the level of Operator Sets that ensures AVSs and Operators maintain key safety properties when handling staked security and slashing on EigenLayer. Unique Stake is allocated to different Operator Sets on an opt-in basis by Operators. Only Unique Stake is slashable by AVSs, and it represents proportions of the Operator’s delegated stake from Stakers. 
@@ -88,6 +90,7 @@ This upgrade adds new protocol interfaces and primitives for Operator Sets, Uniq
 * A new, iterative rewards mechanism for AVSs to reward Operators based on tasks tied to Operator Sets and slashable Unique Stake.
 
 These are provided through the introduction of the `AllocationManager` contract and changes to the `DelegationManager` to make use of the Unique Security model. The AVS middleware contracts are also updated. First, we will describe Operator Sets and how they give fine-grained, opt-in control of slashable Unique Stake to Operators and how they provide some key guarantees to AVSs.
+
 
 ## Operator Sets
 
@@ -595,6 +598,44 @@ interface IRewardsCoordinator {
 
 # Rationale
 
+## Setting AVS Metadata
+
+AVSs now are required to register their metadata and declare themselves who they are, as the first step to onboard to EigenLayer, before they can create operator sets or register operators into operator sets. It is a step that was optional previously. This helps ensure AVSs declare themselves, make all ecosystem participants informed and enable verification, and eventually protect the ecosystem.
+
+The format of AVS metadata stays the same as before.
+
+ `AllocationManager` keeps track of AVSs that have registered metadata.
+
+
+```solidity
+/**
+ *  @notice Called by an AVS to emit an `AVSMetadataURIUpdated` event indicating the information has updated.
+ *
+ *  @param metadataURI The URI for metadata associated with an AVS.
+ *
+ *  @dev Note that the `metadataURI` is *never stored* and is only emitted in the `AVSMetadataURIUpdated` event.
+ */
+function updateAVSMetadataURI(
+    address avs, 
+    string calldata metadataURI
+) 
+    external
+    checkCanCall(avs)
+```
+
+
+Below is the format AVSs should use when updating their metadata URI initially. This is not validated onchain.
+
+```json
+{
+    "name": "AVS",
+    "website": "https.avs.xyz/",
+    "description": "Some description about",
+    "logo": "http://github.com/logo.png",
+    "twitter": "https://twitter.com/avs",
+}
+```
+
 ## Creation, Registration, & Deregistration
 
 ### Why the new registration flow? What happens to the old process?
@@ -716,11 +757,12 @@ From time to time, buggy slashing logic may be deployed by AVSs, regardless of t
 
 Existing AVSs are strongly recommended to migrate away from any existing Quorums and the use of the `AVSDirectory`, towards using the `AllocationManager` and Operator Set features. This will be required to slash. In order to make this migration, we recommend that AVSs:
 
-1. Upgrade their contracts to handle the callback from the `AllocationManager`  
-2. Communicate to Operators regarding registering for Operator Sets via the new registration pathway  
+1. Register metadata in `AllocationManager`
+2. Upgrade their contracts to handle the callback from the `AllocationManager`  
+3. Communicate to Operators regarding registering for Operator Sets via the new registration pathway  
    1. For slashable Operator Sets, Operators should also allocate slashable stake  
    2. AVSs should consider requirements for the `AVSRegistrar` contract  
-3. Migrate to using new Operator Set-registered operators to distribute tasks based on delegated and slashable stake
+4. Migrate to using new Operator Set-registered operators to distribute tasks based on delegated and slashable stake
 
 This allows AVSs to reach a state where each of their quorums is reflected exactly in their Operator Sets in the core protocol. After this migration has occurred, integrations with slashing can go live.
 
