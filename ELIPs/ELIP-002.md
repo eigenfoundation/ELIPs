@@ -122,7 +122,11 @@ For the clarity of the reader, these interfaces are typically provided in snippe
 
 ### Creation, Registration, & Deregistration
 
-First, AVSs create new Operator Sets through the `AllocationManager`. If the transaction does not revert, the Operator Set will be created successfully. An AVS may create many Operator Sets for different needs. The AVS can then add (or later remove) specific Strategies to that Operator Set that Operators will use to secure it. The AVS can also specify an additional `AVSRegistrar` contract that applies business logic to gate Operator registration to an Operator Set. This AVS-specific contract can implement a variety of custom logic. AVSs may want to gate registration on Operators' allocated Unique Stake, for example, or create a registration queue. 
+AVSs create new Operator Sets through the `AllocationManager`. If the transaction does not revert, the Operator Set will be created successfully. An AVS may create many Operator Sets for different needs. The AVS can then add (or later remove) specific Strategies to that Operator Set that Operators will use to secure it. The AVS can also specify an additional `AVSRegistrar` contract that applies business logic to gate Operator registration to an Operator Set. This AVS-specific contract can implement a variety of custom logic. AVSs may want to gate registration on Operators' allocated Unique Stake, for example, or create a registration queue. 
+
+> ⚠️   **Note**
+>
+> Prior to creating an Operator Set, an AVS must register its metadata on EigenLayer. More information is captured [below](./ELIP-002.md#setting-avs-metadata).
 
 To ensure community and incentive alignment, it is generally expected that AVSs will conduct off-chain outreach to communicate the purpose and task/security makeup of their Operator Sets with their Operators and Stakers prior to beginning registration. This likely would include any potential hardware, software, or stake requirements. It is up to the AVS to decide task distribution within an Operator Set, whether it's based on stake or other out of protocol means. For example, one Operator Set for an AVS may require secure enclave compute for task distribution and Operator registration, while another Operator Set can serve general attestation purposes on commodity hardware. 
 
@@ -600,7 +604,7 @@ interface IRewardsCoordinator {
 
 ## Setting AVS Metadata
 
-AVSs now are required to register their metadata and declare themselves who they are, as the first step to onboard to EigenLayer, before they can create operator sets or register operators into operator sets. It is a step that was optional previously. This helps ensure AVSs declare themselves, make all ecosystem participants informed and enable verification, and eventually protect the ecosystem.
+AVSs are now required to register their metadata and declare themselves as the first step in onboarding to EigenLayer. This must happen before they can create Operator Sets or register Operators into Operator Sets. This step was previously optional. This change is to ensure AVSs declare themselves in order to inform all ecosystem participants and enable verification of the AVS addresses. These steps help protect the ecosystem.
 
 The format of AVS metadata stays the same as before.
 
