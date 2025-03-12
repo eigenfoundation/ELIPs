@@ -74,7 +74,7 @@ Note, access permissions can be extended beyond the list of functions listed abo
 
 UAM adds a core contract, the `PermissionController` as a dependency for the `DelegationManager`, `AllocationManager`, and `RewardsCoordinator`. We enable this functionality for AVSs and Operators but not for stakers. Note that if an Operator is also a staker, it cannot add an appointee for any staker operations, such as queueing a withdrawal and depositing.  There is no support for the `AVSDirectory` as we plan on deprecating its functionality at a later time in another ELIP.
 
-Operators & AVSs can have multiple admins for their account. This enables admin key rotation. The account address of an Operator is initialized via the `registerAsOperator` function in the `DelegationManager`. The account address of an AVS is initialized via the `createOperatorSets` function in the `AllocationManager`.
+Operators & AVSs can have multiple admins for their account. This enables admin key rotation. The account address of an Operator is initialized via the `registerAsOperator` function in the `DelegationManager`. The account address of an AVS is initialized via the `updateAVSMetadataURI` function in the `AllocationManager`.
 
 Admins are configured via a 2-step handshake. An admin must be set as *pending*. After, the pending admin must accept adminhood over the account. There must always be at least one admin for the account. If  no admins have ever been set, then the initial Operator address acts as the admin. 
 
