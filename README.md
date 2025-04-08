@@ -19,7 +19,7 @@ Once proposals have passed through the ELIP process, they are submitted to the P
 
 ## ELIP Process
 
-In the early stages, ideas for ELIPs and early drafts are discussed in the “ELIP” category on [forum.eigenlayer.xyz](https://forum.eigenlayer.xyz/). After the design and scope of an ELIP has been finalized, it is submitted to this repository as a pull request. To submit an ELIP, open a [pull request](https://github.com/eigenfoundation/ELIPs/pulls). Ongoing and accepted proposals can be found in /elips. 
+In the early stages, ideas for ELIPs and early drafts are discussed in the "ELIP" category on [forum.eigenlayer.xyz](https://forum.eigenlayer.xyz/). After the design and scope of an ELIP has been finalized, it is submitted to this repository as a pull request. To submit an ELIP, open a [pull request](https://github.com/eigenfoundation/ELIPs/pulls). Ongoing and accepted proposals can be found in /elips. 
 
 The PR is tracked publicly on the repository using tags:
 

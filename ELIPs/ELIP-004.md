@@ -263,7 +263,7 @@ This checkpoint pause is not problematic from a security perspective since Eigen
 
 # Security Considerations
 
-There exists a case where EigenPod contracts become fully inoperable when a checkpoint is completed after all attached validators are fully slashed on the beacon chain (100%) and there are *no other assets* on the EigenPod. It will become “bricked” or non-functional, meaning even if new assets are added or validators attached to the Pod, it will still remain non-functional.
+There exists a case where EigenPod contracts become fully inoperable when a checkpoint is completed after all attached validators are fully slashed on the beacon chain (100%) and there are *no other assets* on the EigenPod. It will become "bricked" or non-functional, meaning even if new assets are added or validators attached to the Pod, it will still remain non-functional.
 
 This is considered an open security issue, but due to the nature of Beacon Chain slashings, a full 100% slash has not yet occurred and is a very rare case. 
 

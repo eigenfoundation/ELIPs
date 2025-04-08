@@ -78,7 +78,7 @@ To achieve these goals, this proposal introduces the following specific features
 
 
 
-An Operator Set is a logical and segmented set of Operators created by the AVS. These groups of Operators may be split up for whatever reason an AVS can think of. AVSs may assign arbitrary “tasks” to Operator Sets that can represent anything Operators may be asked to do. Tasks could include computation, proof verification, signature aggregation, liveness pings, or something entirely creative. Operator Sets are the exclusive organizational level at which Operators allocate Unique Stake as slashable security for AVSs and where AVSs slash stake in the case of faults.
+An Operator Set is a logical and segmented set of Operators created by the AVS. These groups of Operators may be split up for whatever reason an AVS can think of. AVSs may assign arbitrary "tasks" to Operator Sets that can represent anything Operators may be asked to do. Tasks could include computation, proof verification, signature aggregation, liveness pings, or something entirely creative. Operator Sets are the exclusive organizational level at which Operators allocate Unique Stake as slashable security for AVSs and where AVSs slash stake in the case of faults.
 
 Unique Stake is an accounting tool defined on the level of Operator Sets that ensures AVSs and Operators maintain key safety properties when handling staked security and slashing on EigenLayer. Unique Stake is allocated to different Operator Sets on an opt-in basis by Operators. Only Unique Stake is slashable by AVSs, and it represents proportions of the Operator’s delegated stake from Stakers. 
 
@@ -478,7 +478,7 @@ The `AllocationManager` provides the interface for the slashing function:
     }
 ```
 
-To slash, AVSs specify the individual Operator that will be slashed, the Operator Set, the list of Strategies that will be slashed, the list of proportions to slash (as `wads` or “parts per `1e18`”), and a description for legibility. For example, an 8% slash would be represented as `8e16`, or `80000000000000000` as expected in the `wadsToSlash` parameter. A 25% slash, or `2.5e17`, the contract will expect `250000000000000000` as `wadsToSlash`. The indexes in the two arrays should match across `strategies` and `wadsToSlash`. 
+To slash, AVSs specify the individual Operator that will be slashed, the Operator Set, the list of Strategies that will be slashed, the list of proportions to slash (as `wads` or "parts per `1e18`"), and a description for legibility. For example, an 8% slash would be represented as `8e16`, or `80000000000000000` as expected in the `wadsToSlash` parameter. A 25% slash, or `2.5e17`, the contract will expect `250000000000000000` as `wadsToSlash`. The indexes in the two arrays should match across `strategies` and `wadsToSlash`. 
 
 All Strategies supplied must be configured as part of the Operator Set. For all Strategies specified, the Operator’s allocations to that Operator Set will be slashed by the corresponding proportion while maintaining their nominal allocations to all other Operator Sets. Under the hood this is accomplished by subtracting allocated magnitude from both the specified Operator Set, and the Operator’s Total Magnitude. This is illustrated in the example below.
 
@@ -520,7 +520,7 @@ Note, slashing by one Operator Set does not affect the magnitudes of EIGEN alloc
 
 ### Burning of Slashed Funds
 
-In this release, when funds are slashed by an AVS, the EigenLayer core contracts will make slashed funds permanently inaccessible (“burned”). ERC-20s have this done by sending them to the dead `0x00...00e16e4` address. This is done to ensure proper accounting with various LRT protocols. Natively Restaked ETH will be locked in EigenPod contracts, permanently inaccessible. The Ethereum Pectra upgrade is anticipated to unblock development of an EigenLayer upgrade which would burn Natively Restaked ETH by sending it to a dead address, instead of permanently locking it within EigenPod contracts as planned in this release.
+In this release, when funds are slashed by an AVS, the EigenLayer core contracts will make slashed funds permanently inaccessible ("burned"). ERC-20s have this done by sending them to the dead `0x00...00e16e4` address. This is done to ensure proper accounting with various LRT protocols. Natively Restaked ETH will be locked in EigenPod contracts, permanently inaccessible. The Ethereum Pectra upgrade is anticipated to unblock development of an EigenLayer upgrade which would burn Natively Restaked ETH by sending it to a dead address, instead of permanently locking it within EigenPod contracts as planned in this release.
 
 ## Rewarding Unique Stake and Operator Sets
 
@@ -747,7 +747,7 @@ There is no ability to cancel allocations. Allocations must be made for the corr
 
 ## Rounding and Imprecision
 
-Due to required changes in accounting and scaling down stake (referred to in the Strategy code as “shares”) to factor in any slashing that has occurred, there are potentially small precision errors due to division rounding. This can affect the amount withdrawn for a Staker. Even if they did not get slashed between the time deposited and withdrawn, small amounts of `Wei` can be lost as a result. This has been considered and designed around, with the main motivation being avoidance of any underflow/overflow situation where user actions unexpectedly revert.
+Due to required changes in accounting and scaling down stake (referred to in the Strategy code as "shares") to factor in any slashing that has occurred, there are potentially small precision errors due to division rounding. This can affect the amount withdrawn for a Staker. Even if they did not get slashed between the time deposited and withdrawn, small amounts of `Wei` can be lost as a result. This has been considered and designed around, with the main motivation being avoidance of any underflow/overflow situation where user actions unexpectedly revert.
 
 Additionally, we are using OpenZeppelin’s Math utility library and the mulDiv function (credit to Remco Bloemen) for safety and precision.
 
@@ -869,7 +869,7 @@ function getDepositedShares(
 
 ### Operator Details
 
-The `getOperatorDetails` getter been removed as the only relevant “detail” is the delegation approver. The `delegationApprover(address operator)` function can be used to retrieve this value. 
+The `getOperatorDetails` getter been removed as the only relevant "detail" is the delegation approver. The `delegationApprover(address operator)` function can be used to retrieve this value. 
 
 The `modifyOperatorDetails` function has been updated to reflect that the only Operator information to modify is the delegation approver:
 
@@ -1006,6 +1006,6 @@ function getQueuedWithdrawals(
 | Staker | An individual address that directly supplies assets to Eigenlayer. Such an address could be an EOA wallet or a smart contract controlled by an individual or institution. |
 | Task | Work assigned to Operator Sets by an AVS. Tasks could take the form of computation, proof verification, signature aggregation, liveness pings, or something entirely creative |
 | Unique Stake | Assets made slashable exclusively by one Operator Set. Unique Stake is an accounting tool defined on the level of Operator Sets that ensures AVSs and Operators maintain key safety properties when handling staked security and slashing on EigenLayer. Unique Stake is allocated to different Operator Sets on an opt-in basis by Operators. Unique Stake represents the proportion of an Operator’s delegated stake from Stakers that an AVS can slash.  |
-| `wad` | One `wad` is equal to `1e18`. It is a fixed point number with 18 decimals. For example, a 25% slash would be represented as `2.5e17` and submitted to the slasher function as `250000000000000000`, representing “parts per `wad`.”  |
+| `wad` | One `wad` is equal to `1e18`. It is a fixed point number with 18 decimals. For example, a 25% slash would be represented as `2.5e17` and submitted to the slasher function as `250000000000000000`, representing "parts per `wad`."  |
 | Withdrawal | The process through which assets are moved out of the EigenLayer protocol, after safety delays and with applied slashings to the nominal amounts.  |
 

@@ -57,7 +57,7 @@ Rewards v2 is designed to be an ***optional*** and additive upgrade to the Rewar
 
 5. **Attribution of Rewards**   
    1. The on-chain nature of performance-based or directed Operator rewards, along with the inclusion of strategies and multipliers and integration with the sidecar, enables attribution and reward rate calculations. This helps in populating user-facing information and attracting stake to Operators and AVSs.  
-      1. Attribution is defined as the on-chain guarantee that the rewards are split amongst Stakers according to stake weight. This guarantees attributions of the form "Staker-A earned X amount of Token-B on AVS-C because they staked Y amount of Token-D”
+      1. Attribution is defined as the on-chain guarantee that the rewards are split amongst Stakers according to stake weight. This guarantees attributions of the form "Staker-A earned X amount of Token-B on AVS-C because they staked Y amount of Token-D"
 
    
 
@@ -78,7 +78,7 @@ Rewards v2 is designed to be an ***optional*** and additive upgrade to the Rewar
 
 # Features & Specification
 
-The key words “MUST”, “MUST NOT”, “REQUIRED”, “SHALL”, “SHALL NOT”, “SHOULD”, “SHOULD NOT”, “RECOMMENDED”, “MAY”, and “OPTIONAL” in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
 ## High Level Design
 
@@ -86,7 +86,7 @@ The key words “MUST”, “MUST NOT”, “REQUIRED”, “SHALL”, “SHALL 
 
 The high level flow is as follows:
 
-1. Operators can set their per-AVS reward fee (called a “split”) by calling `setOperatorAVSSplit()` on the `RewardsCoordinator`. This is between 0% or 100% of AVS rewards. It’s valid after a 7-day activation delay. If they don’t set it, it will remain at the default of 10%. An Operator may only have one pending split configuration at a time. 
+1. Operators can set their per-AVS reward fee (called a "split") by calling `setOperatorAVSSplit()` on the `RewardsCoordinator`. This is between 0% or 100% of AVS rewards. It’s valid after a 7-day activation delay. If they don’t set it, it will remain at the default of 10%. An Operator may only have one pending split configuration at a time. 
 2. AVSs calculate off-chain the appropriate rewards to be distributed to their registered Operators:  
    1. They first give an ERC20 approval to their AVSServiceManager for the sum of all Operator rewards.   
    2. They then call `createOperatorDirectedAVSRewardsSubmission()` on the `AVSServiceManager` which proxies the call to the `RewardsCoordinator`. This initiates the performance-based rewards allocations and deposits the sum of all Operator rewards in the allocations to the `RewardsCoordinator`.   
