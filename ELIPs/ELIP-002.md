@@ -292,13 +292,19 @@ Allocations and deallocations are subject to some safety delays in the protocol.
 
 | Parameter | Description | Value | Setter & Configuration |
 | :---- | :---- | :---- | :---- |
-| `ALLOCATION_CONFIG_DELAY` | The amount of blocks between an Operator queuing an `ALLOCATION_DELAY` change and the change taking effect. | 126000 blocks (~17.5 days) | Core Protocol: Set via governance |
+| `ALLOCATION_CONFIGURATION_DELAY` | The amount of blocks between an Operator queuing an `ALLOCATION_DELAY` change and the change taking effect. | 126000 blocks (~17.5 days) | Core Protocol: Set via governance |
 | `ALLOCATION_DELAY` | The amount of blocks it takes for an Operator’s allocation to be live in an Operator Set for a given Strategy. It must be set by the Operator prior to any allocations and applies globally to all Operator Sets and Strategies.  The protocol provides no constraints on this value. It can be any unsigned integer value and can be changed by the Operator.  | Unsigned integer value representing a number of blocks  | Operator: Set via `AllocationManager` Must be set in order to allocate |
 | `DEALLOCATION_DELAY` | The amount of blocks between an Operator queuing a deallocation of stake from an Operator Set for a strategy and the deallocation taking effect. This delay also applies to an Operator *deregistering* from an Operator Set, either by their own action or that of the AVS. | 100800 blocks (~14 days) | Core Protocol: Set via governance |
 | `INITIAL_TOTAL_MAGNITUDE` | The initial value of the monotonically decreasing total magnitude for every Operator for every strategy. This is set high enough to start out with a large level of precision in magnitude allocations and slashings. | 1e18 | Core Protocol: Constant, unlikely to change |
 | `WITHDRAWAL_DELAY` | The amount of blocks between a Staker queueing a withdrawal and the withdrawal becoming non-slashable and completable. | 100800 blocks (~14 days) | Core Protocol: Set via governance |
 
-Before allocating for their first Operator Set, an Operator is required to set an `ALLOCATION_DELAY` in the `AllocationManager`. If an Operator is registering with EigenLayer for the first time, they will be required to provide an `ALLOCATION_DELAY` during registration. It takes the amount of time specified in the `ALLOCATION_CONFIG_DELAY` for the Operator's `ALLOCATION_DELAY` to be set initially or updated. This delay is to ensure Stakers have time to adjust to changes in their delegated Operator’s stake allocations. Stakers can withdraw their funds if an allocation is viewed as undesirable, subject to the `WITHDRAWAL_DELAY`. [The rationale for this is captured below.](./ELIP-002.md#why-is-withdrawal_delay-set-to-14-days-worth-of-blocks)
+These are the constants or parameters used on EigenLayer Mainnet.
+
+> 🧪   **Note**
+>
+> On EigenLayer testnet deployments, the `ALLOCATION_CONFIGURATION_DELAY` is set to 75 blocks (~15 mins) and the `DEALLOCATION_DELAY` is set to 50 blocks (~10 mins) for ease of use.
+
+Before allocating for their first Operator Set, an Operator is required to set an `ALLOCATION_DELAY` in the `AllocationManager`. If an Operator is registering with EigenLayer for the first time, they will be required to provide an `ALLOCATION_DELAY` during registration. It takes the amount of time specified in the `ALLOCATION_CONFIGURATION_DELAY` for the Operator's `ALLOCATION_DELAY` to be set initially or updated. This delay is to ensure Stakers have time to adjust to changes in their delegated Operator’s stake allocations. Stakers can withdraw their funds if an allocation is viewed as undesirable, subject to the `WITHDRAWAL_DELAY`. [The rationale for this is captured below.](./ELIP-002.md#why-is-withdrawal_delay-set-to-14-days-worth-of-blocks)
 
 The `AllocationManager` interface handles all allocation and deallocation signals:
 
@@ -689,7 +695,7 @@ EigenLayer can be updated to enable longer or shorter delays in a future release
 
 A withdrawal and a deallocation are both treated as a reduction of slashable stake by an AVS, so the `DEALLOCATION_DELAY` is treated with the same care as the `WITHDRAWAL_DELAY`.
 
-### Why is `ALLOCATION_CONFIG_DELAY` set to 17.5 days worth of blocks?
+### Why is `ALLOCATION_CONFIGURATION_DELAY` set to 17.5 days worth of blocks?
 
 The allocation config delay is set to 17.5 days in order to give Stakers 3.5 days to withdraw (3.5 \+ 14 \= 17.5) before new allocation delays take effect. 3.5 days is used as a censorship resistance interval.
 
