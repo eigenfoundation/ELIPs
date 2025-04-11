@@ -200,12 +200,11 @@ function createOperatorDirectedAVSRewardsSubmission(
       4. Sum of all amounts MUST be <= `MAX_REWARDS_AMOUNT`. Throw an error otherwise.  
       5. `duration` MUST be <= `MAX_REWARDS_DURATION`. Throw an error otherwise.  
       6. `duration` MUST be a multiple of `CALCULATION_INTERVAL_SECONDS`. Throw an error otherwise.  
-      7. `duration` MUST be a multiple of `CALCULATION_INTERVAL_SECONDS`. Throw an error otherwise.  
-      8. `startTimestamp` MUST be a multiple of `CALCULATION_INTERVAL_SECONDS`. Throw an error otherwise.  
-      9. `startTimestamp` MUST be > `GENESIS_REWARDS_TIMESTAMP`. Throw an error otherwise.  
-      10. `startTimestamp` MUST be within the `MAX_RETROACTIVE_LENGTH` prior to `block.timestamp`. Throw an error otherwise.  
-      11. `startTimestamp + duration` MUST be < `block.timestamp`. Throw an error otherwise. Performance-based rewards have to be strictly retroactive.  
-      12. For each `strategyAndMultiplier`, validate the following:  
+      7. `startTimestamp` MUST be a multiple of `CALCULATION_INTERVAL_SECONDS`. Throw an error otherwise.  
+      8. `startTimestamp` MUST be > `GENESIS_REWARDS_TIMESTAMP`. Throw an error otherwise.  
+      9. `startTimestamp` MUST be within the `MAX_RETROACTIVE_LENGTH` prior to `block.timestamp`. Throw an error otherwise.  
+      10. `startTimestamp + duration` MUST be < `block.timestamp`. Throw an error otherwise. Performance-based rewards have to be strictly retroactive.  
+      11. For each `strategyAndMultiplier`, validate the following:  
           1. `strategy` has to be whitelisted for deposit. Throw an error otherwise.  
           2. Throw an error if strategy addresses are not in ascending order. This is to handle duplicates.  
    2. Keccak256 hash the ABI encoding of `avs`, `submissionNonce` and `operatorDirectedRewardsSubmission`.  
