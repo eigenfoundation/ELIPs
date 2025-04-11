@@ -142,7 +142,7 @@ The AVS may require an optional transaction to first allocate Unique Stake as pa
 
 Deregistration can be used to signal an exit from an Operator Set, or for other cases like signaling a period of Operator inactivity or an inability to receive tasks. It is up to the AVS to implement specific deregistration logic. Deregistration occurs instantly with no delay. It does _not_ make funds allocated to the deregistered set instantly non-slashable. For AVS stake guarantees, the Operator remains slashable for the `DEALLOCATION_DELAY` and must also wait for that period to elapse before they can register to the same Operator Set again. The Operator may make stake non-slashable through other pathways, like [deallocation](./ELIP-002.md#allocating-and-deallocating-to-operator-sets) and [withdrawals](./ELIP-002.md#deposits-delegation--withdrawals). More on this below.
 
-AVSs and Operators can both deregister from Operator Sets unilaterally. This is done via a call to the `AllocationManager`, which will attempt to call the AVS’s Registrar contract to signal a deregistration to the AVS. The deregistration will be queued for completion ONLY if there is no revert in the `AllocationManager` and `AVSRegistrar` contracts. This is to prevent edge cases around insufficient gas-forwarding for the `AVSRegistrar` contract and consistent storage. An operator can reduce its entire exposure to the operatorSet by deallocating completely. 
+AVSs and Operators can both deregister from Operator Sets unilaterally. This is done via a call to the `AllocationManager`, which will attempt to call the AVS’s Registrar contract to signal a deregistration to the AVS. The deregistration will be queued for completion ONLY if there is no revert in the `AllocationManager` and `AVSRegistrar` contracts. This is to prevent edge cases around insufficient gas-forwarding for the `AVSRegistrar` contract and to keep consistent storage. An Operator can remove its exposure to the Operator Set by deallocating completely.
 
 Below is the [AllocationManager interface](https://github.com/Layr-Labs/eigenlayer-contracts/blob/725d3df10a82e46003dd5d78d8c814790fff13c1/src/contracts/interfaces/IAllocationManager.sol):
 
@@ -238,7 +238,7 @@ interface IAllocationManager {
 }
 ```
 
-There are no enforced limits around the number of strategies in an operatorSet, the number of Operator Sets an AVS can create, or how many Operators may be in a single Operator Set. There may be practical gas cost limitations in Operator Sets. For example, as sizes get very large, it may become impossible to perform an operation on all Operators in an Operator Set within a single transaction.
+There are no enforced limits around the number of strategies in an Operator Set, the number of Operator Sets an AVS can create, or how many Operators may be in a single Operator Set. There may be practical gas cost limitations in Operator Sets. For example, as sizes get very large, it may become impossible to perform an operation on all Operators in an Operator Set within a single transaction.
 
 Going forward, the `AllocationManager` will handle all Operator/AVS relationships. This new registration flow supplants the M2 process in the `AVSDirectory` but will be supported in parallel for some time. Operator Sets will be the sole means of codifying a relationship in the protocol between an AVS and an Operator. We suggest AVSs register Operators to Operator Sets over-time with the new process as they gain clarity in their designs. Operator Set registration will be required to take advantage of Unique Stake and slashing, but is initially additive to the existing M2 process. More on this in the [rationale](./ELIP-002.md#rationale).
 
@@ -394,7 +394,7 @@ Deallocations act similarly to allocations and are queued in the `AllocationMana
 
 Some notes and caveats impacting UX:
 
-* If an allocation to an Operator Set is made non-slashable by no longer meeting the criteria above, a deallocation does not go through the 14 day `DEALLOCATION_DELAY` and instead takes effect immediately. This only applies to future deallocations. Note that if the deallocation is already pending, and then the Operator Set is made non-slashable, the deallocation still has to go through the entire delay. 
+* If an allocation to an Operator Set is made non-slashable by no longer meeting the criteria above, a deallocation does not go through the 14 day `DEALLOCATION_DELAY` and instead takes effect immediately. This only applies to future deallocations, not those that are pending, which still must complete the delay. 
 * A given (Operator, Strategy) pair can only have one pending allocation *OR* deallocation transaction per Operator Set at a given time.   
 * A single transaction can modify multiple allocations.  
 * An Operator Set deregistration ***does not*** also queue a deallocation. They have to be queued separately, as a deregistration may be used to signal other states, like a period of Operator inactivity. Previously allocated magnitude that has not been deallocated becomes instantly slashable upon re-registration.
