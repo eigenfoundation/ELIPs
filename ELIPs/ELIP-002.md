@@ -142,7 +142,7 @@ The AVS may require an optional transaction to first allocate Unique Stake as pa
 
 Deregistration can be used to signal an exit from an Operator Set, or for other cases like signaling a period of Operator inactivity or an inability to receive tasks. It is up to the AVS to implement specific deregistration logic. Deregistration occurs instantly with no delay. It does _not_ make funds allocated to the deregistered set instantly non-slashable. For AVS stake guarantees, the Operator remains slashable for the `DEALLOCATION_DELAY` and must also wait for that period to elapse before they can register to the same Operator Set again. The Operator may make stake non-slashable through other pathways, like [deallocation](./ELIP-002.md#allocating-and-deallocating-to-operator-sets) and [withdrawals](./ELIP-002.md#deposits-delegation--withdrawals). More on this below.
 
-AVSs and Operators can both deregister from Operator Sets unilaterally. This is done via a call to the `AllocationManager`, which will attempt to call the AVS’s Registrar contract to signal a deregistration to the AVS. The deregistration will be queued for completion if there is no revert in the `AllocationManager`, regardless of the AVS Registrar logic. This is mainly to allow operators to terminate their relationship with the Operator Set in external integrations (e.g. the EigenLayer App UI). 
+AVSs and Operators can both deregister from Operator Sets unilaterally. This is done via a call to the `AllocationManager`, which will attempt to call the AVS’s Registrar contract to signal a deregistration to the AVS. The deregistration will be queued for completion ONLY if there is no revert in the `AllocationManager` and `AVSRegistrar` contracts. This is to prevent edge cases around insufficient gas-forwarding for the `AVSRegistrar` contract and consistent. An operator can reduce its entire exposure to the operatorSet by deallocating completely. 
 
 Below is the [AllocationManager interface](https://github.com/Layr-Labs/eigenlayer-contracts/blob/725d3df10a82e46003dd5d78d8c814790fff13c1/src/contracts/interfaces/IAllocationManager.sol):
 
@@ -151,20 +151,22 @@ interface IAllocationManager {
     /**
      * @notice Allows an operator to register for one or more operator sets for an AVS. If the operator
      * has any stake allocated to these operator sets, it immediately becomes slashable.
-     * @dev After registering within the ALM, this method calls `avs.registerOperator` to complete
-     * registration. This call MUST succeed in order for registration to be successful.
+     * @dev After registering within the ALM, this method calls the AVS Registrar's `IAVSRegistrar.
+     * registerOperator` method to complete registration. This call MUST succeed in order for
+     * registration to be successful.
      */
     function registerForOperatorSets(
-	address operator, 
-	RegisterParams calldata params
+        address operator, 
+        RegisterParams calldata params
     ) external;
 
     /**
      * @notice Allows an operator or AVS to deregister the operator from one or more of the AVS's operator sets.
      * If the operator has any slashable stake allocated to the AVS, it remains slashable until the
      * DEALLOCATION_DELAY has passed.
-     * @dev After deregistering within the ALM, this method calls `avs.deregisterOperator` to complete
-     * deregistration. If this call reverts, it is ignored.
+     * @dev After deregistering within the ALM, this method calls the AVS Registrar's `IAVSRegistrar.
+     * deregisterOperator` method to complete deregistration. This call MUST succeed in order for
+     * deregistration to be successful.
      */
     function deregisterFromOperatorSets(
         DeregisterParams calldata params
@@ -184,8 +186,8 @@ interface IAllocationManager {
      * @param registrar the new registrar address
      */
     function setAVSRegistrar(
-	address avs, 
-	IAVSRegistrar registrar
+        address avs, 
+        IAVSRegistrar registrar
     ) external;
 
     /**
@@ -196,17 +198,17 @@ interface IAllocationManager {
      *  @dev Note that the `metadataURI` is *never stored* and is only emitted in the `AVSMetadataURIUpdated` event.
      */
     function updateAVSMetadataURI(
-	address avs,
-	string calldata metadataURI
+        address avs,
+        string calldata metadataURI
     ) external;
 
     /**
      * @notice Allows an AVS to create new operator sets, defining strategies that the operator set uses
      */
     function createOperatorSets(
-	address avs, 
-	CreateSetParams[] calldata params
-    ) external
+        address avs, 
+        CreateSetParams[] calldata params
+    ) external;
 
     /**
      * @notice Allows an AVS to add strategies to an operator set
@@ -216,9 +218,9 @@ interface IAllocationManager {
      * @param strategies the strategies to add
      */
     function addStrategiesToOperatorSet(
-	address avs, 
-	uint32 operatorSetId, 
-	IStrategy[] calldata strategies
+        address avs, 
+        uint32 operatorSetId, 
+	    IStrategy[] calldata strategies
     ) external;
 
     /**
@@ -236,7 +238,7 @@ interface IAllocationManager {
 }
 ```
 
-When adding Strategies to Operator Sets, the protocol limits the number of Strategies to 32. There are no enforced limits around the number of Operator Sets an AVS can create or how many Operators may be in a single Operator Set. There may be practical gas cost limitations in Operator Sets. For example, as sizes get very large, it may become impossible to perform an operation on all Operators in an Operator Set within a single transaction.
+There are no enforced limits around the number of strategies in an operatorSet, the number of Operator Sets an AVS can create, or how many Operators may be in a single Operator Set. There may be practical gas cost limitations in Operator Sets. For example, as sizes get very large, it may become impossible to perform an operation on all Operators in an Operator Set within a single transaction.
 
 Going forward, the `AllocationManager` will handle all Operator/AVS relationships. This new registration flow supplants the M2 process in the `AVSDirectory` but will be supported in parallel for some time. Operator Sets will be the sole means of codifying a relationship in the protocol between an AVS and an Operator. We suggest AVSs register Operators to Operator Sets over-time with the new process as they gain clarity in their designs. Operator Set registration will be required to take advantage of Unique Stake and slashing, but is initially additive to the existing M2 process. More on this in the [rationale](./ELIP-002.md#rationale).
 
@@ -311,6 +313,18 @@ The `AllocationManager` interface handles all allocation and deallocation signal
 ```solidity
 interface IAllocationManager {
 
+    /**
+     * @notice Defines allocation information from a strategy to an operator set, for an operator
+     * @param currentMagnitude the current magnitude allocated from the strategy to the operator set
+     * @param pendingDiff a pending change in magnitude, if it exists (0 otherwise)
+     * @param effectBlock the block at which the pending magnitude diff will take effect
+     */
+    struct Allocation {
+        uint64 currentMagnitude;
+        int128 pendingDiff;
+        uint32 effectBlock;
+    }
+
    /**
     * @notice struct used to modify the allocation of slashable magnitude to an operator set
     * @param operatorSet the operator set to modify the allocation for
@@ -323,7 +337,7 @@ interface IAllocationManager {
        uint64[] newMagnitudes;
    }
 
-   /**
+    /**
      * @notice Called by the delegation manager OR an operator to set an operator's allocation delay.
      * This is set when the operator first registers, and is the number of blocks between an operator
      * allocating magnitude to an operator set, and the magnitude becoming slashable.
@@ -331,35 +345,22 @@ interface IAllocationManager {
      * @param delay the allocation delay in blocks
      */
     function setAllocationDelay(
-	address operator, 
-	uint32 delay
+        address operator, 
+        uint32 delay
     ) external;
 
     /**
-     * @notice Modifies the proportions of slashable stake allocated to an operator set  from a list of strategies
+     * @notice Modifies the proportions of slashable stake allocated to an operator set from a list of strategies
      * Note that deallocations remain slashable for DEALLOCATION_DELAY blocks therefore when they are cleared they may
      * free up less allocatable magnitude than initially deallocated.
      * @param operator the operator to modify allocations for
      * @param params array of magnitude adjustments for one or more operator sets
      * @dev Updates encumberedMagnitude for the updated strategies
-     * @dev msg.sender is used as operator
      */
     function modifyAllocations(
-	address operator, 
-	AllocateParams[] calldata params
+        address operator, 
+        AllocateParams[] calldata params
     ) external;
-
-    /**
-     * @notice struct used to modify the allocation of slashable magnitude to an operator set
-     * @param operatorSet the operator set to modify the allocation for
-     * @param strategies the strategies to modify allocations for
-     * @param newMagnitudes the new magnitude to allocate for each strategy to this operator set
-     */
-    struct AllocateParams {
-        OperatorSet operatorSet;
-        IStrategy[] strategies;
-        uint64[] newMagnitudes;
-    }
 
     /**
      * @notice This function takes a list of strategies and for each strategy, removes from the deallocationQueue
@@ -393,7 +394,7 @@ Deallocations act similarly to allocations and are queued in the `AllocationMana
 
 Some notes and caveats impacting UX:
 
-* If an allocation to an Operator Set is made non-slashable by no longer meeting the criteria above, a deallocation does not go through the 14 day `DEALLOCATION_DELAY` and instead takes effect immediately.   
+* If an allocation to an Operator Set is made non-slashable by no longer meeting the criteria above, a deallocation does not go through the 14 day `DEALLOCATION_DELAY` and instead takes effect immediately. This only applies to future deallocations. Note that if the deallocation is already pending, and then the Operator Set is made non-slashable, the deallocation still has to go through the entire delay. 
 * A given (Operator, Strategy) pair can only have one pending allocation *OR* deallocation transaction per Operator Set at a given time.   
 * A single transaction can modify multiple allocations.  
 * An Operator Set deregistration ***does not*** also queue a deallocation. They have to be queued separately, as a deregistration may be used to signal other states, like a period of Operator inactivity. Previously allocated magnitude that has not been deallocated becomes instantly slashable upon re-registration.
@@ -458,13 +459,28 @@ The `AllocationManager` provides the interface for the slashing function:
 
 ```solidity
     /**
-     * @notice Called by an AVS to slash an operator in a given operator set
+     * @notice Called by an AVS to slash an operator in a given operator set. The operator must be registered
+     * and have slashable stake allocated to the operator set.
+     *
+     * @param avs The AVS address initiating the slash.
+     * @param params The slashing parameters, containing:
+     *  - operator: The operator to slash.
+     *  - operatorSetId: The ID of the operator set the operator is being slashed from.
+     *  - strategies: Array of strategies to slash allocations from (must be in ascending order).
+     *  - wadsToSlash: Array of proportions to slash from each strategy (must be between 0 and 1e18).
+     *  - description: Description of why the operator was slashed.
+     *
+     * @dev For each strategy:
+     *      1. Reduces the operator's current allocation magnitude by wadToSlash proportion.
+     *      2. Reduces the strategy's max and encumbered magnitudes proportionally.
+     *      3. If there is a pending deallocation, reduces it proportionally.
+     *      4. Updates the operator's shares in the DelegationManager.
+     *
+     * @dev Small slashing amounts may not result in actual token burns due to
+     *      rounding, which will result in small amounts of tokens locked in the contract
+     *      rather than fully burning through the burn mechanism.
      */
-
-    function slashOperator(
-        address avs,
-        SlashingParams calldata params
-    ) external;
+    function slashOperator(address avs, SlashingParams calldata params) external;
 
     /**
      * @notice Struct containing parameters to slashing
@@ -786,6 +802,10 @@ Stakers will see changes to their risk and reward profile following this upgrade
 
 ## Breaking Changes
 
+### Operator Negative Shares
+
+Operators who have negative shares in the `EigenPodManager` (from a pre-slashing upgrade state) should complete their queued withdrawals before allocating 100% of their stake to a strategy. **Not doing so can result in the currently queued withdrawal being uncompletable.**
+
 ### Custom Errors
 
 All errors, except those originating from externally inherited contracts (eg. OpenZeppelin), have been updated from strings to [custom errors](https://soliditylang.org/blog/2021/04/21/custom-errors/). 
@@ -846,7 +866,7 @@ function getWithdrawableShares(
 ) external view returns (uint256[] memory withdrawableShares, uint256[] memory depositShares);
 ```
 
-*Note: this is read from the `DelegationManager` whereas `stakerDepositShares()` is read from `StrategyManager`. The returned `uint256[] memory depositShares` in this `getWithdrawableShares` function also returns the same `depositShares` from above.* 
+*Note: this is read from the `DelegationManager` whereas `stakerDepositShares()` is read from the `StrategyManager`. The returned `uint256[] memory depositShares` in this `getWithdrawableShares` function also returns the same `depositShares` from above. `podOwnerShares `introspection in the `EigenPodManager` has been deprecated in favor of `podOwnerDepositShares`.* 
 
 `getDelegatableShares` has been removed from the `DelegationManager` in favor of two functions:
 - `getDepositedShares` returns the raw amount a Staker has deposited,
@@ -854,20 +874,20 @@ function getWithdrawableShares(
 
 ```solidity
 /**
-    * @notice Given a staker and a set of strategies, return the shares they can queue for withdrawal and the
-    * corresponding depositShares.
-    * This value depends on which operator the staker is delegated to.
-    * The shares amount returned is the actual amount of Strategy shares the staker would receive (subject
-    * to each strategy's underlying shares to token ratio).
-    */
+ * @notice Given a staker and a set of strategies, return the shares they can queue for withdrawal and the
+ * corresponding depositShares.
+ * This value depends on which operator the staker is delegated to.
+ * The shares amount returned is the actual amount of Strategy shares the staker would receive (subject
+ * to each strategy's underlying shares to token ratio).
+ */
 function getWithdrawableShares(
     address staker,
     IStrategy[] memory strategies
 ) external view returns (uint256[] memory withdrawableShares, uint256[] memory depositShares);
 
 /**
-    * @notice Returns the number of shares in storage for a staker and all their strategies
-    */
+ * @notice Returns the number of shares in storage for a staker and all their strategies
+ */
 function getDepositedShares(
     address staker
 ) external view returns (IStrategy[] memory, uint256[] memory);
