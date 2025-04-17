@@ -1,6 +1,6 @@
 | Author(s) | Created | Status | References | Discussions |
 | :---- | :---- | :---- | :---- | :---- |
-| Matt Nelson, Alex Wade, Yash Patil, Matt Curtis | 2025/02/10 | `final` | [Repository](https://github.com/Layr-Labs/eigenlayer-contracts/tree/dev/src/contracts/pods) | [Discussion Forum](https://forum.eigenlayer.xyz/t/elip-004-slashing-aware-eigenpods/14420) |
+| Matt Nelson, Alex Wade, Yash Patil, Matt Curtis | 2025/02/10 | `merged` | [Repository](https://github.com/Layr-Labs/eigenlayer-contracts/tree/dev/src/contracts/pods) | [Discussion Forum](https://forum.eigenlayer.xyz/t/elip-004-slashing-aware-eigenpods/14420) |
 
 # ELIP-004: Slashing-Aware EigenPods
 
