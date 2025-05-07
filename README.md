@@ -67,5 +67,5 @@ In this early stage, [Eigen Foundation](https://eigenfoundation.org/) and [Eigen
 The Protocol Council will have the sole power to execute/approve proposed improvements to the EigenLayer core contracts. To provide a check on the Protocol Council’s unilateral ability to execute upgrades, the Eigen Labs multisig ([Operations Multisig](https://docs.eigenfoundation.org/protocol-governance/technical-architecture) holds the role of canceler on the timelock and can cancel the approved proposals of the Protocol Council. The power to propose/veto transactions in the timelock will be further decentralized in the future. 
 
 ## Who manages the ELIP process?
-The [Eigen Foundation](https://eigenfoundation.org/) maintains the ELIP repository and process. Currently @non-fungible-nelson,  @abbey-titcomb 
+The [Eigen Foundation](https://eigenfoundation.org/) maintains the ELIP repository and process.
 
