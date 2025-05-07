@@ -1,6 +1,6 @@
 | Author(s) | Created | Status | References | Discussions |
 |-------------|-----------|---------|------|----------|
-| [Matt Nelson](mailto:matt.nelson@eigenlabs.org) | 2025-04-30 | `Draft` | [List of relevant work/PRs, if any] | [Link to discussion forum or thread] |
+| [Matt Nelson](mailto:matt.nelson@eigenlabs.org) | 2025-04-30 | `Draft` | [List of relevant work/PRs, if any] | [Discussion Forum Post](https://forum.eigenlayer.xyz/t/elip-006-redistributable-slashing/14553) |
 
 # ELIP-006: Redistributable Slashing
 
