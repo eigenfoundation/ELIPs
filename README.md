@@ -23,36 +23,16 @@ In the early stages, ideas for ELIPs and early drafts are discussed in the "ELIP
 
 As the ELIP is developed, the corresponding PR is tracked publicly on the repository using **tags**. Each tag designates a stage of ELIP development. To move from stage to stage, ELIPs must meet specific requirements laid out below. Maintainers of the ELIP repository are responsible for 1) verifying that ELIPs meet the set requirements and 2) updating the PR tags as such. 
 
-idea = pre-ELIP stakeholder feedback on potential upcoming features, unstructured 
-gates: executive summary, motivation, some of the interfaces
-Forum Post + Draft PR / Branch
-
-draft = requirements, interfaces, 
-gates: need all ELIP fields filled out (no TBDs)
-Accepted PR - 1 or 2 maintainers need to accept & merge PRs
-Update tag on Forum
-
-testing = proposal is in testnet, ready for audit
-gates: proposal is in testnet, ready for audit
-	Update tag on Forum
-
-council review = proposal is ready to move to mainnet, audited [time-boxed]
-
-approved = proposal has been approved by Protocol Council 
-
-ONCE Protocol Council approves ELIP, THEN the ELIP is queued.
-
-merged = proposal has gone live on mainnet
-
 * `idea`: *pre-ELIP proposal is ready for ecosystem feedback*
     Requirements: 
         * Executive Summary
         * Motivation for Changes
         * Interfaces (if any)
+        * PR is opened
 * `draft`: *proposal is in pre-production, ready for audit*
     Requirements:
         * All fields in ELIP template are completed (no TBDs)
-        * Forum Ppost is published
+        * Correspondng forum post is published
 * `testing`: *proposal is in testnet*
     Requirements:
         * ELIP is in testnet
