@@ -24,28 +24,28 @@ In the early stages, ideas for ELIPs and early drafts are discussed in the "ELIP
 As the ELIP is developed, the corresponding PR is tracked publicly on the repository using **tags**. Each tag designates a stage of ELIP development. To move from stage to stage, ELIPs must meet specific requirements laid out below. Maintainers of the ELIP repository are responsible for 1) verifying that ELIPs meet the set requirements and 2) updating the PR tags as such. 
 
 * `idea`: *pre-ELIP proposal is ready for ecosystem feedback*
-    Requirements: 
+    * Requirements: 
         * Executive Summary
         * Motivation for Changes
         * Interfaces (if any)
         * PR is opened
 * `draft`: *proposal is in pre-production, ready for audit*
-    Requirements:
+    * Requirements:
         * All fields in ELIP template are completed (no TBDs)
         * Correspondng forum post is published
 * `testing`: *proposal is in testnet*
-    Requirements:
+    * Requirements:
         * ELIP is in testnet
         * ELIP is ready for audit
         * Corresponding forum post is updated
 * `final`: *proposal is ready to move to mainnet (see Proposing to the Protocl Council)*
-    Requirements:
+    * Requirements:
         * ELIP has been audited, results published
         * ELIP is ready for mainnet
         * ELIP is ready for Protocol Council review
         * Corresponding forum post is updated
 * `approved`: *proposal has been approved by Protocol Council*
-    Requirements:
+    * Requirements:
         * ELIP has been approved by Protocol Council
         * Protocol Council has published evaluation on forum
         * Corresponding forum post has been updated
@@ -67,4 +67,5 @@ In this early stage, [Eigen Foundation](https://eigenfoundation.org/) and [Eigen
 The Protocol Council will have the sole power to execute/approve proposed improvements to the EigenLayer core contracts. To provide a check on the Protocol Council’s unilateral ability to execute upgrades, the Eigen Labs multisig ([Operations Multisig](https://docs.eigenfoundation.org/protocol-governance/technical-architecture) holds the role of canceler on the timelock and can cancel the approved proposals of the Protocol Council. The power to propose/veto transactions in the timelock will be further decentralized in the future. 
 
 ## Who manages the ELIP process?
-The [Eigen Foundation](https://eigenfoundation.org/) maintains the ELIP repository and process. 
+The [Eigen Foundation](https://eigenfoundation.org/) maintains the ELIP repository and process. Currently @non-fungible-nelson,  @abbey-titcomb 
+
