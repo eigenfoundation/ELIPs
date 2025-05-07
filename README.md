@@ -38,7 +38,7 @@ As the ELIP is developed, the corresponding PR is tracked publicly on the reposi
         * ELIP is in testnet
         * ELIP is ready for audit
         * Corresponding forum post is updated
-* `final`: *proposal is ready to move to mainnet (see Proposing to the Protocl Council)*
+* `final`: *proposal is ready to move to mainnet (see **Proposing to the Protocol Council** below)*
     * Requirements:
         * ELIP has been audited, results published
         * ELIP is ready for mainnet
