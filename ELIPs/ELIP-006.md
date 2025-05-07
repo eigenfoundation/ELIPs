@@ -10,13 +10,13 @@
 
 Slashing ([ELIP-002](./ELIP-002.md))is a key piece of EigenLayer’s vision; it enables enforcement of crypto-economic commitments made by Service builders to their consumers and users. When leveraging slashing on EigenLayer today, security funds are always burned or locked when penalizing Operators. This creates a challenge for builders of use-cases that involve lending, insurance, risk hedging, or, broadly, commitments with a need to compensate harmed parties or amortize risk.
 
-Redistributable Slashing is a feature that gives Service Builders a means to not just burn, but repurpose slashed funds. Redistribution represents an expansion of the types of use-cases builders can launch on EigenLayer, by expanding the expressivity of slashing conditions on the platform. A new type of Operator Set with strict configuration controls allows for specifying a redistribution recipient by the AVS that receives slashed funds. This new feature requires, and is shipped with, adjustments to the EigenLayer security model and stake guarantees for AVSs to support this new slashing paradigm.
+Redistributable Slashing is a feature that gives Service Builders a means to not just burn, but repurpose slashed funds. Redistribution represents an expansion of the types of use-cases builders can launch on EigenLayer, by expanding the expressivity of slashing on the platform. A new type of Operator Set with strict configuration controls allows for specifying a redistribution recipient by the AVS that receives slashed funds. This new feature requires, and is shipped with, adjustments to the EigenLayer security model and stake guarantees for AVSs to support this new slashing paradigm.
 
 # Motivation
 
-Currently, slashings within EigenLayer cause an immediate and irreversible burn of funds. No recourse mechanisms for the broken commitments or conditions for the slashing are provided or supported by the protocol. The existing slashing mechanism is also restrictive in terms of capital expressivity; funds are either permanently destroyed or necessitate off-protocol methods to repurpose. This limitation significantly narrows the scope of potential applications—particularly in key areas like insurance and lending. Meanwhile, out-of-protocol or competing solutions embrace redistributable slashing. The absence of redistribution impacts Service Builders exploring slashing itself, creating advanced tokenomic models and liquidity strategies that could enhance token value accrual and liquidity profile.
+Slashings within EigenLayer cause an immediate and irreversible burn of funds. The existing slashing mechanism is restrictive in terms of capital expressivity; funds are either permanently destroyed or necessitate off-protocol methods to repurpose. This limitation significantly narrows the scope of potential applications—particularly in key areas like insurance and lending. Meanwhile, out-of-protocol or competing solutions embrace redistributable slashing. The absence of redistribution impacts Service Builders exploring new token models and liquidity strategies for use-cases like DeFi or insurance.
 
-Introducing redistributable slashing significantly expands the expressivity and practicality of slashing on EigenLayer. More sophisticated slashing conditions unblock valuable protocol applications such as insurance, lending, bridging, and DeFi services on EigenLayer. Enabling Service Builders to design protocols around redistributable slashing improves capital efficiency for AVSs, Operators, and Stakers by through new liquidity and yield opportunities. These slashing changes represent high-impact opportunities with only modest engineering effort. 
+Introducing redistributable slashing significantly expands the expressivity and practicality of slashing on EigenLayer. More sophisticated slashing unblocks valuable protocol applications such as insurance, lending, bridging, and DeFi services on EigenLayer. Enabling Service Builders to design protocols around redistributable slashing improves capital efficiency for AVSs, Operators, and Stakers through new liquidity and yield opportunities. These slashing changes represent high-impact opportunities with only modest engineering effort. 
 
 Collectively, Redistributable slashing promises expanded use-case diversity, greater AVS participation, increased value accrual for both security assets and AVS tokens, and ultimately, stronger revenue growth in the EigenLayer ecosystem.
 
@@ -37,7 +37,7 @@ These changes are externally facing in the `AllocationManager` interface. This i
 
 ### Redistributing Operator Sets
 
-To take advantage of redistributable slashing, an AVS must instantiate a new `RedistributingOperatorSet`. These sets specify a `redistributionRecipient` address that CANNOT be changed later on. AVSs may set whatever contracts they like upstream, but should make strong guarantees about they way they function in order to attract and retain Stakers and Operators. 
+To take advantage of redistributable slashing, an AVS must instantiate a new `RedistributingOperatorSet`. These sets specify a `redistributionRecipient` address that CANNOT be changed later on. AVSs may set whatever contracts they like upstream, but should make strong guarantees about the way they function in order to attract and retain Stakers and Operators. 
 
 New getter and setter functions are provided in the `AllocationManger` interface: 
 
@@ -159,7 +159,7 @@ interface IShareManager {
 } 
 ```
 
-The `StrategyManager` interface has more numerous changes. Here we have added the additional `burnOrDistribute` shares function alongside the original `burnShares`. The logic remains largely the same. This function is permissionless and asynchronous with regard to `slashOperator`. It is provided in a few forms for convenience, depending on *how many or what type* of slashes are being distributed. By consuming the Operator Set, these functions can also parse where to send the funds, via the `redistributionRecipient`.
+The `StrategyManager` interface has numerous changes. Here we have added the additional `burnOrDistribute` shares function alongside the original `burnShares`. The logic remains largely the same. This function is permissionless and asynchronous with regard to `slashOperator`. It is provided in a few forms for convenience, depending on *how many or what type* of slashes are being distributed. By consuming the Operator Set, these functions can also parse where to send the funds, via the `redistributionRecipient`.
 
 ```solidity
 interface IStrategyManager {
@@ -262,24 +262,29 @@ To recap:
 
 Redistributable slashing is a modest upgrade in code, but has broad ramifications to the incentives and guarantees of the EigenLayer system. The majority of the design in this proposal is to ensure as much safety as possible for Stakers as redistribution creates a direct increase in the incentive to slash Operators by AVSs. 
 
-As funds are released from the protocol to an address specified by the AVS, it is important that Stakers have the right legibility to understand the risk of allocating to any Operators running an AVS with redistributable slashing enabled. This is the primary reason for the `redistributionRecipient` being a immutable address that must be set at the instantiation of the Operator Set. This provides a few guarantees:
+As funds are released from the protocol to an address specified by the AVS, it is important that Stakers have the right legibility to understand the risk of allocating to any Operators running an AVS with redistributable slashing enabled. This is the primary reason for the `redistributionRecipient` being an immutable address that must be set at the instantiation of the Operator Set. This provides a few guarantees:
 
-- The AVS cannot change this address at will. While they may use an upstream proxy or pass-through contract, the immutability of this address in EigenLayer means an AVS can layer additional guarantees by setting an immutable contract upstream, or something like a governance multi-sig.
-- Requiring an Operator Set to be redistributable at its creation. The protocol can make guarantees to Stakers and Operators over the lifetime of that Operator Set. A standard Operator Set cannot suddenly redistribute. And one that redistributes cannot remove that property.
+- The AVS cannot change this address. While they may use an upstream proxy or pass-through contract, the immutability of this address in EigenLayer means an AVS can layer additional guarantees by guarding the upgradability of the upstream contract via controls such as governance, timelocks, immutability, etc.
+- The capability to redistribute cannot be modified. An Operator Set must be redistributable at its creation. As a result, the protocol can make guarantees to Stakers and Operators over the lifetime of that Operator Set. A standard Operator Set cannot suddenly redistribute. And one that redistributes cannot remove that property.
 - Legibility on the front-end and in metadata. By forcing immutability of the above properties, EigenLayer can better differentiate on its application and in chain meta-data where redistributable slashing is enabled for its users (and any implied or associated risk and reward tradeoffs of interaction).
 
-These guarantees provide some means counter to the change to slashing risk and incentive. Additionally, the `slasher` address for the AVS is added to the Operator Set to make the same types of guarantees about what sits at that address and its immutability (or lack thereof). As redistributable slashing changes the incentive to slash, making guarantees about the slashing contract address is important. This is why we have removed this functionality from [UAM](./ELIP-003.md). 
+These guarantees provide a hedge to increased slashing risk and changed incentives. 
 
-**TODO: ANY DELAYS**
+**TODO: UPDATE BELOW AFTER DESIGN DECISION**
+
+> Additionally, the `slasher` address for the AVS is added to the Operator Set to make the same types of guarantees about what sits at that address and its immutability (or lack thereof). As redistributable slashing changes the incentive to slash, making guarantees about the slashing contract address is important. This is why we have removed this functionality from [UAM](./ELIP-003.md). 
+
+**TODO: ANY DELAYS ^^** 
 
 ## Native ETH Redistribution 
 
-On Native ETH redistribution, the rationale its exclusion is primarily tied to mechanics of the beacon chain and a desire to avoid impacting Ethereum's proof of stake network. With redistributable slashing on the ETH strategy, exiting validators from the beacon chain to compensate the `redistributionRecipient` is required. This presumes a partial withdrawal does not cover the balance of the slash. Consistently exiting Ethereum validators creates some problems for users and the network:
+Native ETH will not be included in the scope of this proposal. Its exclusion is primarily tied to mechanics of the beacon chain. With redistributable slashing on the ETH strategy, exiting validators from the beacon chain to compensate the `redistributionRecipient` is required. We cannot make guarantees that the effective balance is high enough or that a partial withdrawal covers the balance of a slash without dipping validator balance below the 32 ETH minimum. 
 
-- Exits require waiting in the validator exit queue, which can range in length from hours to weeks. AVSs will not have access to any funds until this queue is cleared, which can impact programmatic designs. 
-- Re-entering the validator, if the Staker or Operator chooses, will require creating and managing new keys, waiting in the entrance queue, and associated validator overhead, which is prone to user error.
-- Impacts network security, in some adversarial cases. 
-- Forgoes any Ethereum validator rewards during slash adjudication and reimbursement. 
+Consistently exiting Ethereum validators creates some problems for users and the network:
+
+- Exits require waiting in the validator exit queue, which can range in length from hours to weeks. 
+- Funds have to wait to be swept before they will arrive at the specified withdrawal addresses in EigenPods. AVSs will not have access to any funds until this queue is cleared, which can impact programmatic designs.
+- Impacts Ethereum network security, in some adversarial cases. 
 
 Together, these are enough to forgo this scope in the initial implementation of redistributable slashing. With the increase in the [max effective balance of validators](https://eips.ethereum.org/EIPS/eip-7251) being shipped in Pectra, there are possible designs that can alleviate the above concerns (like partial withdrawals above the minimum required balance of 32 ETH). These are being actively explored as part of improvements to EigenPods.  
 
@@ -294,7 +299,7 @@ Together, these are enough to forgo this scope in the initial implementation of 
 
 AVSs will gain access to a powerful new primitive in redistributable slashing upon which to develop use-cases. This comes with an even heavier emphasis on proper key management and op-sec requirements. An attacker that gains access to AVS keys on the `slasher` and `redistributionRecipient` can drain the entirety of Operator and Staker allocated stake for a given Operator Set. This will have heavy repercussions on the AVSs reputation and continued trust. 
 
-Redistribution modifies the incentive to slash *by the AVS*, so, when leveraging this feature, AVSs need to carefully consider incentives in their designs. When handled appropriately, AVSs will have access to more liquid stake and higher risk to hose running their code, which should be countered with additional rewards to price these levers with the right incentives. 
+Because redistribution may allow AVSs to benefit from slashing, additional design care must be taken to consider the incentives of all parties that can interact with it. When handled appropriately, AVSs will have access to more liquid stake and higher risk to hose running their code, which should be countered with additional rewards to price these levers with the right incentives.
 
 ## Operators
 
