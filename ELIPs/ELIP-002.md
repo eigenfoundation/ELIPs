@@ -385,7 +385,7 @@ Magnitude allocations can only be made to valid Operator Sets and only from non-
 
 ***An AVS may slash an Operator up to the total allocated amount of Unique Stake per Strategy under the following conditions:***
 
-* ***The Operator is registered to the Operator Set the AVS wishes to slash.***  
+* ***The Operator is registered to the Operator Set the AVS wishes to slash (or it is within 14 days of an Operator deregsitration).***  
 * ***The Operator Set is configured to include the allocated strategy.***
 
 ***Deallocations are the primary means of making Unique Stake non-slashable.*** ***Operators should handle allocations to registered Operator Sets as if they can be slashed at any time.*** For example, AVSs may add or remove Strategies to Operator Sets at will, which may instantly make any allocated strategy slashable. Deregistration from an Operator Set is another such case. An Operator is slashable by that Operator Set for the duration of the `DEALLOCATION_DELAY` after a deregistration, but the allocations to that Operator Set _will still exist._ If the Operator re-registers after the delays have elapsed, those Operator Set allocations immediately become slashable again.
