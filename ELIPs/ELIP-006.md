@@ -16,7 +16,7 @@ Redistributable Slashing is a feature that gives Service Builders a means to not
 
 Slashings within EigenLayer cause an immediate and irreversible burn of funds. The existing slashing mechanism is restrictive in terms of capital expressivity; funds are either permanently destroyed or necessitate off-protocol methods to repurpose. This limitation significantly narrows the scope of potential applications—particularly in key areas like insurance and lending. Meanwhile, out-of-protocol or competing solutions embrace redistributable slashing. The absence of redistribution impacts Service Builders exploring new token models and liquidity strategies for use-cases like DeFi or insurance.
 
-Introducing redistributable slashing significantly expands the expressivity and practicality of slashing on EigenLayer. More sophisticated slashing unblocks valuable protocol applications such as insurance, lending, bridging, and DeFi services on EigenLayer. Enabling Service Builders to design protocols around redistributable slashing improves capital efficiency for AVSs, Operators, and Stakers through new liquidity and yield opportunities. These slashing changes represent high-impact opportunities with only modest engineering effort. 
+Introducing redistributable slashing significantly expands the expressivity and practicality of slashing on EigenLayer. More sophisticated slashing unblocks valuable protocol applications such as insurance, lending, bridging, and DeFi services on EigenLayer. Enabling Service Builders to design protocols around redistributable slashing improves capital efficiency for AVSs, Operators, and Stakers. These slashing changes represent high-impact opportunities with only modest engineering effort.
 
 Collectively, Redistributable slashing promises expanded use-case diversity, greater AVS participation, increased value accrual for both security assets and AVS tokens, and ultimately, stronger revenue growth in the EigenLayer ecosystem.
 
@@ -24,22 +24,22 @@ Collectively, Redistributable slashing promises expanded use-case diversity, gre
 
 ## Overview
 
-As of today, when slashed, funds are burned at the `0x0...00316e4` address. This is done asynchronously following the `slashOperator` function. There is more detail in [ELIP-002](./ELIP-002.md#slashing-of-unique-stake) on slashing mechanics. The same `slashOperator` mechanics apply, in large part. Redistributable Slashing requires minimal changes to the core protocol...
+As of today, when slashed, ERC-20 funds are burned at the `0x0...00316e4` address; EigenPod funds are permanently locked. This is done asynchronously following the `slashOperator` function. There is more detail in [ELIP-002](./ELIP-002.md#slashing-of-unique-stake) on slashing mechanics. The same `slashOperator` mechanics apply, in large part. Redistributable Slashing requires minimal changes to the core protocol...
 
 - to create a new type of Redistributable Operator Set,
 - to handle a `redistributionRecipient`, that replaces the burn address when `burnFunds` is called to transfer funds out of the protocol,
 - to better decorate a slash with identifiers that help in upstream programmatic redistribution,
-- and to modify some permission handling to strengthen guarantees of `slashOperator`. 
+- and to modify some permission handling to strengthen guarantees of `slashOperator`.
 
-These changes are externally facing in the `AllocationManager` interface. This is accompanied by changes to the storage of the `AllocationManager` as well. Internally, we have modified the `ShareManager` and `StrategyManager` interfaces, as well as some storage and internal logic. The `PermissionController` is modified to address new role enforcement surrounding the Slasher. 
+These changes are externally facing in the `AllocationManager` interface. This is accompanied by changes to the storage of the `AllocationManager` as well. Internally, we have modified the `ShareManager` and `StrategyManager` interfaces, as well as some storage and internal logic. The `PermissionController` is modified to address new role enforcement surrounding the Slasher.
 
 ## Specifications
 
 ### Redistributing Operator Sets
 
-To take advantage of redistributable slashing, an AVS must instantiate a new `RedistributingOperatorSet`. These sets specify a `redistributionRecipient` address that CANNOT be changed later on. AVSs may set whatever contracts they like upstream, but should make strong guarantees about the way they function in order to attract and retain Stakers and Operators. 
+To take advantage of redistributable slashing, an AVS must instantiate a new `RedistributingOperatorSet`. These sets specify a `redistributionRecipient` address that CANNOT be changed later on. AVSs may set whatever contracts they like upstream, but should make strong guarantees about the way they function in order to attract and retain Stakers and Operators.
 
-New getter and setter functions are provided in the `AllocationManger` interface: 
+New getter and setter functions are provided in the `AllocationManger` interface:
 
 ```solidity
 interface IAllocationManager {
@@ -132,7 +132,7 @@ abstract contract AllocationManagerStorage {
 }
 ```
 
-The [logic and control flow for Operator Set creation and registration](./ELIP-002.md#creation-registration--deregistration) as it relates to the protocol and `AVSRegistrar` contract remain the same. 
+The [logic and control flow for Operator Set creation and registration](./ELIP-002.md#creation-registration--deregistration) as it relates to the protocol and `AVSRegistrar` contract remain the same.
 
 ## Redistribution Flow & Distribution Mechanics
 
@@ -193,9 +193,9 @@ interface IStrategyManager {
      * @dev This is a permissionless function callable by anyone
      */
     function burnOrDistributeShares(
-		    OperatorSet memory operatorSet
-		    uint256 slashId
-		);
+            OperatorSet memory operatorSet
+            uint256 slashId
+        );
 
     /**  
      * @notice: THIS MAY BE DELETED IN FINAL INTERFACE
@@ -224,7 +224,7 @@ interface IStrategyManager {
 
 **TODO: Update for pending decision RE instant redistributions**
 
-Below is a sequence diagram outlining the new flows: 
+Below is a sequence diagram outlining the new flows:
 
 ```mermaid
 sequenceDiagram
@@ -246,11 +246,11 @@ sequenceDiagram
     StrategyManager-->>Redistribution Address: Funds are redistributed to the configured recipient address
 ```
 
-The `EigenPodManager` interfaces are updated to avoid breaking changes in the internal flows. 
+The `EigenPodManager` interfaces are updated to avoid breaking changes in the internal flows.
 
 To recap:
 
-- New Operator Set types enable a fixed `redistributionRecipient`. 
+- New Operator Set types enable a fixed `redistributionRecipient`.
 - Additional meta-data has been added to each slash to help AVSs build programmatic redistribution.
 - The `StrategyManager` has a modified flow to accommodate redistribution versus burning.
 
@@ -260,7 +260,7 @@ To recap:
 
 ## Guarantees & Legibility  
 
-Redistributable slashing is a modest upgrade in code, but has broad ramifications to the incentives and guarantees of the EigenLayer system. The majority of the design in this proposal is to ensure as much safety as possible for Stakers as redistribution creates a direct increase in the incentive to slash Operators by AVSs. 
+Redistributable slashing is a modest upgrade in code, but has broad ramifications to the incentives and guarantees of the EigenLayer system. The majority of the design in this proposal is to ensure as much safety as possible for Stakers as redistribution creates a direct increase in the incentive to slash Operators by AVSs.
 
 As funds are released from the protocol to an address specified by the AVS, it is important that Stakers have the right legibility to understand the risk of allocating to any Operators running an AVS with redistributable slashing enabled. This is the primary reason for the `redistributionRecipient` being an immutable address that must be set at the instantiation of the Operator Set. This provides a few guarantees:
 
@@ -268,23 +268,23 @@ As funds are released from the protocol to an address specified by the AVS, it i
 - The capability to redistribute cannot be modified. An Operator Set must be redistributable at its creation. As a result, the protocol can make guarantees to Stakers and Operators over the lifetime of that Operator Set. A standard Operator Set cannot suddenly redistribute. And one that redistributes cannot remove that property.
 - Legibility on the front-end and in metadata. By forcing immutability of the above properties, EigenLayer can better differentiate on its application and in chain meta-data where redistributable slashing is enabled for its users (and any implied or associated risk and reward tradeoffs of interaction).
 
-These guarantees provide a hedge to increased slashing risk and changed incentives. 
+These guarantees provide a hedge to increased slashing risk and changed incentives.
 
 **TODO: UPDATE BELOW AFTER DESIGN DECISION**
 
-> Additionally, the `slasher` address for the AVS is added to the Operator Set to make the same types of guarantees about what sits at that address and its immutability (or lack thereof). As redistributable slashing changes the incentive to slash, making guarantees about the slashing contract address is important. This is why we have removed this functionality from [UAM](./ELIP-003.md). 
+> Additionally, the `slasher` address for the AVS is added to the Operator Set to make the same types of guarantees about what sits at that address and its immutability (or lack thereof). As redistributable slashing changes the incentive to slash, making guarantees about the slashing contract address is important. This is why we have removed this functionality from [UAM](./ELIP-003.md).
 
-**TODO: ANY DELAYS ^^** 
+**TODO: ANY DELAYS ^^**
 
-## Native ETH Redistribution 
+## Native ETH Redistribution
 
-Native ETH will not be included in the scope of this proposal. Its exclusion is primarily tied to mechanics of the beacon chain. With redistributable slashing on the ETH strategy, exiting validators from the beacon chain to compensate the `redistributionRecipient` is required. We cannot make guarantees that the effective balance is high enough or that a partial withdrawal covers the balance of a slash without dipping validator balance below the 32 ETH minimum. 
+Native ETH will not be included in the scope of this proposal. Its exclusion is primarily tied to mechanics of the beacon chain. With redistributable slashing on the ETH strategy, exiting validators from the beacon chain to compensate the `redistributionRecipient` is required. We cannot make guarantees that the effective balance is high enough or that a partial withdrawal covers the balance of a slash without dipping validator balance below the 32 ETH minimum.
 
 Consistently exiting Ethereum validators creates some problems for users and the network:
 
-- Exits require waiting in the validator exit queue, which can range in length from hours to weeks. 
+- Exits require waiting in the validator exit queue, which can range in length from hours to weeks.
 - Funds have to wait to be swept before they will arrive at the specified withdrawal addresses in EigenPods. AVSs will not have access to any funds until this queue is cleared, which can impact programmatic designs.
-- Impacts Ethereum network security, in some adversarial cases. 
+- Impacts Ethereum network security, in some adversarial cases.
 
 Together, these are enough to forgo this scope in the initial implementation of redistributable slashing. With the increase in the [max effective balance of validators](https://eips.ethereum.org/EIPS/eip-7251) being shipped in Pectra, there are possible designs that can alleviate the above concerns (like partial withdrawals above the minimum required balance of 32 ETH). These are being actively explored as part of improvements to EigenPods.  
 
@@ -292,24 +292,23 @@ Together, these are enough to forgo this scope in the initial implementation of 
 
 **TODO: DELAY ADDITION FOR TVL DRAIN & STAKE WASHING**
 
-
 # Impact Summary
 
 ## AVSs & Service Builders
 
-AVSs will gain access to a powerful new primitive in redistributable slashing upon which to develop use-cases. This comes with an even heavier emphasis on proper key management and op-sec requirements. An attacker that gains access to AVS keys on the `slasher` and `redistributionRecipient` can drain the entirety of Operator and Staker allocated stake for a given Operator Set. This will have heavy repercussions on the AVSs reputation and continued trust. 
+AVSs will gain access to a powerful new primitive in redistributable slashing upon which to develop use-cases. This comes with an even heavier emphasis on proper key management and op-sec requirements. An attacker that gains access to AVS keys on the `slasher` and `redistributionRecipient` can drain the entirety of Operator and Staker allocated stake for a given Operator Set. This will have heavy repercussions on the AVSs reputation and continued trust.
 
 Because redistribution may allow AVSs to benefit from slashing, additional design care must be taken to consider the incentives of all parties that can interact with it. When handled appropriately, AVSs will have access to more liquid stake and higher risk to hose running their code, which should be countered with additional rewards to price these levers with the right incentives.
 
 ## Operators
 
-Operators must similarly ensure focus is given to key management and op-sec when running *any* redistributable AVS. A compromise in an Operator key could cause a malicious actor to register for a malicious AVS, and slash and redistribute allocated Staker funds to some address. Operators would suffer potentially irreparable reputational damage and distrust from Stakers. 
+Operators must similarly ensure focus is given to key management and op-sec when running *any* redistributable AVS. A compromise in an Operator key could cause a malicious actor to register for a malicious AVS, and slash and redistribute allocated Staker funds to some address. Operators would suffer potentially irreparable reputational damage and distrust from Stakers.
 
-Operators should be aware that meta-data will identify them as `Redistributable` when participating in any redistributing Operator Sets. This is to aid in Staker risk legibility. Operators may wish to avoid this change in their presented profile when seeking to attract Stake (or may chose to engage protocols of various risks with higher rewards). Running an Operator Set with redistributable slashing will always remain opt-in for Operators. 
+Operators should be aware that meta-data will identify them as `Redistributable` when participating in any redistributing Operator Sets. This is to aid in Staker risk legibility. Operators may wish to avoid this change in their presented profile when seeking to attract Stake (or may chose to engage protocols of various risks with higher rewards). Running an Operator Set with redistributable slashing will always remain opt-in for Operators.
 
-## Stakers 
+## Stakers
 
-This proposal has the largest impact to the risk, reward, and incentive model for Stakers. In general, there is a larger incentive to slash user funds when redistribution is enabled. Stakers should carefully consider the protocols that their delegated Operators are running, and consider the risk and reward trade-offs. Redistributable Operator Sets may offer higher rewards, but these should be considered against the increased slashing risks. 
+This proposal has the largest impact to the risk, reward, and incentive model for Stakers. In general, there is a larger incentive to slash user funds when redistribution is enabled. Stakers should carefully consider the protocols that their delegated Operators are running, and consider the risk and reward trade-offs. Redistributable Operator Sets may offer higher rewards, but these should be considered against the increased slashing risks.
 
 Additionally, Stakers are potentially at risk from malicious AVSs and malicious Operator. If the AVSs governance or its slashing functionality is corrupted, an attacker may be able to drain Operator-delegated funds. If an Operator itself is compromised, it may stand-up its own AVS to steal user funds. Stakers should carefully consider the reputation and legitimacy of Operators when making delegations. These attack scenarios are outlined in more detail [here](https://forum.eigenlayer.xyz/t/risks-of-an-in-protocol-redistribution-design/14458).
 
@@ -321,7 +320,7 @@ This proposal will move to a testing phase on testnet with the above interfaces 
 2. Public testing period and iteration of the code-base, with a public audit and associated patches (next)
 3. Evaluation by Protocol Council and release to Mainnet, following acceptance (later)
 
-This proposal is intended to be completed within a two to three month period. 
+This proposal is intended to be completed within a two to three month period.
 
 # References & Relevant Discussions
 
