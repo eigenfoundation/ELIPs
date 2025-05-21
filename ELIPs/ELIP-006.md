@@ -14,7 +14,7 @@ Redistributable Slashing is a feature that gives Service Builders a means to not
 
 # Motivation
 
-Slashings within EigenLayer cause an immediate and irreversible burn of funds. The existing slashing mechanism is restrictive in terms of capital expressivity; funds are either permanently destroyed or necessitate off-protocol methods to repurpose. This limitation significantly narrows the scope of potential applications—particularly in key areas like insurance and lending. Meanwhile, out-of-protocol or competing solutions embrace redistributable slashing. The absence of redistribution impacts Service Builders exploring new token models and liquidity strategies for use-cases like DeFi or insurance.
+Slashings within EigenLayer cause an immediate and irreversible burn of funds. The existing slashing mechanism is restrictive in terms of capital expressivity; funds are either permanently destroyed or necessitate off-protocol methods to repurpose. This limitation significantly narrows the scope of potential applications—particularly in key areas like insurance and lending. Meanwhile, out-of-protocol or competing solutions embrace redistributable slashing. The absence of redistribution impacts Service Builders exploring use-cases like DeFi or insurance.
 
 Introducing redistributable slashing significantly expands the expressivity and practicality of slashing on EigenLayer. More sophisticated slashing unblocks valuable protocol applications such as insurance, lending, bridging, and DeFi services on EigenLayer. Enabling Service Builders to design protocols around redistributable slashing improves capital efficiency for AVSs, Operators, and Stakers. These slashing changes represent high-impact opportunities with only modest engineering effort.
 
@@ -24,14 +24,16 @@ Collectively, Redistributable slashing promises expanded use-case diversity, gre
 
 ## Overview
 
-As of today, when slashed, ERC-20 funds are burned at the `0x0...00316e4` address; EigenPod funds are permanently locked. This is done asynchronously following the `slashOperator` function. There is more detail in [ELIP-002](./ELIP-002.md#slashing-of-unique-stake) on slashing mechanics. The same `slashOperator` mechanics apply, in large part. Redistributable Slashing requires minimal changes to the core protocol...
+As of today, when slashed, ERC-20 funds are burned at the `0x0...00316e4` address; EigenPod Native ETH funds are permanently locked when slashed. This is done asynchronously following the `slashOperator` function. There is more detail in [ELIP-002](./ELIP-002.md#slashing-of-unique-stake) on slashing mechanics. The same `slashOperator` mechanics apply, in large part. Redistributable Slashing requires minimal changes to the core protocol...
 
 - to create a new type of Redistributable Operator Set,
 - to handle a `redistributionRecipient`, that replaces the burn address when `burnFunds` is called to transfer funds out of the protocol,
-- to better decorate a slash with identifiers that help in upstream programmatic redistribution,
-- and to modify some permission handling to strengthen guarantees of `slashOperator`.
+- to better decorate each slash with an identifier (`slashId`) that helps in downstream programmatic redistribution and accounting,
+- and to modify some permission and withdrawal handling to strengthen guarantees of `slashOperator` (in both the burn and redistribute case).
 
 These changes are externally facing in the `AllocationManager` interface. This is accompanied by changes to the storage of the `AllocationManager` as well. Internally, we have modified the `ShareManager` and `StrategyManager` interfaces, as well as some storage and internal logic. The `PermissionController` is modified to address new role enforcement surrounding the Slasher.
+
+This proposal outlines a new core contract, the `SlashingWithdrawalRouter` that brings new guarantees to `slashOperator`. In the case of an implementation bug that would allow an AVS to slash *beyond its allocated unique stake* (e.g. a total protocol TVL drain), the `SlashingWithdrawalRouter` exists to enable a governance pause and intervention. The `SlashingWithdrawalRouter` applies a four day delay on all slashed funds exiting the protocol to allow for this intervention, whether burned or redistributed.
 
 ## Specifications
 
@@ -115,7 +117,11 @@ interface IAllocationManager {
 }
 ```
 
-`RedistributingOperatorSets` act the same way in the core as normal Operator Sets. We store an additional field in storage that maps that Operator Set ID to a given `redistributionRecipient`. The `slashOperator` function has been updated to return a `slashId` (acting as a nonce), the `strategies` slashed, and the amount slashed in `shares`. This return data is to aid in programmatic handling of funds in redistribution logic by upstream contracts. The new storage model is below:
+`RedistributingOperatorSets` act the same way in the core as normal Operator Sets. The [logic and control flow for Operator Set creation and registration](./ELIP-002.md#creation-registration--deregistration) as it relates to the protocol and `AVSRegistrar` contract remain the same. We store an additional field in storage that maps that Operator Set ID to a given `redistributionRecipient`. [Stake allocation mechanics](ELIP-002#allocating-and-deallocating-to-operator-sets) act the same as other Operator Sets.
+
+### Slash Identifiers
+
+Slashes are largely handled the same as in [the existing protocol](./ELIP-002.md#burning-of-slashed-funds). The `slashOperator` function has been updated to return a `slashId` (acting as a nonce), the `strategies` slashed, and the amount slashed in `shares`. This addition of the `slashId` in return data is to aid in programmatic handling of funds in redistribution logic by upstream (and out-of-protocol) contracts. Accounting of stake has not changed. The new storage model is below:
 
 ```solidity
 abstract contract AllocationManagerStorage {
@@ -132,11 +138,7 @@ abstract contract AllocationManagerStorage {
 }
 ```
 
-The [logic and control flow for Operator Set creation and registration](./ELIP-002.md#creation-registration--deregistration) as it relates to the protocol and `AVSRegistrar` contract remain the same.
-
-## Redistribution Flow & Distribution Mechanics
-
-The redistribution flow remains largely the same as [the slash and burn process](./ELIP-002.md#burning-of-slashed-funds) that exists today. To accommodate redistribution versus burning of funds, the `StrategyManager`, `ShareManager`, and `EigenPodManager` interfaces and internal contracts are modified. Primarily, existing events and functions are modified to handle the addition of the `slashId`. Below the `ShareManager` is modified for `slashId`:
+All core contracts handling a slash, the `DelegationManager`, `ShareManager`, `StrategyManager`, and `EigenPodManager` have certain inputs updated to accept the `slashId`. This is for proper downstream accounting during burn or redistribution of funds. Below the `ShareManager` is modified for `slashId`
 
 ```solidity
 interface IShareManager {
@@ -159,7 +161,250 @@ interface IShareManager {
 } 
 ```
 
-The `StrategyManager` interface has numerous changes. Here we have added the additional `burnOrDistribute` shares function alongside the original `burnShares`. The logic remains largely the same. This function is permissionless and asynchronous with regard to `slashOperator`. It is provided in a few forms for convenience, depending on *how many or what type* of slashes are being distributed. By consuming the Operator Set, these functions can also parse where to send the funds, via the `redistributionRecipient`.
+### Burn & Distribution Mechanics
+
+The flow and code-paths for exiting slashed funds from the protocol have changed. Perviously, funds were exited only through a burn (transfer to `0x00...00316e4`) at a regular cadence. Following this upgrade, when a slash occurs, funds are atomically moved from the `StrategyManager` to the `SlashingWithdrawalRouter`. The `SlashingWithdrawalRouter` now interfaces directly with the `AllocationManager` following a slash. In this contract, slashed funds are escrowed for a four day period to intervene in the case of slashing bugs. ***Funds no longer sit in the `DelegationManager` marked for a `burn` and are no longer exited via functions on the `ShareManager`.*** The new flow is illustrated in the below diagram:
+
+```mermaid
+sequenceDiagram
+    title Redistribution & Burn Flow
+
+    participant AVS
+    participant ALM as Allocation Manager
+    participant DM as Delegation Manager
+    participant SM as Strategy Manager
+    participant SWR as Slashing Withdrawal Router
+    participant BR as Burn Address or Redistribution Recipient
+
+    AVS->>ALM: slashOperator(avs, slashParams)
+    ALM->>DM: slashOperatorShares(operator, strategy, prevMaxMag, newMaxMag)
+    DM->>SM: increaseBurnableShares()
+    SM->>SWR: startBurnOrRedistributeShares()
+    SWR->>SWR: MIN_WITHDRAWAL_DELAY_BLOCKS elapses
+    SWR->>BR: burnOrRedistributeShares()
+```
+
+The rationale for this new contract, process, and delay is [outlined in the rationale](./ELIP-006.md#outflow-delay).  A global minimum withdrawal period per Strategy (token) is introduced, known as the `MIN_WITHDRAWAL_DELAY_BLOCKS`. This is a constant value, set at a minimum of four days, but can be increased for certain assets that require additional constraints in or out of protocol.
+
+The interface for the `SlashingWithdrawalRouter` is provided below:
+
+```solidity
+interface ISlashingWithdrawalRouterErrors {
+    /// @notice Thrown when a caller is not the strategy manager.
+    error OnlyStrategyManager();
+
+    /// @notice Thrown when a caller is not the redistribution recipient.
+    error OnlyRedistributionRecipient();
+
+    /// @notice Thrown when a redistribution is not mature.
+    error RedistributionNotMature();
+
+    /// @notice Thrown when a burn or redistribution delay is less than the minimum burn or redistribution delay.
+    error BurnOrRedistributionDelayLessThanMinimum();
+}
+
+interface ISlashingWithdrawalRouterEvents {
+    /// @notice Emitted when a redistribution is initiated.
+    event StartBurnOrRedistribution(
+        OperatorSet operatorSet, uint256 slashId, IStrategy strategy, uint256 underlyingAmount, uint32 startBlock
+    );
+
+    /// @notice Emitted when a redistribution is released.
+    event BurnOrRedistribution(
+        OperatorSet operatorSet, uint256 slashId, IStrategy strategy, uint256 underlyingAmount, address recipient
+    );
+
+    /// @notice Emitted when a redistribution is paused.
+    event RedistributionPaused(OperatorSet operatorSet, uint256 slashId);
+
+    /// @notice Emitted when a redistribution is unpaused.
+    event RedistributionUnpaused(OperatorSet operatorSet, uint256 slashId);
+
+    /// @notice Emitted when a global burn or redistribution delay is set.
+    event GlobalBurnOrRedistributionDelaySet(uint256 delay);
+
+    /// @notice Emitted when a burn or redistribution delay is set.
+    event StrategyBurnOrRedistributionDelaySet(IStrategy strategy, uint256 delay);
+}
+
+interface ISlashingWithdrawalRouter is ISlashingWithdrawalRouterErrors, ISlashingWithdrawalRouterEvents {
+    /**
+     * @notice Initializes initial admin, pauser, and unpauser roles.
+     * @param initialOwner The initial owner of the router.
+     * @param initialPausedStatus The initial paused status of the router.
+     */
+    function initialize(address initialOwner, uint256 initialPausedStatus) external;
+
+    /**
+     * @notice Locks up a redistribution.
+     * @param operatorSet The operator set whose redistribution is being locked up.
+     * @param slashId The slash ID of the redistribution that is being locked up.
+     * @param strategy The strategy that whose underlying tokens are being redistributed.
+     * @param underlyingAmount The amount of underlying tokens that are being redistributed.
+     */
+    function startBurnOrRedistributeShares(
+        OperatorSet calldata operatorSet,
+        uint256 slashId,
+        IStrategy strategy,
+        uint256 underlyingAmount
+    ) external;
+
+    /**
+     * @notice Releases a redistribution.
+     * @param operatorSet The operator set whose redistribution is being released.
+     * @param slashId The slash ID of the redistribution that is being released.
+     * @dev The caller must be the redistribution recipient, unless the redistribution recipient
+     * is the default burn address in which case anyone can call.
+     */
+    function burnOrRedistributeShares(OperatorSet calldata operatorSet, uint256 slashId) external;
+
+    /**
+     * @notice Pauses a redistribution.
+     * @param operatorSet The operator set whose redistribution is being paused.
+     * @param slashId The slash ID of the redistribution that is being paused.
+     */
+    function pauseRedistribution(OperatorSet calldata operatorSet, uint256 slashId) external;
+
+    /**
+     * @notice Unpauses a redistribution.
+     * @param operatorSet The operator set whose redistribution is being unpaused.
+     * @param slashId The slash ID of the redistribution that is being unpaused.
+     */
+    function unpauseRedistribution(OperatorSet calldata operatorSet, uint256 slashId) external;
+
+    /**
+     * @notice Sets the delay for the burn or redistribution of a strategies underlying token.
+     * @dev If the strategy delay is less than the global delay, the strategy delay will be used.
+     * @param strategy The strategy whose burn or redistribution delay is being set.
+     * @param delay The delay for the burn or redistribution.
+     */
+    function setStrategyBurnOrRedistributionDelay(IStrategy strategy, uint256 delay) external;
+
+    /**
+     * @notice Sets the delay for the burn or redistribution of all strategies underlying tokens globally.
+     * @param delay The delay for the burn or redistribution.
+     */
+    function setGlobalBurnOrRedistributionDelay(
+        uint256 delay
+    ) external;
+
+    /**
+     * @notice Returns the operator sets that have pending burn or redistributions.
+     * @return operatorSets The operator sets that have pending burn or redistributions.
+     */
+    function getPendingOperatorSets() external view returns (OperatorSet[] memory operatorSets);
+
+    /**
+     * @notice Returns the pending slash IDs for an operator set.
+     * @param operatorSet The operator set whose pending slash IDs are being queried.
+     */
+    function getPendingSlashIds(
+        OperatorSet calldata operatorSet
+    ) external view returns (uint256[] memory);
+
+    /**
+     * @notice Returns the pending burn or redistributions for an operator set and slash ID.
+     * @dev This is a variant that returns the pending burn or redistributions for an operator set and slash ID.
+     * @param operatorSet The operator set whose pending burn or redistributions are being queried.
+     * @param slashId The slash ID of the burn or redistribution that is being queried.
+     * @return strategies The strategies that are pending burn or redistribution.
+     * @return underlyingAmounts The underlying amounts that are pending burn or redistribution.
+     */
+    function getPendingBurnOrRedistributions(
+        OperatorSet calldata operatorSet,
+        uint256 slashId
+    ) external view returns (IStrategy[] memory strategies, uint256[] memory underlyingAmounts);
+
+    /**
+     * @notice Returns all pending burn or redistributions for an operator set.
+     * @dev This is a variant that returns all pending burn or redistributions for an operator set.
+     * @param operatorSet The operator set whose pending burn or redistributions are being queried.
+     * @return strategies The nested list of strategies that are pending burn or redistribution.
+     * @return underlyingAmounts The nested list of underlying amounts that are pending burn or redistribution.
+     */
+    function getPendingBurnOrRedistributions(
+        OperatorSet calldata operatorSet
+    ) external view returns (IStrategy[][] memory strategies, uint256[][] memory underlyingAmounts);
+
+    /**
+     * @notice Returns all pending burn or redistributions for all operator sets.
+     * @dev This is a variant that returns all pending burn or redistributions for all operator sets.
+     * @return strategies The nested list of strategies that are pending burn or redistribution.
+     * @return underlyingAmounts The nested list of underlying amounts that are pending burn or redistribution.
+     */
+    function getPendingBurnOrRedistributions()
+        external
+        view
+        returns (IStrategy[][][] memory strategies, uint256[][][] memory underlyingAmounts);
+
+    /**
+     * @notice Returns the number of pending burn or redistributions for an operator set and slash ID.
+     * @param operatorSet The operator set whose pending burn or redistributions are being queried.
+     * @param slashId The slash ID of the burn or redistribution that is being queried.
+     * @return The number of pending burn or redistributions.
+     */
+    function getPendingBurnOrRedistributionsCount(
+        OperatorSet calldata operatorSet,
+        uint256 slashId
+    ) external view returns (uint256);
+
+    /**
+     * @notice Returns the pending underlying amount for a strategy for an operator set and slash ID.
+     * @param operatorSet The operator set whose pending underlying amount is being queried.
+     * @param slashId The slash ID of the burn or redistribution that is being queried.
+     * @param strategy The strategy whose pending underlying amount is being queried.
+     * @return The pending underlying amount.
+     */
+    function getPendingUnderlyingAmountForStrategy(
+        OperatorSet calldata operatorSet,
+        uint256 slashId,
+        IStrategy strategy
+    ) external view returns (uint256);
+
+    /**
+     * @notice Returns the paused status of a redistribution.
+     * @param operatorSet The operator set whose redistribution is being queried.
+     * @param slashId The slash ID of the redistribution that is being queried.
+     * @return The paused status of the redistribution.
+     */
+    function isBurnOrRedistributionPaused(
+        OperatorSet calldata operatorSet,
+        uint256 slashId
+    ) external view returns (bool);
+
+    /**
+     * @notice Returns the start block for a slash ID.
+     * @param operatorSet The operator set whose start block is being queried.
+     * @param slashId The slash ID of the start block that is being queried.
+     * @return The start block.
+     */
+    function getBurnOrRedistributionStartBlock(
+        OperatorSet calldata operatorSet,
+        uint256 slashId
+    ) external view returns (uint256);
+
+    /**
+     * @notice Returns the burn or redistribution delay for a strategy.
+     * @param strategy The strategy whose burn or redistribution delay is being queried.
+     * @return The burn or redistribution delay.
+     */
+    function getStrategyBurnOrRedistributionDelay(
+        IStrategy strategy
+    ) external view returns (uint256);
+
+    /**
+     * @notice Returns the global burn or redistribution delay.
+     * @return The global burn or redistribution delay.
+     */
+    function getGlobalBurnOrRedistributionDelay() external view returns (uint256);
+}
+```
+
+> 🏛️   **Note**
+>
+> The `pause` functionality in this contract is gated to the `Pauser multi-sig`, as [outlined in Eigen Foundation governance](https://docs.eigenfoundation.org/protocol-governance/technical-architecture). This role can *only* pause (or later unpause) outflows if there are still pending blocks (time) between slash initiation and `MIN_WITHDRAWAL_DELAY_BLOCKS`. During a pause, governance and social consensus is the anticipated adjudication mechanism to determine if a slash is valid or a product of an invalid bug. If funds are to be rescued (e.g. the slash is a result of a protocol bug), the `Community multi-sig` will have authority to upgrade the contract and return the funds to the protocol. The rationale for this is [outlined further below](./ELIP-006.md#governance-design).
+
+The `StrategyManager` interface has numerous changes; the majority of the functionality has been moved to the `SlashingWithdrawalRouter`, including the previously available `burnShares` functionality.
 
 ```solidity
 interface IStrategyManager {
@@ -193,9 +438,9 @@ interface IStrategyManager {
      * @dev This is a permissionless function callable by anyone
      */
     function burnOrDistributeShares(
-            OperatorSet memory operatorSet
-            uint256 slashId
-        );
+        OperatorSet memory operatorSet
+        uint256 slashId
+    );
 
     /**  
      * @notice: THIS MAY BE DELETED IN FINAL INTERFACE
@@ -221,8 +466,6 @@ interface IStrategyManager {
     function getOperatorSetsWithSlashedShares(OperatorSet memory operatorSet) external returns (OperatorSet[] memory, uint256[][] memory, address[][] memory);
 }   
 ```
-
-**TODO: Update for pending decision RE instant redistributions**
 
 Below is a sequence diagram outlining the new flows:
 
@@ -258,7 +501,11 @@ To recap:
 
 # Rationale
 
-## Guarantees & Legibility  
+## Outflow Delay
+
+There are many interactions between the normal code-paths of the protocol and redistribution that are handled carefully with new security mechanisms. With redistributable slashing, the protocol implements what amounts to a new withdrawal path for funds. EigenLayer provides guarantees around withdrawals via the 14-day stake guarantee window. This two week period would impact the usability redistribution negatively, including programmatic fund redistribution use-cases and insurance products.
+
+## Redistributing AVS Guarantees & Legibility  
 
 Redistributable slashing is a modest upgrade in code, but has broad ramifications to the incentives and guarantees of the EigenLayer system. The majority of the design in this proposal is to ensure as much safety as possible for Stakers as redistribution creates a direct increase in the incentive to slash Operators by AVSs.
 
@@ -288,6 +535,10 @@ Consistently exiting Ethereum validators creates some problems for users and the
 
 Together, these are enough to forgo this scope in the initial implementation of redistributable slashing. With the increase in the [max effective balance of validators](https://eips.ethereum.org/EIPS/eip-7251) being shipped in Pectra, there are possible designs that can alleviate the above concerns (like partial withdrawals above the minimum required balance of 32 ETH). These are being actively explored as part of improvements to EigenPods.  
 
+## Governance Design
+
+TODO.
+
 # Security Considerations
 
 **TODO: DELAY ADDITION FOR TVL DRAIN & STAKE WASHING**
@@ -298,7 +549,7 @@ Together, these are enough to forgo this scope in the initial implementation of 
 
 AVSs will gain access to a powerful new primitive in redistributable slashing upon which to develop use-cases. This comes with an even heavier emphasis on proper key management and op-sec requirements. An attacker that gains access to AVS keys on the `slasher` and `redistributionRecipient` can drain the entirety of Operator and Staker allocated stake for a given Operator Set. This will have heavy repercussions on the AVSs reputation and continued trust.
 
-Because redistribution may allow AVSs to benefit from slashing, additional design care must be taken to consider the incentives of all parties that can interact with it. When handled appropriately, AVSs will have access to more liquid stake and higher risk to hose running their code, which should be countered with additional rewards to price these levers with the right incentives.
+Because redistribution may allow AVSs to benefit from slashing, additional design care must be taken to consider the incentives of all parties that can interact with it. When handled appropriately, AVSs will balance new use-case opportunities against higher risk and slash incentive for those running their code. Builders should consider how to counter these changes with additional rewards to offset risk with the right incentives for Stakers and Operators.
 
 ## Operators
 
