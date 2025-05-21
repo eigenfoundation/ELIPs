@@ -400,6 +400,8 @@ interface ISlashingWithdrawalRouter is ISlashingWithdrawalRouterErrors, ISlashin
 }
 ```
 
+This contract carves out roles and functions for pausing (and unpausing) in-flight slash outflows.
+
 > 🏛️   **Note**
 >
 > The `pause` functionality in this contract is gated to the `Pauser multi-sig`, as [outlined in Eigen Foundation governance](https://docs.eigenfoundation.org/protocol-governance/technical-architecture). This role can *only* pause (or later unpause) outflows if there are still pending blocks (time) between slash initiation and `MIN_WITHDRAWAL_DELAY_BLOCKS`. During a pause, governance and social consensus is the anticipated adjudication mechanism to determine if a slash is valid or a product of an invalid bug. If funds are to be rescued (e.g. the slash is a result of a protocol bug), the `Community multi-sig` will have authority to upgrade the contract and return the funds to the protocol. The rationale for this is [outlined further below](./ELIP-006.md#governance-design).
@@ -503,7 +505,15 @@ To recap:
 
 ## Outflow Delay
 
-There are many interactions between the normal code-paths of the protocol and redistribution that are handled carefully with new security mechanisms. With redistributable slashing, the protocol implements what amounts to a new withdrawal path for funds. EigenLayer provides guarantees around withdrawals via the 14-day stake guarantee window. This two week period would impact the usability redistribution negatively, including programmatic fund redistribution use-cases and insurance products.
+There are many interactions between the normal code-paths of the protocol and redistribution that are handled carefully with new security mechanisms. With redistributable slashing, the protocol implements what amounts to a new withdrawal path for funds. EigenLayer provides guarantees around withdrawals via the 14-day stake guarantee window. If the protocol provided the same delay, a two week period would detrimentally impact the usability of redistributable slashing, including programmatic fund redistribution use-cases and insurance products.
+
+To this end, this proposal suggests a default `MIN_WITHDRAWAL_DELAY_BLOCKS` amounting to four days. This is enough time to ensure oversight by the `Pauser multi-sig`, accounting for coordination (or extraneous) delays and on-chain censorship resistance. This delay exists *only* to allow the `Pauser multi-sig` to execute a pause on slashes that are deemed implementation bugs (e.g. a slash value is greater than the Operator Sets allocated stake).
+
+## Governance Design
+
+The governance design for the `SlashingWithdrawalRouter` in redistributable slashing uses existing protocol governance structures to minimize complexity and oversight. The `Pauser multi-sig` is chosen as the primary control point for pausing buggy slashes, as this aligns with its existing role of pausing the protocol in case of critical bugs. The `Pauser multi-sig` already has established governance controls through Eigen Foundation and maintains the ability to quickly respond to potential implementation issues.
+
+For the rescue of any funds in extreme cases, the `Community multi-sig` is designated as the authority, with a near complete degree of control over contract upgrades in case of emergency. This choice stems from the `Community multi-sig`'s existing position as the social consensus oversight body for the EigenLayer protocol, with its high thresholds (and required signatures) for action to avoid capture. By utilizing these existing governance structures rather than creating new ones, the design maintains simplicity while preserving the strong security guarantees already present in the protocol.
 
 ## Redistributing AVS Guarantees & Legibility  
 
@@ -521,8 +531,6 @@ These guarantees provide a hedge to increased slashing risk and changed incentiv
 
 > Additionally, the `slasher` address for the AVS is added to the Operator Set to make the same types of guarantees about what sits at that address and its immutability (or lack thereof). As redistributable slashing changes the incentive to slash, making guarantees about the slashing contract address is important. This is why we have removed this functionality from [UAM](./ELIP-003.md).
 
-**TODO: ANY DELAYS ^^**
-
 ## Native ETH Redistribution
 
 Native ETH will not be included in the scope of this proposal. Its exclusion is primarily tied to mechanics of the beacon chain. With redistributable slashing on the ETH strategy, exiting validators from the beacon chain to compensate the `redistributionRecipient` is required. We cannot make guarantees that the effective balance is high enough or that a partial withdrawal covers the balance of a slash without dipping validator balance below the 32 ETH minimum.
@@ -533,15 +541,13 @@ Consistently exiting Ethereum validators creates some problems for users and the
 - Funds have to wait to be swept before they will arrive at the specified withdrawal addresses in EigenPods. AVSs will not have access to any funds until this queue is cleared, which can impact programmatic designs.
 - Impacts Ethereum network security, in some adversarial cases.
 
-Together, these are enough to forgo this scope in the initial implementation of redistributable slashing. With the increase in the [max effective balance of validators](https://eips.ethereum.org/EIPS/eip-7251) being shipped in Pectra, there are possible designs that can alleviate the above concerns (like partial withdrawals above the minimum required balance of 32 ETH). These are being actively explored as part of improvements to EigenPods.  
-
-## Governance Design
-
-TODO.
+Together, these are enough to forgo this scope in the initial implementation of redistributable slashing. With the increase in the [max effective balance of validators](https://eips.ethereum.org/EIPS/eip-7251) being shipped in Pectra, there are possible designs that can alleviate the above concerns (like partial withdrawals above the minimum required balance of 32 ETH). These are being actively explored as part of improvements to EigenPods, including exploration of forced withdrawal mechanisms with regard to slashing on EigenLayer and ETH validators.
 
 # Security Considerations
 
 **TODO: DELAY ADDITION FOR TVL DRAIN & STAKE WASHING**
+
+**TODO: DELAYS FOR CATASTROPHIC REDISTRIBUTION BUG**
 
 # Impact Summary
 
