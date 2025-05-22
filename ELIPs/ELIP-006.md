@@ -1,6 +1,6 @@
 | Author(s) | Created | Status | References | Discussions |
 |-------------|-----------|---------|------|----------|
-| [Matt Nelson](mailto:matt.nelson@eigenlabs.org) | 2025-04-30 | `Draft` | [List of relevant work/PRs, if any] | [Discussion Forum Post](https://forum.eigenlayer.xyz/t/elip-006-redistributable-slashing/14553) |
+| [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [0xClandestine](https://github.com/0xClandestine) | 2025-04-30 | `Draft` | [List of relevant work/PRs, if any] | [Discussion Forum Post](https://forum.eigenlayer.xyz/t/elip-006-redistributable-slashing/14553) |
 
 # ELIP-006: Redistributable Slashing
 
@@ -31,9 +31,9 @@ As of today, when slashed, ERC-20 funds are burned at the `0x0...00316e4` addres
 - to better decorate each slash with an identifier (`slashId`) that helps in downstream programmatic redistribution and accounting,
 - and to modify some permission and withdrawal handling to strengthen guarantees of `slashOperator` (in both the burn and redistribute case).
 
-These changes are externally facing in the `AllocationManager` interface. This is accompanied by changes to the storage of the `AllocationManager` as well. Internally, we have modified the `ShareManager` and `StrategyManager` interfaces, as well as some storage and internal logic. The `PermissionController` is modified to address new role enforcement surrounding the Slasher.
+These changes are externally facing in the `AllocationManager` interface. This is accompanied by changes to the storage of the `AllocationManager` as well. Internally, we have modified the `ShareManager` and `StrategyManager` interfaces, as well as some storage and internal logic.
 
-This proposal outlines a new core contract, the `SlashingWithdrawalRouter` that brings new guarantees to `slashOperator`. In the case of an implementation bug that would allow an AVS to slash *beyond its allocated unique stake* (e.g. a total protocol TVL drain), the `SlashingWithdrawalRouter` exists to enable a governance pause and intervention. The `SlashingWithdrawalRouter` applies a four day delay on all slashed funds exiting the protocol to allow for this intervention, whether burned or redistributed.
+This proposal outlines a new core contract, the `SlashEscrowFactory` that brings new guarantees to `slashOperator` and protocol outflows. In the case of an implementation bug that would allow an AVS to slash *beyond its allocated unique stake* (e.g. a total protocol TVL drain), the `SlashEscrowFactory` exists to enable a governance pause and intervention. The `SlashEscrowFactory` creates contracts that hold and apply a four day delay on all slashed funds exiting the protocol to allow for this intervention, whether burned or redistributed.
 
 ## Specifications
 
@@ -163,7 +163,7 @@ interface IShareManager {
 
 ### Burn & Distribution Mechanics
 
-The flow and code-paths for exiting slashed funds from the protocol have changed. Perviously, funds were exited only through a burn (transfer to `0x00...00316e4`) at a regular cadence. Following this upgrade, when a slash occurs, funds are atomically moved from the `StrategyManager` to the `SlashingWithdrawalRouter`. The `SlashingWithdrawalRouter` now interfaces directly with the `AllocationManager` following a slash. In this contract, slashed funds are escrowed for a four day period to intervene in the case of slashing bugs. ***Funds no longer sit in the `DelegationManager` marked for a `burn` and are no longer exited via functions on the `ShareManager`.*** The new flow is illustrated in the below diagram:
+The flow and code-paths for exiting slashed funds from the protocol have changed. Perviously, funds were exited only through a burn (transfer to `0x00...00316e4`) at a regular cadence. Following this upgrade, when a slash occurs, funds are atomically moved from the `StrategyManager` through the `SlashEscrowFactory` to be held in individual `SlashEscrow` contracts. The `SlashEscrowFactory` now interfaces directly with the `AllocationManager` following a slash. In the cloned child contracts, slashed funds are escrowed for a four day period to intervene in the case of slashing bugs. ***Funds no longer sit in the `DelegationManager` marked for a `burn` and are no longer exited via functions on the `ShareManager`.*** The new flow is illustrated in the below diagram:
 
 ```mermaid
 sequenceDiagram
@@ -173,23 +173,26 @@ sequenceDiagram
     participant ALM as Allocation Manager
     participant DM as Delegation Manager
     participant SM as Strategy Manager
-    participant SWR as Slashing Withdrawal Router
+    participant SEF as Slash Escrow Factory
+    participant CL as Slash Escrow Clone
     participant BR as Burn Address or Redistribution Recipient
 
     AVS->>ALM: slashOperator(avs, slashParams)
     ALM->>DM: slashOperatorShares(operator, strategy, prevMaxMag, newMaxMag)
     DM->>SM: increaseBurnableShares()
-    SM->>SWR: startBurnOrRedistributeShares()
-    SWR->>SWR: MIN_WITHDRAWAL_DELAY_BLOCKS elapses
-    SWR->>BR: burnOrRedistributeShares()
+    SM->>SEF: startBurnOrRedistributeShares()
+    SEF->>CL: *Internal* "Creates a clone where funds are transferred"
+    SEF->>SEF: MIN_WITHDRAWAL_DELAY_BLOCKS elapses
+    SEF->>CL: burnOrRedistributeShares()
+    CL->>BR: Protocol Fund Outflow
 ```
 
-The rationale for this new contract, process, and delay is [outlined in the rationale](./ELIP-006.md#outflow-delay).  A global minimum withdrawal period per Strategy (token) is introduced, known as the `MIN_WITHDRAWAL_DELAY_BLOCKS`. This is a constant value, set at a minimum of four days, but can be increased for certain assets that require additional constraints in or out of protocol.
+The rationale for this new contract, process, and delay is [outlined in the rationale](./ELIP-006.md#outflow-delay). A global minimum escrow period is introduced that is set by governance. This is a constant value, set at a minimum of four days.
 
-The interface for the `SlashingWithdrawalRouter` is provided below:
+The interface for the `SlashEscrowFactory` is provided below:
 
 ```solidity
-interface ISlashingWithdrawalRouterErrors {
+interface ISlashEscrowFactoryErrors {
     /// @notice Thrown when a caller is not the strategy manager.
     error OnlyStrategyManager();
 
@@ -203,7 +206,7 @@ interface ISlashingWithdrawalRouterErrors {
     error BurnOrRedistributionDelayLessThanMinimum();
 }
 
-interface ISlashingWithdrawalRouterEvents {
+interface ISlashEscrowFactoryEvents {
     /// @notice Emitted when a redistribution is initiated.
     event StartBurnOrRedistribution(
         OperatorSet operatorSet, uint256 slashId, IStrategy strategy, uint256 underlyingAmount, uint32 startBlock
@@ -227,9 +230,9 @@ interface ISlashingWithdrawalRouterEvents {
     event StrategyBurnOrRedistributionDelaySet(IStrategy strategy, uint256 delay);
 }
 
-interface ISlashingWithdrawalRouter is ISlashingWithdrawalRouterErrors, ISlashingWithdrawalRouterEvents {
+interface ISlashEscrowFactory is ISlashEscrowFactoryErrors, ISlashEscrowFactoryEvents {
     /**
-     * @notice Initializes initial admin, pauser, and unpauser roles.
+     * @notice Initializes the initial owner and paused status.
      * @param initialOwner The initial owner of the router.
      * @param initialPausedStatus The initial paused status of the router.
      */
@@ -256,7 +259,10 @@ interface ISlashingWithdrawalRouter is ISlashingWithdrawalRouterErrors, ISlashin
      * @dev The caller must be the redistribution recipient, unless the redistribution recipient
      * is the default burn address in which case anyone can call.
      */
-    function burnOrRedistributeShares(OperatorSet calldata operatorSet, uint256 slashId) external;
+    function burnOrRedistributeShares(
+        OperatorSet calldata operatorSet,
+        uint256 slashId
+    ) external;
 
     /**
      * @notice Pauses a redistribution.
@@ -295,12 +301,44 @@ interface ISlashingWithdrawalRouter is ISlashingWithdrawalRouterErrors, ISlashin
     function getPendingOperatorSets() external view returns (OperatorSet[] memory operatorSets);
 
     /**
+     * @notice Returns the total number of operator sets with pending burn or redistributions.
+     * @return The total number of operator sets with pending burn or redistributions.
+     */
+    function getTotalPendingOperatorSets() external view returns (uint256);
+
+    /**
+     * @notice Returns whether an operator set has pending burn or redistributions.
+     * @param operatorSet The operator set whose pending burn or redistributions are being queried.
+     * @return Whether the operator set has pending burn or redistributions.
+     */
+    function isPendingOperatorSet(
+        OperatorSet calldata operatorSet
+    ) external view returns (bool);
+
+    /**
      * @notice Returns the pending slash IDs for an operator set.
      * @param operatorSet The operator set whose pending slash IDs are being queried.
      */
     function getPendingSlashIds(
         OperatorSet calldata operatorSet
     ) external view returns (uint256[] memory);
+
+    /**
+     * @notice Returns the total number of slash IDs for an operator set.
+     * @param operatorSet The operator set whose total slash IDs are being queried.
+     * @return The total number of slash IDs for the operator set.
+     */
+    function getTotalPendingSlashIds(
+        OperatorSet calldata operatorSet
+    ) external view returns (uint256);
+
+    /**
+     * @notice Returns whether a slash ID is pending for an operator set.
+     * @param operatorSet The operator set whose pending slash IDs are being queried.
+     * @param slashId The slash ID of the slash that is being queried.
+     * @return Whether the slash ID is pending for the operator set.
+     */
+    function isPendingSlashId(OperatorSet calldata operatorSet, uint256 slashId) external view returns (bool);
 
     /**
      * @notice Returns the pending burn or redistributions for an operator set and slash ID.
@@ -397,6 +435,42 @@ interface ISlashingWithdrawalRouter is ISlashingWithdrawalRouterErrors, ISlashin
      * @return The global burn or redistribution delay.
      */
     function getGlobalBurnOrRedistributionDelay() external view returns (uint256);
+
+    /**
+     * @notice Returns the salt for a slash escrow.
+     * @param operatorSet The operator set whose slash escrow is being queried.
+     * @param slashId The slash ID of the slash escrow that is being queried.
+     * @return The salt for the slash escrow.
+     */
+    function computeSlashEscrowSalt(
+        OperatorSet calldata operatorSet,
+        uint256 slashId
+    ) external pure returns (bytes32);
+
+    /**
+     * @notice Returns whether a slash escrow is deployed or still counterfactual.
+     * @param operatorSet The operator set whose slash escrow is being queried.
+     * @param slashId The slash ID of the slash escrow that is being queried.
+     * @return Whether the slash escrow is deployed.
+     */
+    function isDeployedSlashEscrow(OperatorSet calldata operatorSet, uint256 slashId) external view returns (bool);
+
+    /**
+     * @notice Returns whether a slash escrow is deployed.
+     * @param slashEscrow The slash escrow that is being queried.
+     * @return Whether the slash escrow is deployed.
+     */
+    function isDeployedSlashEscrow(
+        ISlashEscrow slashEscrow
+    ) external view returns (bool);
+
+    /**
+     * @notice Returns the slash escrow for an operator set and slash ID.
+     * @param operatorSet The operator set whose slash escrow is being queried.
+     * @param slashId The slash ID of the slash escrow that is being queried.
+     * @return The slash escrow.
+     */
+    function getSlashEscrow(OperatorSet calldata operatorSet, uint256 slashId) external view returns (ISlashEscrow);
 }
 ```
 
@@ -404,9 +478,44 @@ This contract carves out roles and functions for pausing (and unpausing) in-flig
 
 > 🏛️   **Note**
 >
-> The `pause` functionality in this contract is gated to the `Pauser multi-sig`, as [outlined in Eigen Foundation governance](https://docs.eigenfoundation.org/protocol-governance/technical-architecture). This role can *only* pause (or later unpause) outflows if there are still pending blocks (time) between slash initiation and `MIN_WITHDRAWAL_DELAY_BLOCKS`. During a pause, governance and social consensus is the anticipated adjudication mechanism to determine if a slash is valid or a product of an invalid bug. If funds are to be rescued (e.g. the slash is a result of a protocol bug), the `Community multi-sig` will have authority to upgrade the contract and return the funds to the protocol. The rationale for this is [outlined further below](./ELIP-006.md#governance-design).
+> The `pause` functionality in this contract is gated to the `Pauser multi-sig`, as [outlined in Eigen Foundation governance](https://docs.eigenfoundation.org/protocol-governance/technical-architecture). This role can *only* pause (or later unpause) outflows if there are still pending blocks (time) between slash initiation and the end of the escrow period. During a pause, governance and social consensus is the anticipated adjudication mechanism to determine if a rescue is needed for funds due to an [invalid bug](./ELIP-006.md#security-considerations). If funds are to be rescued, the `Community multi-sig` has the authority to upgrade the contract and return the funds to the protocol. The rationale for this is [outlined further below](./ELIP-006.md#governance-design).
 
-The `StrategyManager` interface has numerous changes; the majority of the functionality has been moved to the `SlashingWithdrawalRouter`, including the previously available `burnShares` functionality.
+For each slash, a child `SlashEscrow` contract is created from the factory. It is a very simple contract intended to hold tokens for the delay period. One contract is instantiated per slash and has a relatively small impact on Ethereum state. The `SlashEscrowFactory` controls the ability to call `burnOrRedistributeUnderlyingTokens`, meaning a pause on the `SlashEscrowFactory` by the `pauser` will freeze calls to the child contracts for certain `slashId`s. There additionally is a global `PAUSEALL` for all outflows, in the case of a widely abused slashing bug. Below is the interface:
+
+```solidity
+interface ISlashEscrow {
+    /// @notice Burns or redistributes the underlying tokens of the strategies.
+    /// @param slashEscrowFactory The factory contract that created the slash escrow.
+    /// @param slashEscrowImplementation The implementation contract that was used to create the slash escrow.
+    /// @param operatorSet The operator set that was used to create the slash escrow.
+    /// @param slashId The slash ID that was used to create the slash escrow.
+    /// @param recipient The recipient of the underlying tokens.
+    /// @param strategy The strategy that was used to create the slash escrow.
+    function burnOrRedistributeUnderlyingTokens(
+        ISlashEscrowFactory slashEscrowFactory,
+        ISlashEscrow slashEscrowImplementation,
+        OperatorSet calldata operatorSet,
+        uint256 slashId,
+        address recipient,
+        IStrategy strategy
+    ) external;
+
+    /// @notice Verifies the deployment parameters of the slash escrow.
+    /// @param slashEscrowFactory The factory contract that created the slash escrow.
+    /// @param slashEscrowImplementation The implementation contract that was used to create the slash escrow.
+    /// @param operatorSet The operator set that was used to create the slash escrow.
+    /// @param slashId The slash ID that was used to create the slash escrow.
+    /// @return True if the provided parameters create this contract's address, false otherwise.
+    function verifyDeploymentParameters(
+        ISlashEscrowFactory slashEscrowFactory,
+        ISlashEscrow slashEscrowImplementation,
+        OperatorSet calldata operatorSet,
+        uint256 slashId
+    ) external view returns (bool);
+}
+```
+
+The `StrategyManager` interface has numerous changes; the majority of the functionality has been moved to the `SlashEscrowFactory`, including the previously available `burnShares` functionality.
 
 ```solidity
 interface IStrategyManager {
@@ -469,37 +578,13 @@ interface IStrategyManager {
 }   
 ```
 
-Below is a sequence diagram outlining the new flows:
-
-```mermaid
-sequenceDiagram
-    title Redistribution/Burn Flow
-    
-    actor Operator
-    participant AVS
-    participant AllocationManager
-    participant DelegationManager
-    participant StrategyManager
-    
-    AVS->>+AllocationManager: createRedistributingOperatorSets(avs, createSetParams, redistributionRecipients)
-    Operator->>AllocationManager: registerForOperatorSet(operatorSet)
-    Operator->>AllocationManager: modifyAllocations(operatorSet)
-    AVS->>+AllocationManager: slashOperator(avs, slashParams)
-    AllocationManager-->>+DelegationManager: slashOperatorShares(operator, strategy, prevMaxMag, newMaxMag)
-    DelegationManager-->>+StrategyManager: increaseBurnableShares(strategy, addedSharesToBurn)
-    AVS->>+StrategyManager: burnShares(operatorSet, slashId, strategy, redistributionRecipient)
-    StrategyManager-->>Redistribution Address: Funds are redistributed to the configured recipient address
-```
-
 The `EigenPodManager` interfaces are updated to avoid breaking changes in the internal flows.
 
-To recap:
+To recap the new or modified functionality:
 
 - New Operator Set types enable a fixed `redistributionRecipient`.
 - Additional meta-data has been added to each slash to help AVSs build programmatic redistribution.
 - The `StrategyManager` has a modified flow to accommodate redistribution versus burning.
-
-**TODO: SLASHER PERMISSION CONTROL CHANGERS**
 
 # Rationale
 
@@ -507,13 +592,15 @@ To recap:
 
 There are many interactions between the normal code-paths of the protocol and redistribution that are handled carefully with new security mechanisms. With redistributable slashing, the protocol implements what amounts to a new withdrawal path for funds. EigenLayer provides guarantees around withdrawals via the 14-day stake guarantee window. If the protocol provided the same delay, a two week period would detrimentally impact the usability of redistributable slashing, including programmatic fund redistribution use-cases and insurance products.
 
-To this end, this proposal suggests a default `MIN_WITHDRAWAL_DELAY_BLOCKS` amounting to four days. This is enough time to ensure oversight by the `Pauser multi-sig`, accounting for coordination (or extraneous) delays and on-chain censorship resistance. This delay exists *only* to allow the `Pauser multi-sig` to execute a pause on slashes that are deemed implementation bugs (e.g. a slash value is greater than the Operator Sets allocated stake).
+To this end, this proposal suggests a default slash escrow period amounting to four day, in blocks. This is enough time to ensure oversight by the `Pauser multi-sig`, accounting for coordination (or extraneous) delays and on-chain censorship resistance. This delay exists *only* to allow the `Pauser multi-sig` to execute a pause on slashes that are deemed implementation bugs (e.g. a slash value is greater than the Operator Sets allocated stake).
 
 ## Governance Design
 
-The governance design for the `SlashingWithdrawalRouter` in redistributable slashing uses existing protocol governance structures to minimize complexity and oversight. The `Pauser multi-sig` is chosen as the primary control point for pausing buggy slashes, as this aligns with its existing role of pausing the protocol in case of critical bugs. The `Pauser multi-sig` already has established governance controls through Eigen Foundation and maintains the ability to quickly respond to potential implementation issues.
+The governance design for the `SlashEscrowFactory` in redistributable slashing uses existing protocol governance structures to minimize complexity and oversight. The `Pauser multi-sig` is chosen as the primary control point for pausing buggy slashes, as this aligns with its existing role of pausing the protocol in case of critical bugs. The `Pauser multi-sig` already has established governance controls through Eigen Foundation and maintains the ability to quickly respond to potential implementation issues.
 
 For the rescue of any funds in extreme cases, the `Community multi-sig` is designated as the authority, with a near complete degree of control over contract upgrades in case of emergency. This choice stems from the `Community multi-sig`'s existing position as the social consensus oversight body for the EigenLayer protocol, with its high thresholds (and required signatures) for action to avoid capture. By utilizing these existing governance structures rather than creating new ones, the design maintains simplicity while preserving the strong security guarantees already present in the protocol.
+
+Governance will *only* interface with the `SlashEscrow` contracts in the case of a "catastrophic bug" as defined in the [Security Considerations](./ELIP-006.md#security-considerations). The governance process will not intervene in individual AVS slashings when they are the product of faulty implementations, bugs, or lost keys. The EigenLayer middleware contracts provide [templates for vetoable slashing designs](https://github.com/Layr-Labs/eigenlayer-middleware/blob/dev/src/slashers/VetoableSlasher.sol). The [documentation contains guidance on how to design controls](https://docs.eigenlayer.xyz/developers/HowTo/build/slashing/slashing-veto-committee-design) for these cases for AVS builders.
 
 ## Redistributing AVS Guarantees & Legibility  
 
@@ -526,10 +613,6 @@ As funds are released from the protocol to an address specified by the AVS, it i
 - Legibility on the front-end and in metadata. By forcing immutability of the above properties, EigenLayer can better differentiate on its application and in chain meta-data where redistributable slashing is enabled for its users (and any implied or associated risk and reward tradeoffs of interaction).
 
 These guarantees provide a hedge to increased slashing risk and changed incentives.
-
-**TODO: UPDATE BELOW AFTER DESIGN DECISION**
-
-> Additionally, the `slasher` address for the AVS is added to the Operator Set to make the same types of guarantees about what sits at that address and its immutability (or lack thereof). As redistributable slashing changes the incentive to slash, making guarantees about the slashing contract address is important. This is why we have removed this functionality from [UAM](./ELIP-003.md).
 
 ## Native ETH Redistribution
 
@@ -545,9 +628,15 @@ Together, these are enough to forgo this scope in the initial implementation of 
 
 # Security Considerations
 
-**TODO: DELAY ADDITION FOR TVL DRAIN & STAKE WASHING**
+The original slashing design, launched alongside [ELIP-002](./ELIP-002.md), did not account for the protocol's ability to handle a catastrophic slashing bug. A catastrophic slashing bug is considered to be one where an AVS (or malicious party) can...
 
-**TODO: DELAYS FOR CATASTROPHIC REDISTRIBUTION BUG**
+- slash more stake than is allocated to a given Operator in an Operator Set (or more than the sum of the set, up to the entire protocol TVL),
+- slash the unique stake of an Operator that is not registered to an AVS's Operator Set,
+- trigger a slash without being a registered AVS.
+
+These cases generally represent where governance will intervene to prevent a malicious party from slashing too much or slashing someone they shouldn't. These interventions are especially important with redistributable slashing, as the feature, coupled with these bugs, could enable theft of all assets from EigenLayer. These cases are the only cases in which governance will interface with the escrow contracts. Governance will not intervene in other cases, as stated in the [governance design](./ELIP-006.md#governance-design).
+
+As always this update requires very careful management of keys, as a compromised AVS key can lead to theft of user funds when redistributable slashing is in use causing reputational and monetary harm.
 
 # Impact Summary
 
