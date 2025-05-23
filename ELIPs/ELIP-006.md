@@ -172,10 +172,10 @@ sequenceDiagram
     participant ALM as Allocation Manager
     participant DM as Delegation Manager
     participant SM as Strategy Manager
+    participant STR as strategyN
     participant SEF as Slash Escrow Factory
     participant CL as Slash Escrow Clone
     participant BR as Burn Address or Redistribution Recipient
-    participant STR as strategyN
 
     AVS->>ALM: slashOperator(avs, slashParams)
     ALM->>DM: slashOperatorShares(operator, strategies, prevMaxMags, newMaxMags)
