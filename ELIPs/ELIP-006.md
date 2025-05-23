@@ -181,9 +181,11 @@ sequenceDiagram
     ALM->>DM: slashOperatorShares(operator, strategy, prevMaxMag, newMaxMag)
     DM->>SM: increaseBurnableShares()
     SM->>SEF: startBurnOrRedistributeShares()
-    SEF->>CL: *Internal* "Creates a clone where funds are transferred"
-    SEF->>SEF: MIN_WITHDRAWAL_DELAY_BLOCKS elapses
+    SM->>CL: *Internal* "Sends underlying tokens to undeployed proxy"
+    
+    SEF->>SEF: getStrategyBurnOrRedistributionDelay() elapses
     SEF->>CL: burnOrRedistributeShares()
+    SEF->>CL: *Internal* "Deploys the counterfactual proxy"
     CL->>BR: Protocol Fund Outflow
 ```
 
