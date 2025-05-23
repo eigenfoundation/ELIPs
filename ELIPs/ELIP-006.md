@@ -520,63 +520,25 @@ The `StrategyManager` interface has numerous changes; the majority of the functi
 
 ```solidity
 interface IStrategyManager {
-    /// @notice Emitted when an operator is slashed and shares to be burned/redistributed are increased
-    event BurnableSharesIncreased(OperatorSet operatorSet, uint256 slashId, IStrategy strategy, uint256 shares);
-
-    /// @notice Emitted when shares are burned/redistributed
-    event BurnableSharesDecreased(OperatorSet operatorSet, uint256 slashId, IStrategy strategy, uint256 shares);
-    
-    /// NOTE: we're keeping the original `burnShares`
-    
-    /**
-     * @notice Burns/Redistributes Strategy shares for the given strategy and slashId by calling into the strategy to transfer
-     * to the operatorSet's burn address
-     * @param operatorSet The operatorSet to burn or redistribute shares for
-     * @param slashId the identifier associated with the slash
-     * @param strategy The strategy to burn shares in
-     * @dev This is a permissionless function callable by anyone
-     */
-    function burnOrDistributeShares(
-        OperatorSet memory operatorSet
-        uint256 slashId
-        IStrategy strategy,
-    ) external;
-    
-    /**
-     * @notice Burns/Redistributes Strategy shares for all strategies by calling into the strategy to transfer. This is an arrayified version of the above.
-     * to the operatorSet's burn address
-     * @param operatorSet The operatorSet to burn or redistribute shares for
-     * @param slashId the identifier associated with the slash
-     * @dev This is a permissionless function callable by anyone
-     */
-    function burnOrDistributeShares(
-        OperatorSet memory operatorSet
-        uint256 slashId
+    /// @notice Emitted when an operator is slashed and shares to be burned are increased
+    event BurnOrRedistributableSharesIncreased(
+        OperatorSet operatorSet, uint256 slashId, IStrategy strategy, uint256 shares
     );
 
-    /**  
-     * @notice: THIS MAY BE DELETED IN FINAL INTERFACE
-     * @notice Burns/Redistributes Strategy shares for all strategies slashed by an operatorSet. This will redistribute every slash for a given Operator Set, regardless of ID.
-     * @param operatorSet The operatorSet to burn or redistribute shares for
-     * @dev This is a permissionless function callable by anyone
-     */
-    function burnOrDistributeShares(
-        OperatorSet memory operatorSet
-    ) external;
- 
-
-    // TODO: rework, two separate fns
-
-    // TODO: may want to know if an operator in redistributable operator sets, at least one?
+    /// @notice Emitted when shares are burned
+    event BurnOrRedistributableSharesDecreased(
+        OperatorSet operatorSet, uint256 slashId, IStrategy strategy, uint256 shares
+    );
+    
+    /// NOTE: We are keeping the original `burnShares` fn so that legacy burns can still be completed.
     
     /**
-     * @notice Gets every Operator Set that has burned/redistributable shares, 
-     * and for each set, get all SlashIDs and slashed strategies.
-     *
-     * @return (operatorSets, slashIds, strategies)
+     * @notice Removes burned shares from storage and transfers the underlying tokens for the slashId to the slash escrow.
+     * @dev This will be a `IShareManager` method once EigenPods are supported in a future release.
+     * @param operatorSet The operator set to burn shares in.
+     * @param slashId The slash ID to burn shares in.
      */
-    function getOperatorSetsWithSlashedShares(OperatorSet memory operatorSet) external returns (OperatorSet[] memory, uint256[][] memory, address[][] memory);
-}   
+    function decreaseBurnableShares(OperatorSet calldata operatorSet, uint256 slashId) external;
 ```
 
 The `EigenPodManager` interfaces are updated to avoid breaking changes in the internal flows.
