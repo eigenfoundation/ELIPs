@@ -8,7 +8,7 @@
 
 # Executive Summary
 
-Slashing ([ELIP-002](./ELIP-002.md))is a key piece of EigenLayer’s vision; it enables enforcement of crypto-economic commitments made by Service builders to their consumers and users. When leveraging slashing on EigenLayer today, security funds are always burned or locked when penalizing Operators. This creates a challenge for builders of use-cases that involve lending, insurance, risk hedging, or, broadly, commitments with a need to compensate harmed parties or amortize risk.
+Slashing ([ELIP-002](./ELIP-002.md))is a key piece of EigenLayer's vision; it enables enforcement of crypto-economic commitments made by Service builders to their consumers and users. When leveraging slashing on EigenLayer today, security funds are always burned or locked when penalizing Operators. This creates a challenge for builders of use-cases that involve lending, insurance, risk hedging, or, broadly, commitments with a need to compensate harmed parties or amortize risk.
 
 Redistributable Slashing is a feature that gives Service Builders a means to not just burn, but repurpose slashed funds. Redistribution represents an expansion of the types of use-cases builders can launch on EigenLayer, by expanding the expressivity of slashing on the platform. A new type of Operator Set with strict configuration controls allows for specifying a redistribution recipient by the AVS that receives slashed funds. This new feature requires, and is shipped with, adjustments to the EigenLayer security model and stake guarantees for AVSs to support this new slashing paradigm.
 
@@ -162,29 +162,44 @@ interface IShareManager {
 ```
 
 ### Burn & Distribution Mechanics
+The flow and code-paths for exiting slashed funds from the protocol have changed. Previously, ERC-20 funds flowed out of the protocol through withdrawals or a burn (transfer to `0x00...00316e4`) at a regular cadence. Native ETH was withdrawn or locked in EigenPods permanently during a slash. Following this upgrade, when a slash occurs, funds are exited in two steps. In order to maintain the protocol guarantee that `slashOperator` should never fail, outflow transfers are non-atomic. Similar to the original burning implementation, burnable shares are first increased in `StrategyManger` storage during a slash. A second call to `decreaseBurnableShares` is then required to delete that storage and transfer slashed funds to a counterfactually deployed `SlashEscrow` child contract.
 
-The flow and code-paths for exiting slashed funds from the protocol have changed. Perviously, funds were exited only through a burn (transfer to `0x00...00316e4`) at a regular cadence. Following this upgrade, when a slash occurs, funds are atomically moved from the `StrategyManager` through the `SlashEscrowFactory` to be held in individual `SlashEscrow` contracts. The `SlashEscrowFactory` now interfaces directly with the `AllocationManager` following a slash. In the cloned child contracts, slashed funds are escrowed for a four day period to intervene in the case of slashing bugs. ***Funds no longer sit in the `DelegationManager` marked for a `burn` and are no longer exited via functions on the `ShareManager`.*** The new flow is illustrated in the below diagram:
+The `SlashEscrowFactory` interfaces directly with the `AllocationManager` following a slash. In the cloned child contracts, slashed funds are escrowed for a four day period to intervene in the case of slashing bugs. ***Funds are no longer exited via functions on the `ShareManager`.*** The new flow is illustrated in the below diagram:
 
 ```mermaid
 sequenceDiagram
     title Redistribution & Burn Flow
 
-    participant AVS
+    participant AVS as AVS
     participant ALM as Allocation Manager
     participant DM as Delegation Manager
     participant SM as Strategy Manager
+    participant STR as Strategy Contract
     participant SEF as Slash Escrow Factory
     participant CL as Slash Escrow Clone
     participant BR as Burn Address or Redistribution Recipient
 
-    AVS->>ALM: slashOperator(avs, slashParams)
-    ALM->>DM: slashOperatorShares(operator, strategy, prevMaxMag, newMaxMag)
-    DM->>SM: increaseBurnableShares()
-    SM->>SEF: startBurnOrRedistributeShares()
-    SEF->>CL: *Internal* "Creates a clone where funds are transferred"
-    SEF->>SEF: MIN_WITHDRAWAL_DELAY_BLOCKS elapses
+    Note over AVS,BR: Slashing Initiation
+    AVS->>ALM: slashOperator<br>(avs, slashParams)
+    ALM-->>DM: *Internal* <br>slashOperatorShares<br>(operator, strategies,<br> prevMaxMags, newMaxMags)
+    Note over DM,SM: Share Management
+    DM-->>SM: **Internal**<br>increaseBurnableShares<br>(operatorSet, slashId)
+    Note over SM,SEF: Escrow Setup (Initiates 4-day escrow period)
+    SM-->>SEF: **Internal** startBurnOrRedistributeShares()
+    
+    Note over SM,CL: Transfers underlying tokens to the `SlashEscrow` clone (Second Transaction)
+    SM->>CL: decreaseBurnableShares(operatorSet, slashId)
+    SM-->>STR: *Internal*<br>withdraw<br>(slashEscrow, token, underlyingAmount)
+    
+    Note over SEF,SEF: Wait for max(globalDelay, strategyDelay) to elapse.
+    SEF->>SEF: getStrategyBurnOrRedistributionDelay()
+    
+    Note over SEF,CL: Final Distribution
     SEF->>CL: burnOrRedistributeShares()
-    CL->>BR: Protocol Fund Outflow
+    SEF-->>CL: *Internal* decreaseBurnableShares()
+    SEF-->>CL: *Internal* Deploy counterfactual proxy
+    CL-->>BR: *Internal* <br>burnOrRedistributeUnderlyingTokens()
+    Note right of BR: Final protocol fund outflow
 ```
 
 The rationale for this new contract, process, and delay is [outlined in the rationale](./ELIP-006.md#outflow-delay). A global minimum escrow period is introduced that is set by governance. This is a constant value, set at a minimum of four days.
@@ -519,63 +534,26 @@ The `StrategyManager` interface has numerous changes; the majority of the functi
 
 ```solidity
 interface IStrategyManager {
-    /// @notice Emitted when an operator is slashed and shares to be burned/redistributed are increased
-    event BurnableSharesIncreased(OperatorSet operatorSet, uint256 slashId, IStrategy strategy, uint256 shares);
-
-    /// @notice Emitted when shares are burned/redistributed
-    event BurnableSharesDecreased(OperatorSet operatorSet, uint256 slashId, IStrategy strategy, uint256 shares);
-    
-    /// NOTE: we're keeping the original `burnShares`
-    
-    /**
-     * @notice Burns/Redistributes Strategy shares for the given strategy and slashId by calling into the strategy to transfer
-     * to the operatorSet's burn address
-     * @param operatorSet The operatorSet to burn or redistribute shares for
-     * @param slashId the identifier associated with the slash
-     * @param strategy The strategy to burn shares in
-     * @dev This is a permissionless function callable by anyone
-     */
-    function burnOrDistributeShares(
-        OperatorSet memory operatorSet
-        uint256 slashId
-        IStrategy strategy,
-    ) external;
-    
-    /**
-     * @notice Burns/Redistributes Strategy shares for all strategies by calling into the strategy to transfer. This is an arrayified version of the above.
-     * to the operatorSet's burn address
-     * @param operatorSet The operatorSet to burn or redistribute shares for
-     * @param slashId the identifier associated with the slash
-     * @dev This is a permissionless function callable by anyone
-     */
-    function burnOrDistributeShares(
-        OperatorSet memory operatorSet
-        uint256 slashId
+    /// @notice Emitted when an operator is slashed and shares to be burned are increased
+    event BurnOrRedistributableSharesIncreased(
+        OperatorSet operatorSet, uint256 slashId, IStrategy strategy, uint256 shares
     );
 
-    /**  
-     * @notice: THIS MAY BE DELETED IN FINAL INTERFACE
-     * @notice Burns/Redistributes Strategy shares for all strategies slashed by an operatorSet. This will redistribute every slash for a given Operator Set, regardless of ID.
-     * @param operatorSet The operatorSet to burn or redistribute shares for
-     * @dev This is a permissionless function callable by anyone
-     */
-    function burnOrDistributeShares(
-        OperatorSet memory operatorSet
-    ) external;
- 
-
-    // TODO: rework, two separate fns
-
-    // TODO: may want to know if an operator in redistributable operator sets, at least one?
+    /// @notice Emitted when shares are burned
+    event BurnOrRedistributableSharesDecreased(
+        OperatorSet operatorSet, uint256 slashId, IStrategy strategy, uint256 shares
+    );
+    
+    /// NOTE: We are keeping the original `burnShares` fn so that legacy burns can still be completed.
     
     /**
-     * @notice Gets every Operator Set that has burned/redistributable shares, 
-     * and for each set, get all SlashIDs and slashed strategies.
-     *
-     * @return (operatorSets, slashIds, strategies)
+     * @notice Removes burned shares from storage and transfers the underlying tokens for the slashId to the slash escrow.
+     * @dev This will be a `IShareManager` method once EigenPods are supported in a future release.
+     * @param operatorSet The operator set to burn shares in.
+     * @param slashId The slash ID to burn shares in.
      */
-    function getOperatorSetsWithSlashedShares(OperatorSet memory operatorSet) external returns (OperatorSet[] memory, uint256[][] memory, address[][] memory);
-}   
+    function decreaseBurnableShares(OperatorSet calldata operatorSet, uint256 slashId) external;
+}
 ```
 
 The `EigenPodManager` interfaces are updated to avoid breaking changes in the internal flows.
