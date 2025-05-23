@@ -175,17 +175,22 @@ sequenceDiagram
     participant SEF as Slash Escrow Factory
     participant CL as Slash Escrow Clone
     participant BR as Burn Address or Redistribution Recipient
+    participant STR as strategyN
 
     AVS->>ALM: slashOperator(avs, slashParams)
-    ALM->>DM: slashOperatorShares(operator, strategy, prevMaxMag, newMaxMag)
-    DM->>SM: increaseBurnableShares()
-    SM->>SEF: startBurnOrRedistributeShares()
-    SM->>CL: *Internal* "Sends underlying tokens to undeployed proxy"
+    ALM->>DM: slashOperatorShares(operator, strategies, prevMaxMags, newMaxMags)
+    DM->>SM: increaseBurnableShares(operatorSet, slashId) "Increases burnable shares for (operatorSet, slashId)"
+    SM->>SEF: startBurnOrRedistributeShares() "Starts the escrow countdown"
+
+    SM->>CL: decreaseBurnableShares(operatorSet, slashId) "Decreases burnable shares for (operatorSet, slashId)"
+    SM->>STR: withdraw(slashEscrow, token, underlyingAmount) "Sends underlying tokens to the counterfactual `SlashEscrow` proxy"
     
-    SEF->>SEF: getStrategyBurnOrRedistributionDelay() elapses
+    SEF->>SEF: getStrategyBurnOrRedistributionDelay() "max(globalDelay, strategyDelay) elapses"
+
     SEF->>CL: burnOrRedistributeShares()
+    SEF->>CL: *Internal* "Calls decreaseBurnableShares() just in case"
     SEF->>CL: *Internal* "Deploys the counterfactual proxy"
-    CL->>BR: Protocol Fund Outflow
+    CL->>BR: burnOrRedistributeUnderlyingTokens() "Protocol Fund Outflow"
 ```
 
 The rationale for this new contract, process, and delay is [outlined in the rationale](./ELIP-006.md#outflow-delay). A global minimum escrow period is introduced that is set by governance. This is a constant value, set at a minimum of four days.
