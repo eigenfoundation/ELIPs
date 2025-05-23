@@ -8,7 +8,7 @@
 
 # Executive Summary
 
-Slashing ([ELIP-002](./ELIP-002.md))is a key piece of EigenLayer’s vision; it enables enforcement of crypto-economic commitments made by Service builders to their consumers and users. When leveraging slashing on EigenLayer today, security funds are always burned or locked when penalizing Operators. This creates a challenge for builders of use-cases that involve lending, insurance, risk hedging, or, broadly, commitments with a need to compensate harmed parties or amortize risk.
+Slashing ([ELIP-002](./ELIP-002.md))is a key piece of EigenLayer's vision; it enables enforcement of crypto-economic commitments made by Service builders to their consumers and users. When leveraging slashing on EigenLayer today, security funds are always burned or locked when penalizing Operators. This creates a challenge for builders of use-cases that involve lending, insurance, risk hedging, or, broadly, commitments with a need to compensate harmed parties or amortize risk.
 
 Redistributable Slashing is a feature that gives Service Builders a means to not just burn, but repurpose slashed funds. Redistribution represents an expansion of the types of use-cases builders can launch on EigenLayer, by expanding the expressivity of slashing on the platform. A new type of Operator Set with strict configuration controls allows for specifying a redistribution recipient by the AVS that receives slashed funds. This new feature requires, and is shipped with, adjustments to the EigenLayer security model and stake guarantees for AVSs to support this new slashing paradigm.
 
@@ -168,29 +168,42 @@ The flow and code-paths for exiting slashed funds from the protocol have changed
 sequenceDiagram
     title Redistribution & Burn Flow
 
-    participant AVS
+    participant AVS as AVS
     participant ALM as Allocation Manager
     participant DM as Delegation Manager
     participant SM as Strategy Manager
-    participant STR as strategyN
+    participant STR as Strategy Contract
     participant SEF as Slash Escrow Factory
     participant CL as Slash Escrow Clone
     participant BR as Burn Address or Redistribution Recipient
 
+    Note over AVS,BR: Slashing Initiation
     AVS->>ALM: slashOperator(avs, slashParams)
     ALM->>DM: slashOperatorShares(operator, strategies, prevMaxMags, newMaxMags)
-    DM->>SM: increaseBurnableShares(operatorSet, slashId) "Increases burnable shares for (operatorSet, slashId)"
-    SM->>SEF: startBurnOrRedistributeShares() "Starts the escrow countdown"
-
-    SM->>CL: decreaseBurnableShares(operatorSet, slashId) "Decreases burnable shares for (operatorSet, slashId)"
-    SM->>STR: withdraw(slashEscrow, token, underlyingAmount) "Sends underlying tokens to the counterfactual `SlashEscrow` proxy"
     
-    SEF->>SEF: getStrategyBurnOrRedistributionDelay() "max(globalDelay, strategyDelay) elapses"
-
+    Note over DM,SM: Share Management
+    DM->>SM: **Internal** increaseBurnableShares(operatorSet, slashId)
+    Note right of SM: Records slashed shares for (operatorSet, slashId)
+    
+    Note over SM,SEF: Escrow Setup
+    SM->>SEF: **Internal** startBurnOrRedistributeShares()
+    Note right of SEF: Initiates 4-day escrow period
+    
+    Note over SM,CL: Token Transfer (Second Transaction)
+    SM->>CL: decreaseBurnableShares(operatorSet, slashId)
+    SM->>STR: withdraw(slashEscrow, token, underlyingAmount)
+    Note right of STR: Transfers underlying tokens to the `SlashEscrow` clone
+    
+    Note over SEF,SEF: Delay Period
+    SEF->>SEF: getStrategyBurnOrRedistributionDelay()
+    Note right of SEF: Waits for max(globalDelay, strategyDelay)
+    
+    Note over SEF,CL: Final Distribution
     SEF->>CL: burnOrRedistributeShares()
-    SEF->>CL: *Internal* "Calls decreaseBurnableShares() just in case"
-    SEF->>CL: *Internal* "Deploys the counterfactual proxy"
-    CL->>BR: burnOrRedistributeUnderlyingTokens() "Protocol Fund Outflow"
+    SEF->>CL: *Internal* decreaseBurnableShares()
+    SEF->>CL: *Internal* Deploy counterfactual proxy
+    CL->>BR: burnOrRedistributeUnderlyingTokens()
+    Note right of BR: Final protocol fund outflow
 ```
 
 The rationale for this new contract, process, and delay is [outlined in the rationale](./ELIP-006.md#outflow-delay). A global minimum escrow period is introduced that is set by governance. This is a constant value, set at a minimum of four days.
@@ -544,6 +557,7 @@ interface IStrategyManager {
      * @param slashId The slash ID to burn shares in.
      */
     function decreaseBurnableShares(OperatorSet calldata operatorSet, uint256 slashId) external;
+}
 ```
 
 The `EigenPodManager` interfaces are updated to avoid breaking changes in the internal flows.
