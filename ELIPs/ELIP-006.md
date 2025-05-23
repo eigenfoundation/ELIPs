@@ -624,7 +624,7 @@ Consistently exiting Ethereum validators creates some problems for users and the
 - Funds have to wait to be swept before they will arrive at the specified withdrawal addresses in EigenPods. AVSs will not have access to any funds until this queue is cleared, which can impact programmatic designs.
 - Impacts Ethereum network security, in some adversarial cases.
 
-Together, these are enough to forgo this scope in the initial implementation of redistributable slashing. With the increase in the [max effective balance of validators](https://eips.ethereum.org/EIPS/eip-7251) being shipped in Pectra, there are possible designs that can alleviate the above concerns (like partial withdrawals above the minimum required balance of 32 ETH). These are being actively explored as part of improvements to EigenPods, including exploration of forced withdrawal mechanisms with regard to slashing on EigenLayer and ETH validators.
+Together, these are enough to forgo this scope in the initial implementation of redistributable slashing. With the increase in the [max effective balance of validators](https://eips.ethereum.org/EIPS/eip-7251) enabled in Ethereum's Pectra upgrade, there are possible designs that can alleviate the above concerns (like partial withdrawals above the minimum required balance of 32 ETH). These are being actively explored as part of improvements to EigenPods, including exploration of forced withdrawal mechanisms with regard to slashing on EigenLayer and ETH validators.
 
 # Security Considerations
 
@@ -644,7 +644,7 @@ As always this update requires very careful management of keys, as a compromised
 
 AVSs will gain access to a powerful new primitive in redistributable slashing upon which to develop use-cases. This comes with an even heavier emphasis on proper key management and op-sec requirements. An attacker that gains access to AVS keys on the `slasher` and `redistributionRecipient` can drain the entirety of Operator and Staker allocated stake for a given Operator Set. This will have heavy repercussions on the AVSs reputation and continued trust.
 
-Because redistribution may allow AVSs to benefit from slashing, additional design care must be taken to consider the incentives of all parties that can interact with it. When handled appropriately, AVSs will balance new use-case opportunities against higher risk and slash incentive for those running their code. Builders should consider how to counter these changes with additional rewards to offset risk with the right incentives for Stakers and Operators.
+Because redistribution may allow AVSs to benefit from a theft related to slashing, additional design care must be taken to consider the incentives of all parties that can interact with it. When handled appropriately, AVSs will have new use-case opportunities but must consider the higher risk and slash incentive for those running their code.
 
 ## Operators
 
