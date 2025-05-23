@@ -162,8 +162,7 @@ interface IShareManager {
 ```
 
 ### Burn & Distribution Mechanics
-
-The flow and code-paths for exiting slashed funds from the protocol have changed. Perviously, funds were exited only through a burn (transfer to `0x00...00316e4`) at a regular cadence. Following this upgrade, when a slash occurs, funds are atomically moved from the `StrategyManager` through the `SlashEscrowFactory` to be held in individual `SlashEscrow` contracts. The `SlashEscrowFactory` now interfaces directly with the `AllocationManager` following a slash. In the cloned child contracts, slashed funds are escrowed for a four day period to intervene in the case of slashing bugs. ***Funds no longer sit in the `DelegationManager` marked for a `burn` and are no longer exited via functions on the `ShareManager`.*** The new flow is illustrated in the below diagram:
+The flow and code-paths for exiting slashed funds from the protocol have changed. Previously, funds were exited only through a burn (transfer to `0x00...00316e4`) at a regular cadence. Following this upgrade, when a slash occurs, funds are not atomically transferred to maintain the protocol guarantee that `slashOperator` should never fail. Instead, similar to the original burning implementation, we first increase burnable shares in storage during the slash. A second call to `decreaseBurnableShares` is then required to delete that storage and transfer funds to the counterfactual escrow clone. The `SlashEscrowFactory` now interfaces directly with the `AllocationManager` following a slash. In the cloned child contracts, slashed funds are escrowed for a four day period to intervene in the case of slashing bugs. ***Funds no longer exited via functions on the `ShareManager`.*** The new flow is illustrated in the below diagram:
 
 ```mermaid
 sequenceDiagram
