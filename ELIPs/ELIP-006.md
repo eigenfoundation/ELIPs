@@ -179,30 +179,24 @@ sequenceDiagram
 
     Note over AVS,BR: Slashing Initiation
     AVS->>ALM: slashOperator(avs, slashParams)
-    ALM->>DM: slashOperatorShares(operator, strategies, prevMaxMags, newMaxMags)
-    
+    ALM->>DM: *Internal* slashOperatorShares(operator, strategies, prevMaxMags, newMaxMags)
     Note over DM,SM: Share Management
     DM->>SM: **Internal** increaseBurnableShares(operatorSet, slashId)
-    Note right of SM: Records slashed shares for (operatorSet, slashId)
-    
-    Note over SM,SEF: Escrow Setup
+    Note over SM,SEF: Escrow Setup (Initiates 4-day escrow period)
     SM->>SEF: **Internal** startBurnOrRedistributeShares()
-    Note right of SEF: Initiates 4-day escrow period
     
-    Note over SM,CL: Token Transfer (Second Transaction)
+    Note over SM,CL: Transfers underlying tokens to the `SlashEscrow` clone (Second Transaction)
     SM->>CL: decreaseBurnableShares(operatorSet, slashId)
-    SM->>STR: withdraw(slashEscrow, token, underlyingAmount)
-    Note right of STR: Transfers underlying tokens to the `SlashEscrow` clone
+    SM->>STR: *Internal* withdraw(slashEscrow, token, underlyingAmount)
     
-    Note over SEF,SEF: Delay Period
+    Note over SEF,SEF: Wait for max(globalDelay, strategyDelay) to elapse.
     SEF->>SEF: getStrategyBurnOrRedistributionDelay()
-    Note right of SEF: Waits for max(globalDelay, strategyDelay)
     
     Note over SEF,CL: Final Distribution
     SEF->>CL: burnOrRedistributeShares()
     SEF->>CL: *Internal* decreaseBurnableShares()
     SEF->>CL: *Internal* Deploy counterfactual proxy
-    CL->>BR: burnOrRedistributeUnderlyingTokens()
+    CL->>BR: *Internal* burnOrRedistributeUnderlyingTokens()
     Note right of BR: Final protocol fund outflow
 ```
 
