@@ -162,7 +162,9 @@ interface IShareManager {
 ```
 
 ### Burn & Distribution Mechanics
-The flow and code-paths for exiting slashed funds from the protocol have changed. Previously, funds were exited only through a burn (transfer to `0x00...00316e4`) at a regular cadence. Following this upgrade, when a slash occurs, funds are not atomically transferred to maintain the protocol guarantee that `slashOperator` should never fail. Instead, similar to the original burning implementation, we first increase burnable shares in storage during the slash. A second call to `decreaseBurnableShares` is then required to delete that storage and transfer funds to the counterfactual escrow clone. The `SlashEscrowFactory` now interfaces directly with the `AllocationManager` following a slash. In the cloned child contracts, slashed funds are escrowed for a four day period to intervene in the case of slashing bugs. ***Funds no longer exited via functions on the `ShareManager`.*** The new flow is illustrated in the below diagram:
+The flow and code-paths for exiting slashed funds from the protocol have changed. Previously, ERC-20 funds flowed out of the protocol through withdrawals or a burn (transfer to `0x00...00316e4`) at a regular cadence. Native ETH was withdrawn or locked in EigenPods permanently during a slash. Following this upgrade, when a slash occurs, funds are exited in two steps. In order to maintain the protocol guarantee that `slashOperator` should never fail, outflow transfers are non-atomic. Similar to the original burning implementation, burnable shares are first increased in `StrategyManger` storage during a slash. A second call to `decreaseBurnableShares` is then required to delete that storage and transfer slashed funds to a counterfactually deployed `SlashEscrow` child contract.
+
+The `SlashEscrowFactory` interfaces directly with the `AllocationManager` following a slash. In the cloned child contracts, slashed funds are escrowed for a four day period to intervene in the case of slashing bugs. ***Funds are no longer exited via functions on the `ShareManager`.*** The new flow is illustrated in the below diagram:
 
 ```mermaid
 sequenceDiagram
@@ -178,25 +180,25 @@ sequenceDiagram
     participant BR as Burn Address or Redistribution Recipient
 
     Note over AVS,BR: Slashing Initiation
-    AVS->>ALM: slashOperator(avs, slashParams)
-    ALM->>DM: *Internal* slashOperatorShares(operator, strategies, prevMaxMags, newMaxMags)
+    AVS->>ALM: slashOperator<br>(avs, slashParams)
+    ALM-->>DM: *Internal* <br>slashOperatorShares<br>(operator, strategies,<br> prevMaxMags, newMaxMags)
     Note over DM,SM: Share Management
-    DM->>SM: **Internal** increaseBurnableShares(operatorSet, slashId)
+    DM-->>SM: **Internal**<br>increaseBurnableShares<br>(operatorSet, slashId)
     Note over SM,SEF: Escrow Setup (Initiates 4-day escrow period)
-    SM->>SEF: **Internal** startBurnOrRedistributeShares()
+    SM-->>SEF: **Internal** startBurnOrRedistributeShares()
     
     Note over SM,CL: Transfers underlying tokens to the `SlashEscrow` clone (Second Transaction)
     SM->>CL: decreaseBurnableShares(operatorSet, slashId)
-    SM->>STR: *Internal* withdraw(slashEscrow, token, underlyingAmount)
+    SM-->>STR: *Internal*<br>withdraw<br>(slashEscrow, token, underlyingAmount)
     
     Note over SEF,SEF: Wait for max(globalDelay, strategyDelay) to elapse.
     SEF->>SEF: getStrategyBurnOrRedistributionDelay()
     
     Note over SEF,CL: Final Distribution
     SEF->>CL: burnOrRedistributeShares()
-    SEF->>CL: *Internal* decreaseBurnableShares()
-    SEF->>CL: *Internal* Deploy counterfactual proxy
-    CL->>BR: *Internal* burnOrRedistributeUnderlyingTokens()
+    SEF-->>CL: *Internal* decreaseBurnableShares()
+    SEF-->>CL: *Internal* Deploy counterfactual proxy
+    CL-->>BR: *Internal* <br>burnOrRedistributeUnderlyingTokens()
     Note right of BR: Final protocol fund outflow
 ```
 
