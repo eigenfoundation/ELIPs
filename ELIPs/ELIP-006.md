@@ -45,13 +45,48 @@ New getter and setter functions are provided in the `AllocationManger` interface
 
 ```solidity
 interface IAllocationManager {
-    /// STRUCTS (exists in `IAllocationManager`)
-    
+    /// @dev Existing struct in `IAllocationManager`.
     struct CreateSetParams {
         uint32 operatorSetId;
         IStrategy[] strategies;
     }
     
+    /// EVENT
+
+    /// @notice Emitted when a redistributing operator set is created by an AVS.
+    event RedistributionAddressSet(OperatorSet operatorSet, address redistributionRecipient);
+    
+    /// WRITE
+
+    /**
+     * @notice Called by an AVS to slash an operator in a given operator set. The operator must be registered
+     * and have slashable stake allocated to the operator set.
+     *
+     * @param avs The AVS address initiating the slash.
+     * @param params The slashing parameters, containing:
+     *  - operator: The operator to slash.
+     *  - operatorSetId: The ID of the operator set the operator is being slashed from.
+     *  - strategies: Array of strategies to slash allocations from (must be in ascending order).
+     *  - wadsToSlash: Array of proportions to slash from each strategy (must be between 0 and 1e18).
+     *  - description: Description of why the operator was slashed.
+     *
+     * @dev For each strategy:
+     *      1. Reduces the operator's current allocation magnitude by wadToSlash proportion.
+     *      2. Reduces the strategy's max and encumbered magnitudes proportionally.
+     *      3. If there is a pending deallocation, reduces it proportionally.
+     *      4. Updates the operator's shares in the DelegationManager.
+     *
+     * @dev Small slashing amounts may not result in actual token burns due to
+     *      rounding, which will result in small amounts of tokens locked in the contract
+     *      rather than fully burning through the burn mechanism.
+     * @return slashId The operator set's unique identifier for the slash.
+     * @return shares The number of shares to be burned or redistributed for each strategy that was slashed.
+     */
+    function slashOperator(
+        address avs,
+        SlashingParams calldata params
+    ) external returns (uint256 slashId, uint256[] memory shares);
+
     /// READ
 
     /**
@@ -63,57 +98,34 @@ interface IAllocationManager {
     function getRedistributionRecipient(
         OperatorSet memory operatorSet
     ) external view returns (address);
-    
+
     /**
-     * @notice Returns whether a given operator set supports redistribution 
-     * or not when funds are slashed and burned from EigenLayer. 
+     * @notice Returns whether a given operator set supports redistribution
+     * or not when funds are slashed and burned from EigenLayer.
      * @param operatorSet The Operator Set to query.
      * @return For redistributing Operator Sets, returns true.
      *         For non-redistributing Operator Sets, returns false.
-     *         This is based on a non-`DEFAULT_BURN_ADDRESS` being set, `0x0...314e6`.
      */
     function isRedistributingOperatorSet(
         OperatorSet memory operatorSet
     ) external view returns (bool);
 
-    /// WRITE
-    
     /**
-     * @notice Allows an AVS to create new Redistribution operator sets.
-     * @param avs The AVS creating the new operator sets.
-     * @param params An array of operator set creation parameters.
-     * @param redistributionRecipients An array of addresses that will receive redistributed funds when operators are slashed.
-     * @dev Same logic as `createOperatorSets`, except `redistributionRecipients` corresponding to each Operator Set are stored.
-     *      Additionally, emits `RedistributionOperatorSetCreated` event instead of `OperatorSetCreated` for each created operator set.
-     * TODO: change og fn as well
+     * @notice Returns the number of slashes for a given operator set.
+     * @param operatorSet The operator set to query.
+     * @return The number of slashes for the operator set.
      */
-    function createRedistributingOperatorSets(
-        address avs,
-        CreateSetParams[] memory params,
-        address[] memory redistributionRecipients
-    ) external returns (uint32[] memory operatorSetIds);
+    function getSlashCount(
+        OperatorSet memory operatorSet
+    ) external view returns (uint256);
 
-    /// @dev This function is updated to return the `slashId`, `strategies` and `shares` (to be burned or redistributed, not those that remain).
-    /// TODO: natspec
-    function slashOperator(
-        address avs,
-        SlashingParams memory params
-    ) external returns (uint256 slashId, IStrategy[] memory strategies, uint256[] memory shares);
-
-    ///EVENTS
-
-    /// @notice Emitted when an operator is slashed by an operator set for a strategy
-    /// `wadSlashed` is the proportion of the operator's total delegated stake that was slashed
-    /// TODO natspec
-    event OperatorSlashed(
-        address operator, 
-        OperatorSet operatorSet, 
-        IStrategy[] strategies, 
-        uint256[] wadSlashed, 
-        uint256 slashId,
-        uint256[] slashAmounts, 
-        string description
-    );
+    /**
+     * @notice Returns whether an operator is slashable by a redistributing operator set.
+     * @param operator The operator to query.
+     */
+    function isOperatorRedistributable(
+        address operator
+    ) external view returns (bool);
 }
 ```
 
