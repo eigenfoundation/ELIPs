@@ -172,6 +172,7 @@ interface IShareManager {
 ```
 
 ### Burn & Distribution Mechanics
+
 The flow and code-paths for exiting slashed funds from the protocol have changed. Previously, ERC-20 funds flowed out of the protocol through withdrawals or a burn (transfer to `0x00...00316e4`) at a regular cadence. Native ETH was withdrawn or locked in EigenPods permanently during a slash. Following this upgrade, when a slash occurs, funds are exited in two steps. In order to maintain the protocol guarantee that `slashOperator` should never fail, outflow transfers are non-atomic. Similar to the original burning implementation, burnable shares are first increased in `StrategyManger` storage during a slash. A second call to `clearBurnOrRedistributableShares` is then required to delete that storage and transfer slashed funds to a counterfactually deployed `SlashEscrow` child contract.
 
 The `SlashEscrowFactory` interfaces directly with the `AllocationManager` following a slash. In the cloned child contracts, slashed funds are escrowed for a four day period to intervene in the case of slashing bugs. ***Funds are no longer exited via functions on the `ShareManager`.*** The new flow is illustrated in the below diagram:
