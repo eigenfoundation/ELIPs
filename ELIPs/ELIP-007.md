@@ -1,45 +1,53 @@
-# EigenLayer Improvement Proposal: [Title]
-
 | Author(s) | Created | Status | References | Discussions |
 |-------------|-----------|---------|------|----------|
 | [Ron Turetzky](turetzkyron@gmail.com), [Ram Veigman](rubydusa@protonmail.com)| 2025-05-29 | `Draft` | [BLS381 EIP2537](https://eips.ethereum.org/EIPS/eip-2537),[RFC 9380](https://datatracker.ietf.org/doc/rfc9380/),[BLS381 WIP solidity lib](https://github.com/BreadchainCoop/bls12381-sol)| N/A |
 
 # ELIP-007: BLS12-381 Curve Support
 
-## Executive Summary
-Integrating BLS12-381 enhances EigenLayer's scalability and security by enabling efficient ,secure and compliant cryptographic signature aggregation. Higher bit security, standardized hash-to-curve and pre-existing best practice remote signing utilities makes this curve an ideal first class primitive for Eigenlayer AVS teams.  
+---
 
-## Motivation
+# Executive Summary
+
+Integrating BLS12-381 enhances EigenLayer's scalability and security by enabling efficient, secure and compliant cryptographic signature aggregation. Higher bit security, standardized hash-to-curve and pre-existing best practice remote signing utilities makes this curve an ideal first class primitive for EigenLayer AVS teams.  
+
+# Motivation
+
 EigenLayer provides the cryptoeconomic foundations for secure, scalable, and flexible Active Validation Services (AVSs). As these services grow in complexity and scale, there is an increasing demand for advanced cryptographic primitives that enable efficient and secure signature aggregation schemes.
 
 Integrating BLS12-381 directly addresses this need by offering a pairing-friendly elliptic curve with proven robustness and industry-wide adoption. Its incorporation into EigenLayer will empower AVSs with a reliable and widely supported cryptographic standard, facilitating interoperability and ease of integration with external tooling and services.
 
-BLS12-381 provides superior bit security (128-bit), effectively future-proofing EigenLayer AVSs against evolving computational threats. Additionally, its standardized hash-to-curve method (as opposed to BN254 - see this [open security vunerablity](https://github.com/Layr-Labs/eigenlayer-middleware/issues/172)) ensures consistent and secure implementations across various services, significantly reducing potential attack surfaces.
+BLS12-381 provides superior bit security (128-bit), effectively future-proofing EigenLayer AVSs against evolving computational threats. Additionally, its standardized hash-to-curve method (as opposed to BN254 - see this [open security vulnerability](https://github.com/Layr-Labs/eigenlayer-middleware/issues/172)) ensures consistent and secure implementations across various services, significantly reducing potential attack surfaces.
 
 The widespread ecosystem support for BLS12-381, including mature libraries and established remote-signing infrastructure, simplifies deployment and reduces development overhead for AVSs, allowing EigenLayer teams to focus on core service logic rather than cryptographic implementation details.
 
 Ultimately, adding BLS12-381 as a first-class primitive enhances EigenLayer’s security posture, scalability potential, and accessibility, enabling richer AVS functionality and fostering greater trust and adoption across the EigenLayer ecosystem.
+
 # Features & Specification
 
-#### BLS12381 Verification Library
-The equivalent of [the BN254 library](https://github.com/Layr-Labs/eigenlayer-middleware/blob/3fb5b61076475108bd87d4e6c7352fd60b46af1c/src/libraries/BN254.sol) , but working with the precompiles introduced in the Pectra update compliant with [EIP2537](https://eips.ethereum.org/EIPS/eip-2537). 
+## BLS12381 Verification Library
 
-#### BLS12381 Key Registrar Support 
+The equivalent of [the BN254 library](https://github.com/Layr-Labs/eigenlayer-middleware/blob/3fb5b61076475108bd87d4e6c7352fd60b46af1c/src/libraries/BN254.sol), but working with the precompiles introduced in the Pectra update compliant with [EIP2537](https://eips.ethereum.org/EIPS/eip-2537).
+
+## BLS12381 Key Registrar Support
+
 As defined in the [Key Registrar](https://github.com/Layr-Labs/eigenlayer-middleware/pull/481) feature, support for BLS12381 registration as a first class curve primitive would include:
-- Inclusion in the CurveType enum 
-- Rogue Key Attack Prevention/ Proof of Possession on registration 
-- APK updates 
-- Support for all setter/getter methods established for BN254 
+-Inclusion in the CurveType enum
+-Rogue Key Attack Prevention/ Proof of Possession on registration
+-APK updates
+-Support for all setter/getter methods established for BN254
 
-#### BLS12381 Stake Weighted Verification Support 
-The equivalent of the [BN254 BLS Signature Checker](https://github.com/Layr-Labs/eigenlayer-middleware/blob/3fb5b61076475108bd87d4e6c7352fd60b46af1c/src/BLSSignatureChecker.sol) , for equivalent support the following would need to be implemented 
-- Signer APK construction derived from non-signer bitmap 
+## BLS12381 Stake Weighted Verification Support
 
-Multi-quorum/operator set verification is highly reccomended to *not be implemented* for this ELIP if possible, as the added complexity is highly use-case specific and adds friction for implementing teams. 
-## Specifications 
+The equivalent of the [BN254 BLS Signature Checker](https://github.com/Layr-Labs/eigenlayer-middleware/blob/3fb5b61076475108bd87d4e6c7352fd60b46af1c/src/BLSSignatureChecker.sol), for equivalent support the following would need to be implemented
+-Signer APK construction derived from non-signer bitmap
+
+Multi-quorum/operator set verification is highly recommended to *not be implemented* for this ELIP if possible, as the added complexity is highly use-case specific and adds friction for implementing teams.
+
+# Specifications
 
 The following are UMLs and functions for the previously established feature set, an implementation can be found [here](https://github.com/BreadchainCoop/bls12381-sol)
-```mermaid 
+
+```mermaid
 classDiagram
     class BLSSignatureChecker {
         <<abstract>>
@@ -110,7 +118,8 @@ classDiagram
     }
 
 ```
-```solidity 
+
+```solidity
 library BLS12381Lib {
 
     /**
@@ -283,8 +292,6 @@ interface IBLSSignatureChecker {
         _T.G1Point memory sigma
     ) external view returns (bool pairingSuccessful, bool signatureIsValid);
 }
-
-}
 ```
 
 ## Rationale
@@ -294,83 +301,89 @@ Support for multi-quorum signature verification was removed due to increased com
 Practically, multi-quorum verification scenarios proved rare or unnecessary in typical EigenLayer use-cases. Individual quorum signature verifications simplify implementation, reduce attack vectors, improve auditability, and align closely with common AVS integration patterns. Consequently, focusing exclusively on single quorum verification enhances security, reduces complexity, and provides clear, predictable contract behavior.
 
 ## Security Considerations
+
 Integrating BLS12-381 as a cryptographic primitive introduces specific security considerations that must be carefully managed to maintain EigenLayer's security posture:
 
-#### Collision Resistance of Message Hashes
+### Collision Resistance of Message Hashes
+
 It is crucial that all messages hashed for signature verification are collision-resistant. EigenLayer AVS teams must ensure that message inputs cannot be manipulated to produce identical hashes, which could enable signature replay attacks. Thus, messages must include unique, domain-separated, and collision-resistant elements.
 
-#### Proper Use of Domain Separation Tags (DSTs)
+### Proper Use of Domain Separation Tags (DSTs)
+
 When employing hash-to-curve operations (RFC 9380), correct usage of Domain Separation Tags (DSTs) is essential. Failure to correctly apply DSTs can lead to signature collisions across different applications, potentially allowing attackers to reuse valid signatures maliciously. Therefore, all implementations must follow standardized DST usage.
 
-#### Aggregation Pitfalls
+### Aggregation Pitfalls
+
 While BLS signatures facilitate efficient aggregation, improper aggregation processes can introduce vulnerabilities. Aggregated signatures must always correspond correctly to their aggregated public keys, and AVS operators must carefully manage non-signers' public keys to avoid false validations. The Ethereum implementation or [`commonware`](commonware.xyz) (for a more decoupled , modular , avs native design) can serve as a reference for how to implement aggregation.  
 
-#### Reliance on Precompiles
+### Reliance on Precompiles
+
 EigenLayer's integration heavily relies on BLS12-381 precompiles, which are EVM implementation-dependent. Teams should monitor underlying platform changes (e.g., EVM upgrades) closely, promptly adapting implementations to maintain compatibility and security guarantees (*especially on L2s*).
 
-#### Key Management Practices
-As cryptographic strength depends heavily on secure key management, AVS operators must enforce robust key lifecycle management, including secure generation, storage, rotation policies, and proactive key revocation procedures to prevent unauthorized access or compromise. [Web3Signer](https://github.com/Consensys/web3signer) is a widely adopted and maintained solution that may be utilized for this. 
+### Key Management Practices
+
+As cryptographic strength depends heavily on secure key management, AVS operators must enforce robust key lifecycle management, including secure generation, storage, rotation policies, and proactive key revocation procedures to prevent unauthorized access or compromise. [Web3Signer](https://github.com/Consensys/web3signer) is a widely adopted and maintained solution that may be utilized for this.
 
 Addressing these considerations ensures the secure, efficient, and reliable use of BLS12-381 signatures within EigenLayer's AVS ecosystem.
 
 ## Impact Summary
 
-#### Enhanced Scalability and Efficiency for AVS teams 
+### Enhanced Scalability and Efficiency for AVS teams
 
 Integrating BLS12-381 significantly enhances cryptographic operation efficiency through signature aggregation, substantially reducing on-chain data storage and computational overhead. This reduction directly translates into lower gas costs, optimizing the overall scalability and performance of EigenLayer AVS deployments.
 
-#### Strengthened Security Guarantees for Operators
+### Strengthened Security Guarantees for Operators
 
-The integration of BLS12-381 enables higher security standards for operators, empowering stringent private key management practices. 
+The integration of BLS12-381 enables higher security standards for operators, empowering stringent private key management practices.
 
-#### Simplified Aggregation and Reduced Operational Complexity for L2/Estranged L1 support
+### Simplified Aggregation and Reduced Operational Complexity for L2/Estranged L1 support
 
 Existing threshold aggregation methods for BLS12-381 (as opposed to BN254) allow leveraging a single AVS public key,  dramatically reducing gas complexity. Moreover, this singular aggregation method eliminates the operational overhead associated with maintaining the APK across separate, non-Ethereum execution environments such as Layer-2s or other Layer-1 chains.
 
-#### Standardization and Interoperability
+### Standardization and Interoperability
 
 By adopting the standardized BLS12-381 curve, EigenLayer aligns itself with widely accepted cryptographic standards (RFC 9380). This standardization ensures interoperability with existing cryptographic libraries, tools, and practices, thereby reducing integration friction and enhancing operational consistency.
 
 In summary, integrating BLS12-381 offers substantial operational, security, and compliance benefits, streamlining EigenLayer operations and enhancing its resilience and scalability.
 
-## Action Plan
-Action Plan
+# Action Plan
 
 To ensure a smooth integration of BLS12-381 into EigenLayer, the following steps will be undertaken:
 
-#### Finalization of Implementation
+## Finalization of Implementation
 
 Complete the Solidity library implementation (BLS12381Lib) adhering strictly to the BLS12-381 cryptographic standards.
 
 Conduct comprehensive unit tests to ensure correctness and security of each precompile and cryptographic operation.
 
-#### Security Audit
+## Security Audit
 
 Engage a reputable third-party auditor specializing in cryptographic libraries and smart contract security.
 
 Resolve any vulnerabilities identified during the audit phase and re-audit critical changes.
 
-#### Testnet Deployment
+## Testnet Deployment
 
 Deploy the updated EigenLayer contracts with BLS12-381 support onto a suitable testnet environment.
 
 Conduct extensive performance testing and security stress tests under realistic network conditions.
 
-#### Documentation and Community Engagement
+## Documentation and Community Engagement
 
 Update developer documentation clearly illustrating new capabilities, usage guidelines, and best practices for integrating BLS12-381.
 
 Communicate actively with existing AVS teams and new developers to facilitate seamless adoption.
 
-#### Mainnet Release
+## Mainnet Release
 
 Schedule a coordinated mainnet release ensuring adequate communication, minimal disruption, and providing clear upgrade instructions to node operators and AVS teams.
 
-#### Continuous Monitoring and Support
+## Continuous Monitoring and Support
 
 Provide proactive support to AVS teams leveraging BLS12-381, ensuring consistent security standards and operational efficiency.
 
-## References & Relevant Discussions
+# References & Relevant Discussions
+
 [BLS12-381 Explainer](https://hackmd.io/@benjaminion/bls12-381)
 
 [BLS12-381 Rust Implementation](https://github.com/commonwarexyz/monorepo/tree/main/cryptography/src/bls12381)
