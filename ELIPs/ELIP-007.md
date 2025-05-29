@@ -4,7 +4,7 @@
 |-------------|-----------|---------|------|----------|
 | [Ron Turetzky](turetzkyron@gmail.com), [Ram Veigman](rubydusa@protonmail.com)| 2025-05-29 | `Draft` | [BLS381 EIP2537](https://eips.ethereum.org/EIPS/eip-2537),[RFC 9380](https://datatracker.ietf.org/doc/rfc9380/),[BLS381 WIP solidity lib](https://github.com/BreadchainCoop/bls12381-sol)| N/A |
 
-# ELIP-007: BLS12-381 Curve Suppot
+# ELIP-007: BLS12-381 Curve Support
 
 ## Executive Summary
 Integrating BLS12-381 enhances EigenLayer's scalability and security by enabling efficient ,secure and compliant cryptographic signature aggregation. Higher bit security, standardized hash-to-curve and pre-existing best practice remote signing utilities makes this curve an ideal first class primitive for Eigenlayer AVS teams.  
