@@ -45,13 +45,48 @@ New getter and setter functions are provided in the `AllocationManger` interface
 
 ```solidity
 interface IAllocationManager {
-    /// STRUCTS (exists in `IAllocationManager`)
-    
+    /// @dev Existing struct in `IAllocationManager`.
     struct CreateSetParams {
         uint32 operatorSetId;
         IStrategy[] strategies;
     }
     
+    /// EVENT
+
+    /// @notice Emitted when a redistributing operator set is created by an AVS.
+    event RedistributionAddressSet(OperatorSet operatorSet, address redistributionRecipient);
+    
+    /// WRITE
+
+    /**
+     * @notice Called by an AVS to slash an operator in a given operator set. The operator must be registered
+     * and have slashable stake allocated to the operator set.
+     *
+     * @param avs The AVS address initiating the slash.
+     * @param params The slashing parameters, containing:
+     *  - operator: The operator to slash.
+     *  - operatorSetId: The ID of the operator set the operator is being slashed from.
+     *  - strategies: Array of strategies to slash allocations from (must be in ascending order).
+     *  - wadsToSlash: Array of proportions to slash from each strategy (must be between 0 and 1e18).
+     *  - description: Description of why the operator was slashed.
+     *
+     * @dev For each strategy:
+     *      1. Reduces the operator's current allocation magnitude by wadToSlash proportion.
+     *      2. Reduces the strategy's max and encumbered magnitudes proportionally.
+     *      3. If there is a pending deallocation, reduces it proportionally.
+     *      4. Updates the operator's shares in the DelegationManager.
+     *
+     * @dev Small slashing amounts may not result in actual token burns due to
+     *      rounding, which will result in small amounts of tokens locked in the contract
+     *      rather than fully burning through the burn mechanism.
+     * @return slashId The operator set's unique identifier for the slash.
+     * @return shares The number of shares to be burned or redistributed for each strategy that was slashed.
+     */
+    function slashOperator(
+        address avs,
+        SlashingParams calldata params
+    ) external returns (uint256 slashId, uint256[] memory shares);
+
     /// READ
 
     /**
@@ -63,57 +98,35 @@ interface IAllocationManager {
     function getRedistributionRecipient(
         OperatorSet memory operatorSet
     ) external view returns (address);
-    
+
     /**
-     * @notice Returns whether a given operator set supports redistribution 
-     * or not when funds are slashed and burned from EigenLayer. 
+     * @notice Returns whether a given operator set supports redistribution
+     * or not when funds are slashed and burned from EigenLayer.
      * @param operatorSet The Operator Set to query.
      * @return For redistributing Operator Sets, returns true.
      *         For non-redistributing Operator Sets, returns false.
-     *         This is based on a non-`DEFAULT_BURN_ADDRESS` being set, `0x0...314e6`.
      */
     function isRedistributingOperatorSet(
         OperatorSet memory operatorSet
     ) external view returns (bool);
 
-    /// WRITE
-    
     /**
-     * @notice Allows an AVS to create new Redistribution operator sets.
-     * @param avs The AVS creating the new operator sets.
-     * @param params An array of operator set creation parameters.
-     * @param redistributionRecipients An array of addresses that will receive redistributed funds when operators are slashed.
-     * @dev Same logic as `createOperatorSets`, except `redistributionRecipients` corresponding to each Operator Set are stored.
-     *      Additionally, emits `RedistributionOperatorSetCreated` event instead of `OperatorSetCreated` for each created operator set.
-     * TODO: change og fn as well
+     * @notice Returns the number of slashes for a given operator set.
+     * @param operatorSet The operator set to query.
+     * @return The number of slashes for the operator set.
+     * @dev Slash counter will only increment after redistribution is live (not inclusive of previous slashes).
      */
-    function createRedistributingOperatorSets(
-        address avs,
-        CreateSetParams[] memory params,
-        address[] memory redistributionRecipients
-    ) external returns (uint32[] memory operatorSetIds);
+    function getSlashCount(
+        OperatorSet memory operatorSet
+    ) external view returns (uint256);
 
-    /// @dev This function is updated to return the `slashId`, `strategies` and `shares` (to be burned or redistributed, not those that remain).
-    /// TODO: natspec
-    function slashOperator(
-        address avs,
-        SlashingParams memory params
-    ) external returns (uint256 slashId, IStrategy[] memory strategies, uint256[] memory shares);
-
-    ///EVENTS
-
-    /// @notice Emitted when an operator is slashed by an operator set for a strategy
-    /// `wadSlashed` is the proportion of the operator's total delegated stake that was slashed
-    /// TODO natspec
-    event OperatorSlashed(
-        address operator, 
-        OperatorSet operatorSet, 
-        IStrategy[] strategies, 
-        uint256[] wadSlashed, 
-        uint256 slashId,
-        uint256[] slashAmounts, 
-        string description
-    );
+    /**
+     * @notice Returns whether an operator is slashable by a redistributing operator set.
+     * @param operator The operator to query.
+     */
+    function isOperatorRedistributable(
+        address operator
+    ) external view returns (bool);
 }
 ```
 
@@ -125,15 +138,14 @@ Slashes are largely handled the same as in [the existing protocol](./ELIP-002.md
 
 ```solidity
 abstract contract AllocationManagerStorage {
-    /// @dev Returns 
-    mapping(bytes32 operatorSetKey => uint256 slashId) public slashCount;
-    
-    /**
-     * @notice Returns the address where slashed funds will be sent for a given operator set.
-     * @param operatorSet The Operator Set to query.
-     * @return For redistributing Operator Sets, returns the configured redistribution address set during Operator Set creation.
-     *         For non-redistributing operator sets, returns the `DEFAULT_BURN_ADDRESS`.
-     */
+    /// @notice Returns the number of slashes for a given operator set.
+    /// @dev This is also used as a unique slash identifier.
+    /// @dev This tracks the number of slashes after the redistribution release.
+    mapping(bytes32 operatorSetKey => uint256 slashId) internal _slashCount;
+
+    /// @notice Returns the address where slashed funds will be sent for a given operator set.
+    /// @dev For redistributing Operator Sets, returns the configured redistribution address set during Operator Set creation.
+    ///      For non-redistributing or non-existing operator sets, returns `address(0)`.
     mapping(bytes32 operatorSetKey => address redistributionAddr) internal _redistributionRecipients;
 }
 ```
@@ -142,29 +154,70 @@ All core contracts handling a slash, the `DelegationManager`, `ShareManager`, `S
 
 ```solidity
 interface IShareManager {
+    /// @notice Used by the DelegationManager to remove a Staker's shares from a particular strategy when entering the withdrawal queue
+    /// @dev strategy must be beaconChainETH when talking to the EigenPodManager
+    /// @return updatedShares the staker's deposit shares after decrement
+    function removeDepositShares(
+        address staker,
+        IStrategy strategy,
+        uint256 depositSharesToRemove
+    ) external returns (uint256);
+
+    /// @notice Used by the DelegationManager to award a Staker some shares that have passed through the withdrawal queue
+    /// @dev strategy must be beaconChainETH when talking to the EigenPodManager
+    /// @return existingDepositShares the shares the staker had before any were added
+    /// @return addedShares the new shares added to the staker's balance
+    function addShares(
+        address staker, 
+        IStrategy strategy, 
+        uint256 shares
+    ) external returns (uint256, uint256);
+
+    /// @notice Used by the DelegationManager to convert deposit shares to tokens and send them to a staker
+    /// @dev strategy must be beaconChainETH when talking to the EigenPodManager
+    /// @dev token is not validated when talking to the EigenPodManager
+    function withdrawSharesAsTokens(
+        address staker, 
+        IStrategy strategy, 
+        IERC20 token, uint256 shares) external;
+
+    /// @notice Returns the current shares of `user` in `strategy`
+    /// @dev strategy must be beaconChainETH when talking to the EigenPodManager
+    /// @dev returns 0 if the user has negative shares
+    function stakerDepositShares(address user, 
+        IStrategy strategy
+    ) external view returns (uint256 depositShares);
 
     /**
-     * @notice Increase the amount of burnable or redistributable shares for a given Strategy. This is called by the DelegationManager
+     * @notice Increase the amount of burnable/redistributable shares for a given Strategy. This is called by the DelegationManager
      * when an operator is slashed in EigenLayer.
+     * @param operatorSet The operator set to burn shares in.
+     * @param slashId The slash id to burn shares in.
      * @param strategy The strategy to burn shares in.
-     * @param operatorSet The operatorSet to burn shares on behalf of. This is used to check for a redistribution address.
-     * @param slashId The identifier associated with the slash
      * @param addedSharesToBurn The amount of added shares to burn.
      * @dev This function is only called by the DelegationManager when an operator is slashed.
      */
-    function increaseBurnableShares(
-        IStrategy strategy, 
-        OperatorSet memory operatorSet, 
-        uint256 slashId, 
+    function increaseBurnOrRedistributableShares(
+        OperatorSet calldata operatorSet,
+        uint256 slashId,
+        IStrategy strategy,
         uint256 addedSharesToBurn
     ) external;
-} 
+}
 ```
 
 ### Burn & Distribution Mechanics
-The flow and code-paths for exiting slashed funds from the protocol have changed. Previously, ERC-20 funds flowed out of the protocol through withdrawals or a burn (transfer to `0x00...00316e4`) at a regular cadence. Native ETH was withdrawn or locked in EigenPods permanently during a slash. Following this upgrade, when a slash occurs, funds are exited in two steps. In order to maintain the protocol guarantee that `slashOperator` should never fail, outflow transfers are non-atomic. Similar to the original burning implementation, burnable shares are first increased in `StrategyManger` storage during a slash. A second call to `decreaseBurnableShares` is then required to delete that storage and transfer slashed funds to a counterfactually deployed `SlashEscrow` child contract.
 
-The `SlashEscrowFactory` interfaces directly with the `AllocationManager` following a slash. In the cloned child contracts, slashed funds are escrowed for a four day period to intervene in the case of slashing bugs. ***Funds are no longer exited via functions on the `ShareManager`.*** The new flow is illustrated in the below diagram:
+The flow and code-paths for exiting slashed funds from the protocol have changed. Previously, ERC-20 funds flowed out of the protocol through withdrawals or a burn (transfer to `0x00...00316e4`) at a regular cadence. Native ETH was withdrawn or locked in EigenPods permanently during a slash. Following this upgrade, when a slash occurs, funds are exited in two steps. In order to maintain the protocol guarantee that `slashOperator` should never fail, outflow transfers are non-atomic.
+
+When a single slash occurs...
+-Similar to the original burning implementation, burnable shares are first increased in `StrategyManger` storage.
+-The `StrategyManager` now interfaces directly with the `SlashEscrowFactory` to setup and initiate the escrow.
+-A child `SlashEscrow` contract is then deployed; one is created per `slashId`. These contracts are stateless and immutable.
+
+In another call, funds are transferred to the `SlashEscrow` contracts. This escrow is to allow intervention in the case of slashing bugs. ***Funds are no longer exited via functions on the `ShareManager`.*** After the escrow delay period, a call to `clearBurnOrRedistributableShares` is required to delete the `StrategyManager` storage and transfer slashed funds out of the EigenLayer protocol.
+
+ The new flow is illustrated in the below diagram:
 
 ```mermaid
 sequenceDiagram
@@ -174,8 +227,8 @@ sequenceDiagram
     participant ALM as Allocation Manager
     participant DM as Delegation Manager
     participant SM as Strategy Manager
-    participant STR as Strategy Contract
     participant SEF as Slash Escrow Factory
+    participant STR as Strategy Contract
     participant CL as Slash Escrow Clone
     participant BR as Burn Address or Redistribution Recipient
 
@@ -183,26 +236,28 @@ sequenceDiagram
     AVS->>ALM: slashOperator<br>(avs, slashParams)
     ALM-->>DM: *Internal* <br>slashOperatorShares<br>(operator, strategies,<br> prevMaxMags, newMaxMags)
     Note over DM,SM: Share Management
-    DM-->>SM: **Internal**<br>increaseBurnableShares<br>(operatorSet, slashId)
+    DM-->>SM: *Internal*<br>increaseBurnOrRedistributableShares<br>(operatorSet, slashId, strategy, addedSharesToBurn)
     Note over SM,SEF: Escrow Setup (Initiates 4-day escrow period)
-    SM-->>SEF: **Internal** startBurnOrRedistributeShares()
+    SM-->>SEF: *Internal* initiateSlashEscrow()
+    SEF-->>CL: *Internal* Deploy child proxy
     
     Note over SM,CL: Transfers underlying tokens to the `SlashEscrow` clone (Second Transaction)
-    SM->>CL: decreaseBurnableShares(operatorSet, slashId)
+    SM->>CL: clearBurnOrRedistributableShares(operatorSet, slashId)
     SM-->>STR: *Internal*<br>withdraw<br>(slashEscrow, token, underlyingAmount)
     
     Note over SEF,SEF: Wait for max(globalDelay, strategyDelay) to elapse.
-    SEF->>SEF: getStrategyBurnOrRedistributionDelay()
+    SEF->>SEF: getStrategyEscrowDelay()
     
     Note over SEF,CL: Final Distribution
-    SEF->>CL: burnOrRedistributeShares()
-    SEF-->>CL: *Internal* decreaseBurnableShares()
-    SEF-->>CL: *Internal* Deploy counterfactual proxy
-    CL-->>BR: *Internal* <br>burnOrRedistributeUnderlyingTokens()
+    SEF->>CL: releaseSlashEscrow()
+    SEF-->>CL: *Internal* clearBurnOrRedistributableShares()
+    CL-->>BR: *Internal* <br>releaseTokens()
     Note right of BR: Final protocol fund outflow
 ```
 
-The rationale for this new contract, process, and delay is [outlined in the rationale](./ELIP-006.md#outflow-delay). A global minimum escrow period is introduced that is set by governance. This is a constant value, set at a minimum of four days.
+The rationale for this new contract, process, and delay is [outlined in the rationale](./ELIP-006.md#outflow-delay). A global minimum escrow period is introduced that is set by governance. This is a constant value, set at a minimum of four days. Strategies (staked assets) can set larger delays as well; this includes EIGEN, which will use a larger (14 day) delay to accommodate upcoming security features. These can be set via governance and each asset deployer can determine their needs.
+
+Previously, funds would be slashed and exited in a single step, with funds being marked to burn and a continuously running cron job executing fund exits. This was done non-atomically with slashing to maintain the guarantee that a slash should never fail, in the case where a token transfer or some other upstream issue of removing funds from the protocol may fail.
 
 The interface for the `SlashEscrowFactory` is provided below:
 
@@ -214,35 +269,31 @@ interface ISlashEscrowFactoryErrors {
     /// @notice Thrown when a caller is not the redistribution recipient.
     error OnlyRedistributionRecipient();
 
-    /// @notice Thrown when a redistribution is not mature.
-    error RedistributionNotMature();
+    /// @notice Thrown when a escrow is not mature.
+    error EscrowNotMature();
 
-    /// @notice Thrown when a burn or redistribution delay is less than the minimum burn or redistribution delay.
-    error BurnOrRedistributionDelayLessThanMinimum();
+    /// @notice Thrown when the escrow delay has not elapsed.
+    error EscrowDelayNotElapsed();
 }
 
 interface ISlashEscrowFactoryEvents {
-    /// @notice Emitted when a redistribution is initiated.
-    event StartBurnOrRedistribution(
-        OperatorSet operatorSet, uint256 slashId, IStrategy strategy, uint256 underlyingAmount, uint32 startBlock
-    );
+    /// @notice Emitted when a escrow is initiated.
+    event StartEscrow(OperatorSet operatorSet, uint256 slashId, IStrategy strategy, uint32 startBlock);
 
-    /// @notice Emitted when a redistribution is released.
-    event BurnOrRedistribution(
-        OperatorSet operatorSet, uint256 slashId, IStrategy strategy, uint256 underlyingAmount, address recipient
-    );
+    /// @notice Emitted when a escrow is released.
+    event EscrowComplete(OperatorSet operatorSet, uint256 slashId, IStrategy strategy, address recipient);
 
-    /// @notice Emitted when a redistribution is paused.
-    event RedistributionPaused(OperatorSet operatorSet, uint256 slashId);
+    /// @notice Emitted when a escrow is paused.
+    event EscrowPaused(OperatorSet operatorSet, uint256 slashId);
 
-    /// @notice Emitted when a redistribution is unpaused.
-    event RedistributionUnpaused(OperatorSet operatorSet, uint256 slashId);
+    /// @notice Emitted when a escrow is unpaused.
+    event EscrowUnpaused(OperatorSet operatorSet, uint256 slashId);
 
-    /// @notice Emitted when a global burn or redistribution delay is set.
-    event GlobalBurnOrRedistributionDelaySet(uint256 delay);
+    /// @notice Emitted when a global escrow delay is set.
+    event GlobalEscrowDelaySet(uint32 delay);
 
-    /// @notice Emitted when a burn or redistribution delay is set.
-    event StrategyBurnOrRedistributionDelaySet(IStrategy strategy, uint256 delay);
+    /// @notice Emitted when a escrow delay is set.
+    event StrategyEscrowDelaySet(IStrategy strategy, uint32 delay);
 }
 
 interface ISlashEscrowFactory is ISlashEscrowFactoryErrors, ISlashEscrowFactoryEvents {
@@ -250,81 +301,99 @@ interface ISlashEscrowFactory is ISlashEscrowFactoryErrors, ISlashEscrowFactoryE
      * @notice Initializes the initial owner and paused status.
      * @param initialOwner The initial owner of the router.
      * @param initialPausedStatus The initial paused status of the router.
+     * @param initialGlobalDelayBlocks The initial global escrow delay.
      */
-    function initialize(address initialOwner, uint256 initialPausedStatus) external;
+    function initialize(address initialOwner, uint256 initialPausedStatus, uint32 initialGlobalDelayBlocks) external;
 
     /**
-     * @notice Locks up a redistribution.
-     * @param operatorSet The operator set whose redistribution is being locked up.
-     * @param slashId The slash ID of the redistribution that is being locked up.
+     * @notice Locks up a escrow.
+     * @param operatorSet The operator set whose escrow is being locked up.
+     * @param slashId The slash ID of the escrow that is being locked up.
      * @param strategy The strategy that whose underlying tokens are being redistributed.
-     * @param underlyingAmount The amount of underlying tokens that are being redistributed.
      */
-    function startBurnOrRedistributeShares(
-        OperatorSet calldata operatorSet,
-        uint256 slashId,
-        IStrategy strategy,
-        uint256 underlyingAmount
+    function initiateSlashEscrow(
+        OperatorSet calldata operatorSet, 
+        uint256 slashId, 
+        IStrategy strategy
     ) external;
 
     /**
-     * @notice Releases a redistribution.
-     * @param operatorSet The operator set whose redistribution is being released.
-     * @param slashId The slash ID of the redistribution that is being released.
+     * @notice Releases an escrow for all strategies in a slash.
+     * @param operatorSet The operator set whose escrow is being released.
+     * @param slashId The slash ID of the escrow that is being released.
      * @dev The caller must be the redistribution recipient, unless the redistribution recipient
      * is the default burn address in which case anyone can call.
+     * @dev The slash escrow is released once the delay for ALL strategies has elapsed.
      */
-    function burnOrRedistributeShares(
-        OperatorSet calldata operatorSet,
+    function releaseSlashEscrow(
+        OperatorSet calldata operatorSet, 
         uint256 slashId
     ) external;
 
     /**
-     * @notice Pauses a redistribution.
-     * @param operatorSet The operator set whose redistribution is being paused.
-     * @param slashId The slash ID of the redistribution that is being paused.
+     * @notice Releases an escrow for a single strategy in a slash.
+     * @param operatorSet The operator set whose escrow is being released.
+     * @param slashId The slash ID of the escrow that is being released.
+     * @param strategy The strategy whose escrow is being released.
+     * @dev The caller must be the redistribution recipient, unless the redistribution recipient
+     * is the default burn address in which case anyone can call.
+     * @dev The slash escrow is released once the delay for ALL strategies has elapsed.
      */
-    function pauseRedistribution(OperatorSet calldata operatorSet, uint256 slashId) external;
-
-    /**
-     * @notice Unpauses a redistribution.
-     * @param operatorSet The operator set whose redistribution is being unpaused.
-     * @param slashId The slash ID of the redistribution that is being unpaused.
-     */
-    function unpauseRedistribution(OperatorSet calldata operatorSet, uint256 slashId) external;
-
-    /**
-     * @notice Sets the delay for the burn or redistribution of a strategies underlying token.
-     * @dev If the strategy delay is less than the global delay, the strategy delay will be used.
-     * @param strategy The strategy whose burn or redistribution delay is being set.
-     * @param delay The delay for the burn or redistribution.
-     */
-    function setStrategyBurnOrRedistributionDelay(IStrategy strategy, uint256 delay) external;
-
-    /**
-     * @notice Sets the delay for the burn or redistribution of all strategies underlying tokens globally.
-     * @param delay The delay for the burn or redistribution.
-     */
-    function setGlobalBurnOrRedistributionDelay(
-        uint256 delay
+    function releaseSlashEscrowByStrategy(
+        OperatorSet calldata operatorSet,
+        uint256 slashId,
+        IStrategy strategy
     ) external;
 
     /**
-     * @notice Returns the operator sets that have pending burn or redistributions.
-     * @return operatorSets The operator sets that have pending burn or redistributions.
+     * @notice Pauses a escrow.
+     * @param operatorSet The operator set whose escrow is being paused.
+     * @param slashId The slash ID of the escrow that is being paused.
+     */
+    function pauseEscrow(OperatorSet calldata operatorSet, uint256 slashId) external;
+
+    /**
+     * @notice Unpauses a escrow.
+     * @param operatorSet The operator set whose escrow is being unpaused.
+     * @param slashId The slash ID of the escrow that is being unpaused.
+     */
+    function unpauseEscrow(OperatorSet calldata operatorSet, uint256 slashId) external;
+
+    /**
+     * @notice Sets the delay for the escrow of a strategies underlying token.
+     * @dev The largest of all strategy delays or global delay will be used.
+     * @param strategy The strategy whose escrow delay is being set.
+     * @param delay The delay for the escrow.
+     */
+    function setStrategyEscrowDelay(
+        IStrategy strategy, 
+        uint32 delay
+    ) external;
+
+    /**
+     * @notice Sets the delay for the escrow of all strategies underlying tokens globally.
+     * @param delay The delay for the escrow.
+     */
+    function setGlobalEscrowDelay(
+        uint32 delay
+    ) external;
+
+    /**
+     * @notice Returns the operator sets that have pending escrows.
+     * @return operatorSets The operator sets that have pending escrows.
      */
     function getPendingOperatorSets() external view returns (OperatorSet[] memory operatorSets);
 
     /**
-     * @notice Returns the total number of operator sets with pending burn or redistributions.
-     * @return The total number of operator sets with pending burn or redistributions.
+     * @notice Returns the total number of operator sets with pending escrows.
+     * @return The total number of operator sets with pending escrows.
      */
     function getTotalPendingOperatorSets() external view returns (uint256);
 
     /**
-     * @notice Returns whether an operator set has pending burn or redistributions.
-     * @param operatorSet The operator set whose pending burn or redistributions are being queried.
-     * @return Whether the operator set has pending burn or redistributions.
+     * @notice Returns whether an operator set has pending escrows.
+     * @param operatorSet The operator set whose pending escrows are being queried.
+     * @return Whether the operator set has pending escrows.
      */
     function isPendingOperatorSet(
         OperatorSet calldata operatorSet
@@ -337,6 +406,23 @@ interface ISlashEscrowFactory is ISlashEscrowFactoryErrors, ISlashEscrowFactoryE
     function getPendingSlashIds(
         OperatorSet calldata operatorSet
     ) external view returns (uint256[] memory);
+
+    /**
+     * @notice Returns the pending escrows and their release blocks.
+     * @return operatorSets The pending operator sets.
+     * @return isRedistributing Whether the operator set is redistributing.
+     * @return slashIds The pending slash IDs for each operator set. Indexed by operator set.
+     * @return completeBlocks The block at which a slashID can be released. Indexed by [operatorSet][slashId]
+     */
+    function getPendingEscrows()
+        external
+        view
+        returns (
+            OperatorSet[] memory operatorSets,
+            bool[] memory isRedistributing,
+            uint256[][] memory slashIds,
+            uint32[][] memory completeBlocks
+        );
 
     /**
      * @notice Returns the total number of slash IDs for an operator set.
@@ -353,50 +439,40 @@ interface ISlashEscrowFactory is ISlashEscrowFactoryErrors, ISlashEscrowFactoryE
      * @param slashId The slash ID of the slash that is being queried.
      * @return Whether the slash ID is pending for the operator set.
      */
-    function isPendingSlashId(OperatorSet calldata operatorSet, uint256 slashId) external view returns (bool);
+    function isPendingSlashId(
+        OperatorSet calldata operatorSet, 
+        uint256 slashId
+    ) external view returns (bool);
 
     /**
-     * @notice Returns the pending burn or redistributions for an operator set and slash ID.
-     * @dev This is a variant that returns the pending burn or redistributions for an operator set and slash ID.
-     * @param operatorSet The operator set whose pending burn or redistributions are being queried.
-     * @param slashId The slash ID of the burn or redistribution that is being queried.
-     * @return strategies The strategies that are pending burn or redistribution.
-     * @return underlyingAmounts The underlying amounts that are pending burn or redistribution.
+     * @notice Returns the pending strategies for a slash ID for an operator set.
+     * @dev This is a variant that returns the pending strategies for a slash ID for an operator set.
+     * @param operatorSet The operator set whose pending strategies are being queried.
+     * @param slashId The slash ID of the strategies that are being queried.
+     * @return strategies The strategies that are pending strategies.
      */
-    function getPendingBurnOrRedistributions(
+    function getPendingStrategiesForSlashId(
         OperatorSet calldata operatorSet,
         uint256 slashId
-    ) external view returns (IStrategy[] memory strategies, uint256[] memory underlyingAmounts);
+    ) external view returns (IStrategy[] memory strategies);
 
     /**
-     * @notice Returns all pending burn or redistributions for an operator set.
-     * @dev This is a variant that returns all pending burn or redistributions for an operator set.
-     * @param operatorSet The operator set whose pending burn or redistributions are being queried.
-     * @return strategies The nested list of strategies that are pending burn or redistribution.
-     * @return underlyingAmounts The nested list of underlying amounts that are pending burn or redistribution.
+     * @notice Returns all pending strategies for all slash IDs for an operator set.
+     * @dev This is a variant that returns all pending strategies for all slash IDs for an operator set.
+     * @param operatorSet The operator set whose pending strategies are being queried.
+     * @return strategies The strategies that are pending strategies.
      */
-    function getPendingBurnOrRedistributions(
+    function getPendingStrategiesForSlashIds(
         OperatorSet calldata operatorSet
-    ) external view returns (IStrategy[][] memory strategies, uint256[][] memory underlyingAmounts);
+    ) external view returns (IStrategy[][] memory strategies);
 
     /**
-     * @notice Returns all pending burn or redistributions for all operator sets.
-     * @dev This is a variant that returns all pending burn or redistributions for all operator sets.
-     * @return strategies The nested list of strategies that are pending burn or redistribution.
-     * @return underlyingAmounts The nested list of underlying amounts that are pending burn or redistribution.
+     * @notice Returns the number of pending strategies for a slash ID for an operator set.
+     * @param operatorSet The operator set whose pending strategies are being queried.
+     * @param slashId The slash ID of the strategies that are being queried.
+     * @return The number of pending strategies.
      */
-    function getPendingBurnOrRedistributions()
-        external
-        view
-        returns (IStrategy[][][] memory strategies, uint256[][][] memory underlyingAmounts);
-
-    /**
-     * @notice Returns the number of pending burn or redistributions for an operator set and slash ID.
-     * @param operatorSet The operator set whose pending burn or redistributions are being queried.
-     * @param slashId The slash ID of the burn or redistribution that is being queried.
-     * @return The number of pending burn or redistributions.
-     */
-    function getPendingBurnOrRedistributionsCount(
+    function getTotalPendingStrategiesForSlashId(
         OperatorSet calldata operatorSet,
         uint256 slashId
     ) external view returns (uint256);
@@ -404,7 +480,7 @@ interface ISlashEscrowFactory is ISlashEscrowFactoryErrors, ISlashEscrowFactoryE
     /**
      * @notice Returns the pending underlying amount for a strategy for an operator set and slash ID.
      * @param operatorSet The operator set whose pending underlying amount is being queried.
-     * @param slashId The slash ID of the burn or redistribution that is being queried.
+     * @param slashId The slash ID of the escrow that is being queried.
      * @param strategy The strategy whose pending underlying amount is being queried.
      * @return The pending underlying amount.
      */
@@ -415,13 +491,13 @@ interface ISlashEscrowFactory is ISlashEscrowFactoryErrors, ISlashEscrowFactoryE
     ) external view returns (uint256);
 
     /**
-     * @notice Returns the paused status of a redistribution.
-     * @param operatorSet The operator set whose redistribution is being queried.
-     * @param slashId The slash ID of the redistribution that is being queried.
-     * @return The paused status of the redistribution.
+     * @notice Returns the paused status of a escrow.
+     * @param operatorSet The operator set whose escrow is being queried.
+     * @param slashId The slash ID of the escrow that is being queried.
+     * @return The paused status of the escrow.
      */
-    function isBurnOrRedistributionPaused(
-        OperatorSet calldata operatorSet,
+    function isEscrowPaused(
+        OperatorSet calldata operatorSet, 
         uint256 slashId
     ) external view returns (bool);
 
@@ -431,25 +507,30 @@ interface ISlashEscrowFactory is ISlashEscrowFactoryErrors, ISlashEscrowFactoryE
      * @param slashId The slash ID of the start block that is being queried.
      * @return The start block.
      */
-    function getBurnOrRedistributionStartBlock(
-        OperatorSet calldata operatorSet,
-        uint256 slashId
-    ) external view returns (uint256);
+    function getEscrowStartBlock(OperatorSet calldata operatorSet, uint256 slashId) external view returns (uint256);
 
     /**
-     * @notice Returns the burn or redistribution delay for a strategy.
-     * @param strategy The strategy whose burn or redistribution delay is being queried.
-     * @return The burn or redistribution delay.
+     * @notice Returns the block at which the escrow can be released.
+     * @param operatorSet The operator set whose start block is being queried.
+     * @param slashId The slash ID of the start block that is being queried.
+     * @return The block at which the escrow can be released.
      */
-    function getStrategyBurnOrRedistributionDelay(
+    function getEscrowCompleteBlock(OperatorSet calldata operatorSet, uint256 slashId) external view returns (uint32);
+
+    /**
+     * @notice Returns the escrow delay for a strategy.
+     * @param strategy The strategy whose escrow delay is being queried.
+     * @return The escrow delay.
+     */
+    function getStrategyEscrowDelay(
         IStrategy strategy
-    ) external view returns (uint256);
+    ) external view returns (uint32);
 
     /**
-     * @notice Returns the global burn or redistribution delay.
-     * @return The global burn or redistribution delay.
+     * @notice Returns the global escrow delay.
+     * @return The global escrow delay.
      */
-    function getGlobalBurnOrRedistributionDelay() external view returns (uint256);
+    function getGlobalEscrowDelay() external view returns (uint32);
 
     /**
      * @notice Returns the salt for a slash escrow.
@@ -463,7 +544,7 @@ interface ISlashEscrowFactory is ISlashEscrowFactoryErrors, ISlashEscrowFactoryE
     ) external pure returns (bytes32);
 
     /**
-     * @notice Returns whether a slash escrow is deployed or still counterfactual.
+     * @notice Returns whether a slash escrow is deployed or not.
      * @param operatorSet The operator set whose slash escrow is being queried.
      * @param slashId The slash ID of the slash escrow that is being queried.
      * @return Whether the slash escrow is deployed.
@@ -495,10 +576,16 @@ This contract carves out roles and functions for pausing (and unpausing) in-flig
 >
 > The `pause` functionality in this contract is gated to the `Pauser multi-sig`, as [outlined in Eigen Foundation governance](https://docs.eigenfoundation.org/protocol-governance/technical-architecture). This role can *only* pause (or later unpause) outflows if there are still pending blocks (time) between slash initiation and the end of the escrow period. During a pause, governance and social consensus is the anticipated adjudication mechanism to determine if a rescue is needed for funds due to an [invalid bug](./ELIP-006.md#security-considerations). If funds are to be rescued, the `Community multi-sig` has the authority to upgrade the contract and return the funds to the protocol. The rationale for this is [outlined further below](./ELIP-006.md#governance-design).
 
-For each slash, a child `SlashEscrow` contract is created from the factory. It is a very simple contract intended to hold tokens for the delay period. One contract is instantiated per slash and has a relatively small impact on Ethereum state. The `SlashEscrowFactory` controls the ability to call `burnOrRedistributeUnderlyingTokens`, meaning a pause on the `SlashEscrowFactory` by the `pauser` will freeze calls to the child contracts for certain `slashId`s. There additionally is a global `PAUSEALL` for all outflows, in the case of a widely abused slashing bug. Below is the interface:
+For each slash, a child `SlashEscrow` contract is created from the factory. It is a very simple contract intended to hold tokens for the delay period. One contract is instantiated per slash and has a relatively small impact on Ethereum state. The `SlashEscrowFactory` controls the ability to call `releaseTokens`, meaning a pause on the `SlashEscrowFactory` by the `pauser` will freeze calls to the child contracts for certain `slashId`s. There additionally is a global `PAUSEALL` for all outflows, in the case of a widely abused slashing bug. Below is the interface:
 
 ```solidity
 interface ISlashEscrow {
+    /// @notice Thrown when the provided deployment parameters do not create this contract's address.
+    error InvalidDeploymentParameters();
+
+    /// @notice Thrown when the caller is not the slash escrow factory.
+    error OnlySlashEscrowFactory();
+
     /// @notice Burns or redistributes the underlying tokens of the strategies.
     /// @param slashEscrowFactory The factory contract that created the slash escrow.
     /// @param slashEscrowImplementation The implementation contract that was used to create the slash escrow.
@@ -506,7 +593,7 @@ interface ISlashEscrow {
     /// @param slashId The slash ID that was used to create the slash escrow.
     /// @param recipient The recipient of the underlying tokens.
     /// @param strategy The strategy that was used to create the slash escrow.
-    function burnOrRedistributeUnderlyingTokens(
+    function releaseTokens(
         ISlashEscrowFactory slashEscrowFactory,
         ISlashEscrow slashEscrowImplementation,
         OperatorSet calldata operatorSet,
@@ -516,6 +603,12 @@ interface ISlashEscrow {
     ) external;
 
     /// @notice Verifies the deployment parameters of the slash escrow.
+    /// @dev Validates that the provided parameters deterministically generate this contract's address using CREATE2.
+    /// - Uses ClonesUpgradeable.predictDeterministicAddress() to compute the expected address from the parameters.
+    /// - Compares the computed address against this contract's address to validate parameter integrity.
+    /// - Provides a stateless validation mechanism for releaseTokens() inputs.
+    /// - Security relies on the cryptographic properties of CREATE2 address derivation.
+    /// - Attack vector would require finding a hash collision in the CREATE2 address computation.
     /// @param slashEscrowFactory The factory contract that created the slash escrow.
     /// @param slashEscrowImplementation The implementation contract that was used to create the slash escrow.
     /// @param operatorSet The operator set that was used to create the slash escrow.
@@ -534,25 +627,76 @@ The `StrategyManager` interface has numerous changes; the majority of the functi
 
 ```solidity
 interface IStrategyManager {
-    /// @notice Emitted when an operator is slashed and shares to be burned are increased
+    /// @dev Thrown when attempting to add a strategy that is already in the operator set's burn or redistributable shares.
+    error StrategyAlreadyInSlash();
+
+    /// @notice Emitted when an operator is slashed and shares to be burned or redistributed are increased
     event BurnOrRedistributableSharesIncreased(
         OperatorSet operatorSet, uint256 slashId, IStrategy strategy, uint256 shares
     );
 
-    /// @notice Emitted when shares are burned
+    /// @notice Emitted when shares marked for burning or redistribution are decreased and transferred to the `SlashEscrow`
     event BurnOrRedistributableSharesDecreased(
         OperatorSet operatorSet, uint256 slashId, IStrategy strategy, uint256 shares
     );
-    
+
     /// NOTE: We are keeping the original `burnShares` fn so that legacy burns can still be completed.
-    
+
     /**
      * @notice Removes burned shares from storage and transfers the underlying tokens for the slashId to the slash escrow.
-     * @dev This will be a `IShareManager` method once EigenPods are supported in a future release.
      * @param operatorSet The operator set to burn shares in.
      * @param slashId The slash ID to burn shares in.
      */
-    function decreaseBurnableShares(OperatorSet calldata operatorSet, uint256 slashId) external;
+    function clearBurnOrRedistributableShares(OperatorSet calldata operatorSet, uint256 slashId) external;
+
+    /**
+     * @notice Removes a single strategy's shares from storage and transfers the underlying tokens for the slashId to the slash escrow.
+     * @param operatorSet The operator set to burn shares in.
+     * @param slashId The slash ID to burn shares in.
+     * @param strategy The strategy to burn shares in.
+     * @return The amount of shares that were burned.
+     */
+    function clearBurnOrRedistributableSharesByStrategy(
+        OperatorSet calldata operatorSet,
+        uint256 slashId,
+        IStrategy strategy
+    ) external returns (uint256);
+
+    /**
+     * @notice Returns the strategies and shares that have NOT been sent to escrow for a given slashId.
+     * @param operatorSet The operator set to burn or redistribute shares in.
+     * @param slashId The slash ID to burn or redistribute shares in.
+     * @return The strategies and shares for the given slashId.
+     */
+    function getBurnOrRedistributableShares(
+        OperatorSet calldata operatorSet,
+        uint256 slashId
+    ) external view returns (IStrategy[] memory, uint256[] memory);
+
+    /**
+     * @notice Returns the shares for a given strategy for a given slashId.
+     * @param operatorSet The operator set to burn or redistribute shares in.
+     * @param slashId The slash ID to burn or redistribute shares in.
+     * @param strategy The strategy to get the shares for.
+     * @return The shares for the given strategy for the given slashId.
+     * @dev This function will return revert if the shares have already been sent to escrow.
+     */
+    function getBurnOrRedistributableShares(
+        OperatorSet calldata operatorSet,
+        uint256 slashId,
+        IStrategy strategy
+    ) external view returns (uint256);
+
+    /**
+     * @notice Returns the number of strategies that have NOT been sent to escrow for a given slashId.
+     * @param operatorSet The operator set to burn or redistribute shares in.
+     * @param slashId The slash ID to burn or redistribute shares in.
+     * @return The number of strategies for the given slashId.
+     */
+    function getBurnOrRedistributableCount(
+        OperatorSet calldata operatorSet,
+        uint256 slashId
+    ) external view returns (uint256);
 }
 ```
 
