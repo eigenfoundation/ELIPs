@@ -114,6 +114,7 @@ interface IAllocationManager {
      * @notice Returns the number of slashes for a given operator set.
      * @param operatorSet The operator set to query.
      * @return The number of slashes for the operator set.
+     * @dev Slash counter will only increment after redistribution is live (not inclusive of previous slashes).
      */
     function getSlashCount(
         OperatorSet memory operatorSet
@@ -153,8 +154,42 @@ All core contracts handling a slash, the `DelegationManager`, `ShareManager`, `S
 
 ```solidity
 interface IShareManager {
+    /// @notice Used by the DelegationManager to remove a Staker's shares from a particular strategy when entering the withdrawal queue
+    /// @dev strategy must be beaconChainETH when talking to the EigenPodManager
+    /// @return updatedShares the staker's deposit shares after decrement
+    function removeDepositShares(
+        address staker,
+        IStrategy strategy,
+        uint256 depositSharesToRemove
+    ) external returns (uint256);
+
+    /// @notice Used by the DelegationManager to award a Staker some shares that have passed through the withdrawal queue
+    /// @dev strategy must be beaconChainETH when talking to the EigenPodManager
+    /// @return existingDepositShares the shares the staker had before any were added
+    /// @return addedShares the new shares added to the staker's balance
+    function addShares(
+        address staker, 
+        IStrategy strategy, 
+        uint256 shares
+    ) external returns (uint256, uint256);
+
+    /// @notice Used by the DelegationManager to convert deposit shares to tokens and send them to a staker
+    /// @dev strategy must be beaconChainETH when talking to the EigenPodManager
+    /// @dev token is not validated when talking to the EigenPodManager
+    function withdrawSharesAsTokens(
+        address staker, 
+        IStrategy strategy, 
+        IERC20 token, uint256 shares) external;
+
+    /// @notice Returns the current shares of `user` in `strategy`
+    /// @dev strategy must be beaconChainETH when talking to the EigenPodManager
+    /// @dev returns 0 if the user has negative shares
+    function stakerDepositShares(address user, 
+        IStrategy strategy
+    ) external view returns (uint256 depositShares);
+
     /**
-     * @notice Increase the amount of burnable shares for a given Strategy. This is called by the DelegationManager
+     * @notice Increase the amount of burnable/redistributable shares for a given Strategy. This is called by the DelegationManager
      * when an operator is slashed in EigenLayer.
      * @param operatorSet The operator set to burn shares in.
      * @param slashId The slash id to burn shares in.
@@ -168,14 +203,21 @@ interface IShareManager {
         IStrategy strategy,
         uint256 addedSharesToBurn
     ) external;
-} 
+}
 ```
 
 ### Burn & Distribution Mechanics
 
-The flow and code-paths for exiting slashed funds from the protocol have changed. Previously, ERC-20 funds flowed out of the protocol through withdrawals or a burn (transfer to `0x00...00316e4`) at a regular cadence. Native ETH was withdrawn or locked in EigenPods permanently during a slash. Following this upgrade, when a slash occurs, funds are exited in two steps. In order to maintain the protocol guarantee that `slashOperator` should never fail, outflow transfers are non-atomic. Similar to the original burning implementation, burnable shares are first increased in `StrategyManger` storage during a slash. A second call to `clearBurnOrRedistributableShares` is then required to delete that storage and transfer slashed funds to a counterfactually deployed `SlashEscrow` child contract.
+The flow and code-paths for exiting slashed funds from the protocol have changed. Previously, ERC-20 funds flowed out of the protocol through withdrawals or a burn (transfer to `0x00...00316e4`) at a regular cadence. Native ETH was withdrawn or locked in EigenPods permanently during a slash. Following this upgrade, when a slash occurs, funds are exited in two steps. In order to maintain the protocol guarantee that `slashOperator` should never fail, outflow transfers are non-atomic.
 
-The `SlashEscrowFactory` interfaces directly with the `AllocationManager` following a slash. In the cloned child contracts, slashed funds are escrowed for a four day period to intervene in the case of slashing bugs. ***Funds are no longer exited via functions on the `ShareManager`.*** The new flow is illustrated in the below diagram:
+When a single slash occurs...
+-Similar to the original burning implementation, burnable shares are first increased in `StrategyManger` storage.
+-The `StrategyManager` now interfaces directly with the `SlashEscrowFactory` to setup and initiate the escrow.
+-A child `SlashEscrow` contract is then deployed; one is created per `slashId`. These contracts are stateless and immutable.
+
+In another call, funds are transferred to the `SlashEscrow` contracts. This escrow is to allow intervention in the case of slashing bugs. ***Funds are no longer exited via functions on the `ShareManager`.*** After the escrow delay period, a call to `clearBurnOrRedistributableShares` is required to delete the `StrategyManager` storage and transfer slashed funds out of the EigenLayer protocol.
+
+ The new flow is illustrated in the below diagram:
 
 ```mermaid
 sequenceDiagram
@@ -185,8 +227,8 @@ sequenceDiagram
     participant ALM as Allocation Manager
     participant DM as Delegation Manager
     participant SM as Strategy Manager
-    participant STR as Strategy Contract
     participant SEF as Slash Escrow Factory
+    participant STR as Strategy Contract
     participant CL as Slash Escrow Clone
     participant BR as Burn Address or Redistribution Recipient
 
@@ -194,9 +236,10 @@ sequenceDiagram
     AVS->>ALM: slashOperator<br>(avs, slashParams)
     ALM-->>DM: *Internal* <br>slashOperatorShares<br>(operator, strategies,<br> prevMaxMags, newMaxMags)
     Note over DM,SM: Share Management
-    DM-->>SM: **Internal**<br>increaseBurnOrRedistributableShares<br>(operatorSet, slashId, strategy, addedSharesToBurn)
+    DM-->>SM: *Internal*<br>increaseBurnOrRedistributableShares<br>(operatorSet, slashId, strategy, addedSharesToBurn)
     Note over SM,SEF: Escrow Setup (Initiates 4-day escrow period)
-    SM-->>SEF: **Internal** initiateSlashEscrow()
+    SM-->>SEF: *Internal* initiateSlashEscrow()
+    SEF-->>CL: *Internal* Deploy child proxy
     
     Note over SM,CL: Transfers underlying tokens to the `SlashEscrow` clone (Second Transaction)
     SM->>CL: clearBurnOrRedistributableShares(operatorSet, slashId)
@@ -206,14 +249,13 @@ sequenceDiagram
     SEF->>SEF: getStrategyEscrowDelay()
     
     Note over SEF,CL: Final Distribution
-    SEF->>CL: burnOrRedistributeShares()
+    SEF->>CL: releaseSlashEscrow()
     SEF-->>CL: *Internal* clearBurnOrRedistributableShares()
-    SEF-->>CL: *Internal* Deploy counterfactual proxy
     CL-->>BR: *Internal* <br>releaseTokens()
     Note right of BR: Final protocol fund outflow
 ```
 
-The rationale for this new contract, process, and delay is [outlined in the rationale](./ELIP-006.md#outflow-delay). A global minimum escrow period is introduced that is set by governance. This is a constant value, set at a minimum of four days.
+The rationale for this new contract, process, and delay is [outlined in the rationale](./ELIP-006.md#outflow-delay). A global minimum escrow period is introduced that is set by governance. This is a constant value, set at a minimum of four days. Strategies (staked assets) can set larger delays as well; this includes EIGEN, which will use a larger (14 day) delay to accommodate upcoming security features. These can be set via governance and each asset deployer can determine their needs.
 
 The interface for the `SlashEscrowFactory` is provided below:
 
@@ -267,7 +309,11 @@ interface ISlashEscrowFactory is ISlashEscrowFactoryErrors, ISlashEscrowFactoryE
      * @param slashId The slash ID of the escrow that is being locked up.
      * @param strategy The strategy that whose underlying tokens are being redistributed.
      */
-    function initiateSlashEscrow(OperatorSet calldata operatorSet, uint256 slashId, IStrategy strategy) external;
+    function initiateSlashEscrow(
+        OperatorSet calldata operatorSet, 
+        uint256 slashId, 
+        IStrategy strategy
+    ) external;
 
     /**
      * @notice Releases an escrow for all strategies in a slash.
@@ -277,7 +323,10 @@ interface ISlashEscrowFactory is ISlashEscrowFactoryErrors, ISlashEscrowFactoryE
      * is the default burn address in which case anyone can call.
      * @dev The slash escrow is released once the delay for ALL strategies has elapsed.
      */
-    function releaseSlashEscrow(OperatorSet calldata operatorSet, uint256 slashId) external;
+    function releaseSlashEscrow(
+        OperatorSet calldata operatorSet, 
+        uint256 slashId
+    ) external;
 
     /**
      * @notice Releases an escrow for a single strategy in a slash.
@@ -314,7 +363,10 @@ interface ISlashEscrowFactory is ISlashEscrowFactoryErrors, ISlashEscrowFactoryE
      * @param strategy The strategy whose escrow delay is being set.
      * @param delay The delay for the escrow.
      */
-    function setStrategyEscrowDelay(IStrategy strategy, uint32 delay) external;
+    function setStrategyEscrowDelay(
+        IStrategy strategy, 
+        uint32 delay
+    ) external;
 
     /**
      * @notice Sets the delay for the escrow of all strategies underlying tokens globally.
@@ -385,7 +437,10 @@ interface ISlashEscrowFactory is ISlashEscrowFactoryErrors, ISlashEscrowFactoryE
      * @param slashId The slash ID of the slash that is being queried.
      * @return Whether the slash ID is pending for the operator set.
      */
-    function isPendingSlashId(OperatorSet calldata operatorSet, uint256 slashId) external view returns (bool);
+    function isPendingSlashId(
+        OperatorSet calldata operatorSet, 
+        uint256 slashId
+    ) external view returns (bool);
 
     /**
      * @notice Returns the pending strategies for a slash ID for an operator set.
@@ -439,7 +494,10 @@ interface ISlashEscrowFactory is ISlashEscrowFactoryErrors, ISlashEscrowFactoryE
      * @param slashId The slash ID of the escrow that is being queried.
      * @return The paused status of the escrow.
      */
-    function isEscrowPaused(OperatorSet calldata operatorSet, uint256 slashId) external view returns (bool);
+    function isEscrowPaused(
+        OperatorSet calldata operatorSet, 
+        uint256 slashId
+    ) external view returns (bool);
 
     /**
      * @notice Returns the start block for a slash ID.
@@ -484,7 +542,7 @@ interface ISlashEscrowFactory is ISlashEscrowFactoryErrors, ISlashEscrowFactoryE
     ) external pure returns (bytes32);
 
     /**
-     * @notice Returns whether a slash escrow is deployed or still counterfactual.
+     * @notice Returns whether a slash escrow is deployed or not.
      * @param operatorSet The operator set whose slash escrow is being queried.
      * @param slashId The slash ID of the slash escrow that is being queried.
      * @return Whether the slash escrow is deployed.
