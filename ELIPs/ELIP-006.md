@@ -257,7 +257,7 @@ sequenceDiagram
 
 The rationale for this new contract, process, and delay is [outlined in the rationale](./ELIP-006.md#outflow-delay). A global minimum escrow period is introduced that is set by governance. This is a constant value, set at a minimum of four days. Strategies (staked assets) can set larger delays as well; this includes EIGEN, which will use a larger (14 day) delay to accommodate upcoming security features. These can be set via governance and each asset deployer can determine their needs.
 
-Previously, funds would be slashed and exited in a single step, with funds being marked to burn and a continuously running cron job executing fund exits. This was done non-atomically with slashing to maintain the guarantee that a slash should never fail, in the case where a token transfer or some other upstream issue of removing funds from the protocol may fail. 
+Previously, funds would be slashed and exited in a single step, with funds being marked to burn and a continuously running cron job executing fund exits. This was done non-atomically with slashing to maintain the guarantee that a slash should never fail, in the case where a token transfer or some other upstream issue of removing funds from the protocol may fail.
 
 The interface for the `SlashEscrowFactory` is provided below:
 
