@@ -51,7 +51,7 @@ As the ELIP is developed, the corresponding PR is tracked publicly on the reposi
         * Corresponding forum post has been updated
 * `merged`: *proposal has gone live on mainnet*
 
-The same tags are used to track the state of the ELIP in the Technical Proposals category on [forum.eigenlayer.xyz](https://forum.eigenlayer.xyz/).
+The same tags are used to track the state of the proposal in the ELIPs category on [forum.eigenlayer.xyz](https://forum.eigenlayer.xyz/c/protocol-council/elips).
 
 ## Proposing to the Protocol Council
 
