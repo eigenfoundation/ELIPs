@@ -28,6 +28,8 @@ Ultimately, adding BLS12-381 as a first-class primitive enhances EigenLayer’s 
 
 The equivalent of [the BN254 library](https://github.com/Layr-Labs/eigenlayer-middleware/blob/3fb5b61076475108bd87d4e6c7352fd60b46af1c/src/libraries/BN254.sol), but working with the precompiles introduced in the Pectra update compliant with [EIP2537](https://eips.ethereum.org/EIPS/eip-2537).
 
+Implements the BLS signature scheme with the BLS12-381 cyphersuite as defined in [draft-irtf-cfrg-bls-signature-04](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04)
+
 ## BLS12381 Key Registrar Support
 
 As defined in the [Key Registrar](https://github.com/Layr-Labs/eigenlayer-middleware/pull/481) feature, support for BLS12381 registration as a first class curve primitive would include:
