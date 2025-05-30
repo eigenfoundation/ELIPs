@@ -29,19 +29,21 @@ As the ELIP is developed, the corresponding PR is tracked publicly on the reposi
         * Motivation for Changes
         * Interfaces (if any)
         * PR is opened
-* `draft`: *proposal is in pre-production, ready for audit*
+* `draft`: *proposal is in pre-production, code complete*
     * Requirements:
         * All fields in ELIP template are completed (no TBDs)
         * Correspondng forum post is published
-* `testing`: *proposal is in testnet*
+        * A maintainer of this repo has reviewed and approved the proposal
+        * PR is merged 
+* `testing`: *proposal is in testnet, ready for audit*
     * Requirements:
-        * ELIP is in testnet
+        * ELIP is included in a versioned release of the Protocol
         * ELIP is ready for audit
         * Corresponding forum post is updated
 * `final`: *proposal is ready to move to mainnet (see **Proposing to the Protocol Council** below)*
     * Requirements:
         * ELIP has been audited, results published
-        * ELIP is ready for mainnet
+        * ELIP is scheduled for mainnet inclusion
         * ELIP is ready for Protocol Council review
         * Corresponding forum post is updated
 * `approved`: *proposal has been approved by Protocol Council*
