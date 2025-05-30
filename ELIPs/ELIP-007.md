@@ -1,6 +1,6 @@
 | Author(s) | Created | Status | References | Discussions |
 |-------------|-----------|---------|------|----------|
-| [Ron Turetzky](turetzkyron@gmail.com), [Ram Veigman](rubydusa@protonmail.com)| 2025-05-29 | `Draft` | [BLS381 EIP2537](https://eips.ethereum.org/EIPS/eip-2537),[RFC 9380](https://datatracker.ietf.org/doc/rfc9380/),[BLS381 WIP solidity lib](https://github.com/BreadchainCoop/bls12381-sol)| N/A |
+| [Ron Turetzky](mailto:turetzkyron@gmail.com), [Ram Veigman](mailto:rubydusa@protonmail.com)| 2025-05-29 | `Draft` | [BLS381 EIP2537](https://eips.ethereum.org/EIPS/eip-2537),[draft-irtf-cfrg-bls-signature-04](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04) [RFC 9380](https://datatracker.ietf.org/doc/rfc9380/),[BLS381 WIP solidity lib](https://github.com/BreadchainCoop/bls12381-sol)| N/A |
 
 # ELIP-007: BLS12-381 Curve Support
 
