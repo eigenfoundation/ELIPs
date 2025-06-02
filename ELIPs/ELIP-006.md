@@ -87,6 +87,20 @@ interface IAllocationManager {
         SlashingParams calldata params
     ) external returns (uint256 slashId, uint256[] memory shares);
 
+    /**
+     * @notice Allows an AVS to create new Redistribution operator sets.
+     * @param avs The AVS creating the new operator sets.
+     * @param params An array of operator set creation parameters.
+     * @param redistributionRecipients An array of addresses that will receive redistributed funds when operators are slashed.
+     * @dev Same logic as `createOperatorSets`, except `redistributionRecipients` corresponding to each operator set are stored.
+     *      Additionally, emits `RedistributionOperatorSetCreated` event instead of `OperatorSetCreated` for each created operator set.
+     */
+    function createRedistributingOperatorSets(
+        address avs,
+        CreateSetParams[] calldata params,
+        address[] calldata redistributionRecipients
+    ) external;
+
     /// READ
 
     /**
@@ -215,7 +229,7 @@ When a single slash occurs...
 -The `StrategyManager` now interfaces directly with the `SlashEscrowFactory` to setup and initiate the escrow.
 -A child `SlashEscrow` contract is then deployed; one is created per `slashId`. These contracts are stateless and immutable.
 
-In another call, funds are transferred to the `SlashEscrow` contracts. This escrow is to allow intervention in the case of slashing bugs. ***Funds are no longer exited via functions on the `ShareManager`.*** After the escrow delay period, a call to `clearBurnOrRedistributableShares` is required to delete the `StrategyManager` storage and transfer slashed funds out of the EigenLayer protocol.
+In another call, funds are transferred to the `SlashEscrow` contracts. This escrow is to allow intervention in the case of slashing bugs. ***Funds are no longer exited via functions on the `ShareManager`.*** After the escrow delay period, the `redistributionRecipient` must call the `releaseSlashEscrow` function on the `SlashEscrowFactory` and supply the `slashID` in order to release the funds after the delay period.
 
  The new flow is illustrated in the below diagram:
 
@@ -230,9 +244,9 @@ sequenceDiagram
     participant SEF as Slash Escrow Factory
     participant STR as Strategy Contract
     participant CL as Slash Escrow Clone
-    participant BR as Burn Address or Redistribution Recipient
+    participant RR as Redistribution Recipient
 
-    Note over AVS,BR: Slashing Initiation
+    Note over AVS,RR: Slashing Initiation
     AVS->>ALM: slashOperator<br>(avs, slashParams)
     ALM-->>DM: *Internal* <br>slashOperatorShares<br>(operator, strategies,<br> prevMaxMags, newMaxMags)
     Note over DM,SM: Share Management
@@ -249,10 +263,10 @@ sequenceDiagram
     SEF->>SEF: getStrategyEscrowDelay()
     
     Note over SEF,CL: Final Distribution
-    SEF->>CL: releaseSlashEscrow()
+    RR ->>SEF: releaseSlashEscrow()
     SEF-->>CL: *Internal* clearBurnOrRedistributableShares()
-    CL-->>BR: *Internal* <br>releaseTokens()
-    Note right of BR: Final protocol fund outflow
+    CL-->>RR: *Internal* <br>releaseTokens()
+    Note right of RR: Final protocol fund outflow
 ```
 
 The rationale for this new contract, process, and delay is [outlined in the rationale](./ELIP-006.md#outflow-delay). A global minimum escrow period is introduced that is set by governance. This is a constant value, set at a minimum of four days. Strategies (staked assets) can have larger delays as well; this includes EIGEN, which will use a larger (14 day) delay to accommodate upcoming security features. The delay can be set via governance; Strategy confuguration is reserved for future protocol compatability and need.
@@ -766,7 +780,7 @@ As always this update requires very careful management of keys, as a compromised
 
 ## AVSs & Service Builders
 
-AVSs will gain access to a powerful new primitive in redistributable slashing upon which to develop use-cases. This comes with an even heavier emphasis on proper key management and op-sec requirements. An attacker that gains access to AVS keys on the `slasher` and `redistributionRecipient` can drain the entirety of Operator and Staker allocated stake for a given Operator Set. This will have heavy repercussions on the AVSs reputation and continued trust.
+AVSs will gain access to a powerful new primitive in redistributable slashing upon which to develop use-cases. This comes with an even heavier emphasis on proper key management and op-sec requirements. The `redistributionRecipient` should be treated as an AVS-controlled role and signing key and be managed as such. An attacker that gains access to AVS keys on the `slasher` and `redistributionRecipient` can drain the entirety of Operator and Staker allocated stake for a given Operator Set. This will have heavy repercussions on the AVSs reputation and continued trust.
 
 Because redistribution may allow AVSs to benefit from a theft related to slashing, additional design care must be taken to consider the incentives of all parties that can interact with it. When handled appropriately, AVSs will have new use-case opportunities but must consider the higher risk and slash incentive for those running their code.
 
