@@ -33,7 +33,7 @@ As of today, when slashed, ERC-20 funds are burned at the `0x0...00316e4` addres
 
 These changes are externally facing in the `AllocationManager` interface. This is accompanied by changes to the storage of the `AllocationManager` as well. Internally, we have modified the `ShareManager` and `StrategyManager` interfaces, as well as some storage and internal logic.
 
-This proposal outlines a new core contract, the `SlashEscrowFactory` that brings new guarantees to `slashOperator` and protocol outflows. In the case of an implementation bug that would allow an AVS to slash *beyond its allocated unique stake* (e.g. a total protocol TVL drain), the `SlashEscrowFactory` exists to enable a governance pause and intervention. The `SlashEscrowFactory` creates contracts that hold and apply a four day delay on all slashed funds exiting the protocol to allow for this intervention, whether burned or redistributed.
+This proposal outlines a new core contract, the `SlashEscrowFactory` that brings new guarantees to `slashOperator` and protocol outflows. In the case of an implementation bug that would allow an AVS to slash *beyond its allocated unique stake* (e.g. a total protocol TVL drain), the `SlashEscrowFactory` exists to enable a governance pause and intervention. The `SlashEscrowFactory` creates contracts that hold and apply a delay on all slashed funds exiting the protocol to allow for this intervention, whether burned or redistributed.
 
 ## Specifications
 
@@ -255,7 +255,7 @@ sequenceDiagram
     Note right of BR: Final protocol fund outflow
 ```
 
-The rationale for this new contract, process, and delay is [outlined in the rationale](./ELIP-006.md#outflow-delay). A global minimum escrow period is introduced that is set by governance. This is a constant value, set at a minimum of four days. Strategies (staked assets) can set larger delays as well; this includes EIGEN, which will use a larger (14 day) delay to accommodate upcoming security features. These can be set via governance and each asset deployer can determine their needs.
+The rationale for this new contract, process, and delay is [outlined in the rationale](./ELIP-006.md#outflow-delay). A global minimum escrow period is introduced that is set by governance. This is a constant value, set at a minimum of four days. Strategies (staked assets) can have larger delays as well; this includes EIGEN, which will use a larger (14 day) delay to accommodate upcoming security features. The delay can be set via governance; Strategy confuguration is reserved for future protocol compatability and need.
 
 Previously, funds would be slashed and exited in a single step, with funds being marked to burn and a continuously running cron job executing fund exits. This was done non-atomically with slashing to maintain the guarantee that a slash should never fail, in the case where a token transfer or some other upstream issue of removing funds from the protocol may fail.
 
@@ -714,7 +714,9 @@ To recap the new or modified functionality:
 
 There are many interactions between the normal code-paths of the protocol and redistribution that are handled carefully with new security mechanisms. With redistributable slashing, the protocol implements what amounts to a new withdrawal path for funds. EigenLayer provides guarantees around withdrawals via the 14-day stake guarantee window. If the protocol provided the same delay, a two week period would detrimentally impact the usability of redistributable slashing, including programmatic fund redistribution use-cases and insurance products.
 
-To this end, this proposal suggests a default slash escrow period amounting to four day, in blocks. This is enough time to ensure oversight by the `Pauser multi-sig`, accounting for coordination (or extraneous) delays and on-chain censorship resistance. This delay exists *only* to allow the `Pauser multi-sig` to execute a pause on slashes that are deemed implementation bugs (e.g. a slash value is greater than the Operator Sets allocated stake).
+To this end, this proposal suggests a default slash escrow period amounting to four day, in blocks. This is enough time to ensure oversight by the `Pauser multi-sig`, accounting for coordination (or extraneous) delays and on-chain censorship resistance. This delay exists *only* to allow the `Pauser multi-sig` to execute a pause on slashes that are deemed implementation bugs (e.g. a slash value is greater than the Operator Sets allocated stake). 
+
+The delay exists per Strategy in the protocol. EIGEN will have a larger delay. This delay can be modified via governance and its configuration is reserved for future protocol use, need, and compatibility. 
 
 ## Governance Design
 
