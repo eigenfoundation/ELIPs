@@ -728,9 +728,9 @@ To recap the new or modified functionality:
 
 There are many interactions between the normal code-paths of the protocol and redistribution that are handled carefully with new security mechanisms. With redistributable slashing, the protocol implements what amounts to a new withdrawal path for funds. EigenLayer provides guarantees around withdrawals via the 14-day stake guarantee window. If the protocol provided the same delay, a two week period would detrimentally impact the usability of redistributable slashing, including programmatic fund redistribution use-cases and insurance products.
 
-To this end, this proposal suggests a default slash escrow period amounting to four day, in blocks. This is enough time to ensure oversight by the `Pauser multi-sig`, accounting for coordination (or extraneous) delays and on-chain censorship resistance. This delay exists *only* to allow the `Pauser multi-sig` to execute a pause on slashes that are deemed implementation bugs (e.g. a slash value is greater than the Operator Sets allocated stake). 
+To this end, this proposal suggests a default slash escrow period amounting to four day, in blocks. This is enough time to ensure oversight by the `Pauser multi-sig`, accounting for coordination (or extraneous) delays and on-chain censorship resistance. This delay exists *only* to allow the `Pauser multi-sig` to execute a pause on slashes that are deemed implementation bugs (e.g. a slash value is greater than the Operator Sets allocated stake).
 
-The delay exists per Strategy in the protocol. EIGEN will have a larger delay. This delay can be modified via governance and its configuration is reserved for future protocol use, need, and compatibility. 
+The delay exists per Strategy in the protocol. EIGEN will have a larger delay. This delay can be modified via governance and its configuration is reserved for future protocol use, need, and compatibility.
 
 ## Governance Design
 
@@ -794,7 +794,7 @@ Operators should be aware that meta-data will identify them as `Redistributable`
 
 This proposal has the largest impact to the risk, reward, and incentive model for Stakers. In general, there is a larger incentive to slash user funds when redistribution is enabled. Stakers should carefully consider the protocols that their delegated Operators are running, and consider the risk and reward trade-offs. Redistributable Operator Sets may offer higher rewards, but these should be considered against the increased slashing risks.
 
-Additionally, Stakers are potentially at risk from malicious AVSs and malicious Operator. If the AVSs governance or its slashing functionality is corrupted, an attacker may be able to drain Operator-delegated funds. If an Operator itself is compromised, it may stand-up its own AVS to steal user funds. Stakers should carefully consider the reputation and legitimacy of Operators when making delegations. These attack scenarios are outlined in more detail [here](https://forum.eigenlayer.xyz/t/risks-of-an-in-protocol-redistribution-design/14458).
+Additionally, Stakers are potentially at risk from malicious AVSs and malicious Operator. If the AVSs governance or its slashing functionality is corrupted, an attacker may be able to drain Operator-delegated funds. If an Operator itself is compromised, it may stand-up its own AVS to steal user funds. Stakers should carefully consider the reputation and legitimacy of Operators when making delegations. These [attack scenarios are outlined in more detail here](https://forum.eigenlayer.xyz/t/risks-of-an-in-protocol-redistribution-design/14458).
 
 # Action Plan
 
