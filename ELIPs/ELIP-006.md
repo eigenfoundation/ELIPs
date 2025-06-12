@@ -39,7 +39,7 @@ This proposal outlines a new core contract, the `SlashEscrowFactory` that brings
 
 ### Redistributing Operator Sets
 
-To take advantage of redistributable slashing, an AVS must instantiate a new `RedistributingOperatorSet`. These sets specify a `redistributionRecipient` address that CANNOT be changed later on. AVSs may set whatever contracts they like upstream, but should make strong guarantees about the way they function in order to attract and retain Stakers and Operators.
+To take advantage of redistributable slashing, an AVS must instantiate a new `RedistributingOperatorSet`. These sets specify a `redistributionRecipient` address that CANNOT be changed later on. This is the address that will receive assets after a slash is triggered. This may be set to any address on Ethereum (EOA or Contract). AVSs may set whatever contracts they like upstream, but should make strong guarantees about the way they function in order to attract and retain Stakers and Operators.
 
 New getter and setter functions are provided in the `AllocationManger` interface:
 
