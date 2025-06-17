@@ -44,7 +44,7 @@ This proposal introduces Multi-Chain Verification to address these challenges, a
 
 To support multi-chain verification and consumption of AVS outputs on chains like Layer 2s, several concepts are introduced to the architecture:
 
-- **An Operator Table**: A data structure for representing stake-weighted Operator delegations and Allocations of a given Operator Set. This is a representation of EigenLayer stake subjective to the AVS's needs and perspective within their protocol. 
+- **An Operator Table**: A data structure for representing stake-weighted Operator delegations and Allocations of a given Operator Set. This is a representation of EigenLayer stake subjective to the AVS's needs and perspective within their protocol.
 - **The Stake Table**: A data structure representing the global view of all Operator Sets with AVS-decorated stake weights. One of these lives on each target chain, and represents many Operator Tables.
 - **Stake Weighting & Table Calculation**: Previously a non-standard or enforced concept on EigenLayer outside of `multipliers`, stake weighting now has a standardized process in the core and middleware. An `OperatorTableCalculator` is vended for AVSs to decorate stake weighting of different assets and to apply the formats required by the Operator Table.
 - **Certificates & Certificate Verification**: A data structure for signed Operator outputs (`certificate`) and a core contract (`certificateVerifier`) for verifying those outputs against the Operator Table and stake-weighted rules (e.g. signed weight above nominal or proportional stake thresholds).
@@ -70,11 +70,74 @@ The Multi-Chain Verification framework introduces three new core contracts and a
 | **`KeyRegistry`** | Core Singleton | Ethereum | A unified module for managing BN254 and ECDSA cryptographic keys with built-in key rotation support, extensible to additional curves like BLS381 |
 | **`CrossChainRegistry`** | Core Singleton | Ethereum | A coordination contract that manages AVS multi-chain configuration when interacting with EigenLayer's first-party generation and transport  |
 | **`OperatorTableCalculator`** | Middleware Singleton | Ethereum | A contract for specifying stake weights per asset, or decorating more custom logic like stake capping |
-| **`CertificateVerifier`** | Core Replicated | Ethereum, Layer 2s | A verification contract deployed on multiple chains that enables AVS consumers to verify tasks against operator sets using transported stake proofs |
+| **`CertificateVerifier`** | Core Replicated | Ethereum, Layer 2s | A verification contract deployed on multiple chains that enables AVS consumers to verify tasks against operator sets using transported stake tables |
 
-While some pieces of this framework are modifiable or pluggable, the primary mandatory component is the `CertificateVerifier`. This is intended to maintain an integration pattern that does not change between AVSs and their customers. This design approach is predicated on an AVS to Consumer "code once and deploy everywhere" pattern to reduce overhead and maintenance and insure a smooth experience for builders across chains (and when integrating *multiple AVSs*).
+The `CertificateVerifier` is the key new architectural piece and the primary integration point that AVSs need to understand. This contract, deployed on every supported chain, is the gateway to all EigenLayer services and holds the stake values from Ethereum for verifying Operator tasks. The `CertificateVerifier` is designed around an integration pattern that does not change between AVSs and their customers. The goals of its design are an AVS to Consumer "code once and deploy everywhere" pattern to reduce overhead and maintenance and insure a smooth experience for builders across chains (and when integrating *multiple AVSs*).
 
-Supporting infrastructure includes automated stake table generation and transport mechanisms, with initial implementation managed by Eigen Labs as the `GlobalRootConfirmerSet` and primary transporter. The system provides force update capabilities to ensure liveness during critical events like operator slashing, registration, or deregistration, while maintaining the ability to pause and intervene in case of implementation bugs or security concerns.
+The `KeyRegistry` is also provided to give AVSs a secure interface to register, deregister, and rotate Operator signing Keys. This is a canonicalization of the key solutions provided via the `AVSRegistrar` middleware. In this core contract, AVSs can register, deregister, and rotate keys associated with Operators in-protocol. This contract allows for the right keys to be accepted across the supported multi-chain ecosystem where EigenLayer is supported.
+
+The `CrossChainRegistry` stores mappings and configurations for contracts deployed by the AVSs on Layer 1 and other chains. This contract is used in generation of Operator tables and for setting things like staleness periods of stakes used in verification on target chains, along as control over which chains to support.
+
+The `OperatorTableCalculator` is an AVS-deployed contract that can be used for decorating stake weights with custom logic. For example, if an AVS wishes to weight certain assets as more than others, or integrate different services like an Oracle, an open-ended contract interface is provided. Default templates that require no interaction or custom logic are provided for AVSs out of the box.
+
+While some standards and contracts in this framework are modifiable or pluggable, the primary mandatory component is the `CertificateVerifier`. The `OperatorTableCalculator` is also mandatory in the initial multi-chain implementation. Supporting, modular infrastructure includes the stake table generation and transport mechanisms, with the initial implementation managed by Eigen Labs as the primary transporter.
+
+Altogether, the contracts fit together in a configuration pictured below:
+
+```mermaid
+classDiagram 
+direction TD
+namespace Middleware{
+    class AVSAdmin {
+        metadataURI
+        AVSPermissions/multisigs/governance
+        verificationDelay
+        transportPayments
+    }
+    class AVSRegistrar
+    class OperatorTableCalculator {
+        StakeCapping
+        StakePricing (Multiplier, Oracle)
+        ProtocolVotingPowerCalc
+    }
+    class Slasher
+    class RewardsSubmitter
+    class Ejector
+    class RegistrationHooks{
+        KeyRegistration
+        OperatorCaps
+        Churn
+        Sockets
+    }
+}
+namespace EigenLayer Core on Ethereum{
+    class PermissionController
+    class AllocationManager
+    class RewardsCoordinator
+    class KeyRegistrar
+    class CrossChainRegistry
+}
+namespace Target Chain{
+    class ConsumerContract
+    class Optional-AVSIntegrationWrapper{
+        Pausable
+    }
+    class CertVerifier
+}
+
+AVSAdmin --> PermissionController
+AVSAdmin --> CrossChainRegistry
+AllocationManager --> AVSRegistrar
+AVSRegistrar --> RegistrationHooks
+RegistrationHooks --> KeyRegistrar 
+RewardsSubmitter --> RewardsCoordinator
+Ejector --> AllocationManager
+ConsumerContract --> Optional-AVSIntegrationWrapper
+Slasher --> AllocationManager
+CrossChainRegistry --> OperatorTableCalculator
+CrossChainRegistry --> CertVerifier
+Optional-AVSIntegrationWrapper --> CertVerifier
+```
 
 ## Specifications
 
