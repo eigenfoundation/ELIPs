@@ -184,18 +184,18 @@ namespace Ethereum-EigenLayer-Core{
   }
 }
 namespace TargetChain{
+    class OperatorTableUpdater{
+      confirmGlobalTableRoot
+      updateOperatorTable()
+    }
+    class CertificateVerifier{
+      n Operator Tables
+      updateOperatorTable()
+      verifyCert (bool)
+    }
     class AVSConsumer{
       requests Operator task 
       receives cert ()
-    }
-    class CertificateVerifier{
-      Stake Table
-      n Operator Tables
-      verifyCert (bool)
-    }
-    class OperatorTableUpdater{
-        confirmGlobalTableRoot
-        updateOperatorTable()
     }
 }
 
@@ -219,12 +219,10 @@ SlasherEjector --> AllocationManager : Slash or eject Operator
 CrossChainRegistry --> Transport : Transports Operator tables
 Transport --> OperatorTableUpdater: Update global stake root 
 OperatorTableUpdater --> CertificateVerifier: Update Operator Table
-CertificateVerifier : Update stake and Operator status
-AVSConsumer --> Operator : requests task
-Operator --> AVSConsumer: creates cert
-AVSConsumer --> CertificateVerifier : verifies certificate
+Operator --> AVSConsumer : Produces certificate
+Operator <-- AVSConsumer : Requests task
+AVS Consumer --> CertificateVerifier : Verifies Certificate
 ```
-
 
 ## Specifications
 
