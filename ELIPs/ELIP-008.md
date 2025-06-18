@@ -112,7 +112,7 @@ AVSConsumer --> CertificateVerifier : verifies certificate
 The Multi-Chain Verification framework introduces three new core contracts and accompanying updates to EigenLayer middleware. These are not pluggable and are intended to interface with offchain, modular components. Below is a list:
 
 | Contract | Deployer | Deployment Target | Interface Type | Description |
-|----------|------|-------------------|-------------|
+|----------|------|-------------------|--------------------| -------------|
 | **`KeyRegistry`** | Core Singleton | Ethereum | User-Facing | A unified module for managing and retrieving BN254 and ECDSA cryptographic keys for Operators with built-in key rotation support, extensible to additional curves like BLS381 |
 | **`CrossChainRegistry`** | Core Singleton | Ethereum | Internal | A coordination contract that manages AVS multi-chain configuration and tracks deployment addresses when using EigenLayer's generation and transport mechanisms  |
 | **`OperatorTableCalculator`** | Middleware Singleton | Ethereum | Internal | A contract for specifying stake weights per asset, or decorating more custom logic like stake capping |
