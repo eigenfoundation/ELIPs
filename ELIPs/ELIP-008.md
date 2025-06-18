@@ -111,12 +111,13 @@ AVSConsumer --> CertificateVerifier : verifies certificate
 
 The Multi-Chain Verification framework introduces three new core contracts and accompanying updates to EigenLayer middleware. These are not pluggable and are intended to interface with offchain, modular components. Below is a list:
 
-| Contract | Deployer | Deployment Target | Description |
+| Contract | Deployer | Deployment Target | Interface Type | Description |
 |----------|------|-------------------|-------------|
-| **`KeyRegistry`** | Core Singleton | Ethereum | A unified module for managing and retrieving BN254 and ECDSA cryptographic keys for Operators with built-in key rotation support, extensible to additional curves like BLS381 |
-| **`CrossChainRegistry`** | Core Singleton | Ethereum | A coordination contract that manages AVS multi-chain configuration and tracks deployment addresses when using EigenLayer's generation and transport mechanisms  |
-| **`OperatorTableCalculator`** | Middleware Singleton | Ethereum | A contract for specifying stake weights per asset, or decorating more custom logic like stake capping |
-| **`CertificateVerifier`** | Core Replicated | Ethereum, Layer 2s | A verification contract deployed on multiple chains that enables AVS consumers to verify tasks against operator sets using transported stake tables |
+| **`KeyRegistry`** | Core Singleton | Ethereum | User-Facing | A unified module for managing and retrieving BN254 and ECDSA cryptographic keys for Operators with built-in key rotation support, extensible to additional curves like BLS381 |
+| **`CrossChainRegistry`** | Core Singleton | Ethereum | Internal | A coordination contract that manages AVS multi-chain configuration and tracks deployment addresses when using EigenLayer's generation and transport mechanisms  |
+| **`OperatorTableCalculator`** | Middleware Singleton | Ethereum | Internal | A contract for specifying stake weights per asset, or decorating more custom logic like stake capping |
+| **`OperatorTableUpdater`** | Core Replicated | Ethereum, Layer 2s | Internal | A contract intended to parse and verify the global Stake Table Root and rehydrate individual Operator tables in the `CertificateVerifier` |
+| **`CertificateVerifier`** | Core Replicated | Ethereum, Layer 2s | User-Facing | A verification contract deployed on multiple chains that enables AVS consumers to verify tasks against operator sets using transported stake tables; the single integration point between AVSs and their consumers |
 
 The `CertificateVerifier` is the key new architectural piece and the primary integration point that AVSs need to understand. This contract, deployed on every supported chain, is the gateway to all EigenLayer services and holds the stake values from Ethereum for verifying Operator tasks. The `CertificateVerifier` is designed around an integration pattern that does not change between AVSs and their customers. The goals of its design are an AVS to Consumer "code once and deploy everywhere" pattern to reduce overhead and maintenance and insure a smooth experience for builders across chains (and when integrating *multiple AVSs*).
 
