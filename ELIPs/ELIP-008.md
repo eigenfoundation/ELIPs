@@ -47,7 +47,7 @@ To support multi-chain verification and consumption of AVS outputs on chains lik
 - **An Operator Table**: A data structure for representing stake-weighted Operator delegations and Allocations of a given Operator Set. This is a representation of EigenLayer stake subjective to the AVS's needs and perspective within their protocol.
 - **The Stake Table**: A data structure representing the global view of all Operator Sets with AVS-decorated stake weights. One of these lives on each target chain, and represents many Operator Tables.
 - **Stake Weighting & Table Calculation**: Previously a non-standard or enforced concept on EigenLayer outside of `multipliers`, stake weighting now has a standardized process in the core and middleware. An `OperatorTableCalculator` is vended for AVSs to decorate stake weighting of different assets and to apply the formats required by the Operator Table.
-- **Certificates & Certificate Verification**: A data structure for signed Operator outputs (`certificate`) and a core contract (`certificateVerifier`) for verifying those outputs against the Operator Table and stake-weighted rules (e.g. signed weight above nominal or proportional stake thresholds).
+- **Certificates & Certificate Verification**: A data structure for signed Operator outputs (`certificate`) and a core contract (`CertificateVerifier`) for verifying those outputs against the Operator Table and stake-weighted rules (e.g. signed weight above nominal or proportional stake thresholds).
 - **Stake Generation & Transport**: A specification for generating and verifying the global stake table Merkle root and transporting it to core contracts on many chains. This proposal outlines one approach taken by EigenLabs, but this process is pluggable by AVSs and other third-parties.
 
 These pieces of architecture work together to transport a single global root to many target chains. In sequence...
@@ -77,7 +77,7 @@ namespace Ethereum{
     }
     class StakeGeneration {
         crossChainRegistry
-        keyRegistry
+        KeyRegistrar
   }   
 }
 namespace TargetChain{
@@ -109,25 +109,25 @@ AVSConsumer --> CertificateVerifier : verifies certificate
 
 ## Contract Architecture
 
-The Multi-Chain Verification framework introduces three new core contracts and accompanying updates to EigenLayer middleware. These are not pluggable and are intended to interface with offchain, modular components. Below is a list:
+The Multi-Chain Verification framework introduces four new core contracts and new templates in EigenLayer middleware. These are not pluggable and are intended to interface with offchain, modular components. Below is a list:
 
 | Contract | Deployer | Deployment Target | Interface Type | Description |
 |----------|------|-------------------|--------------------| -------------|
-| **`KeyRegistry`** | Core Singleton | Ethereum | User-Facing | A unified module for managing and retrieving BN254 and ECDSA cryptographic keys for Operators with built-in key rotation support, extensible to additional curves like BLS381 |
+| **`KeyRegistrar`** | Core Singleton | Ethereum | User-Facing | A unified module for managing and retrieving BN254 and ECDSA cryptographic keys for Operators with built-in key rotation support, extensible to additional curves like BLS381 |
 | **`CrossChainRegistry`** | Core Singleton | Ethereum | Internal | A coordination contract that manages AVS multi-chain configuration and tracks deployment addresses when using EigenLayer's generation and transport mechanisms  |
-| **`OperatorTableCalculator`** | Middleware Singleton | Ethereum | Internal | A contract for specifying stake weights per asset, or decorating more custom logic like stake capping |
+| **`OperatorTableCalculator`** | Middleware Singleton | Ethereum | Internal | A required middleware contract for specifying stake weights per asset, or decorating more custom logic like stake capping |
 | **`OperatorTableUpdater`** | Core Replicated | Ethereum, Layer 2s | Internal | A contract intended to parse and verify the global Stake Table Root and rehydrate individual Operator tables in the `CertificateVerifier` |
 | **`CertificateVerifier`** | Core Replicated | Ethereum, Layer 2s | User-Facing | A verification contract deployed on multiple chains that enables AVS consumers to verify tasks against operator sets using transported stake tables; the single integration point between AVSs and their consumers |
 
 The `CertificateVerifier` is the key new architectural piece and the primary integration point that AVSs need to understand. This contract, deployed on every supported chain, is the gateway to all EigenLayer services and holds the stake values from Ethereum for verifying Operator tasks. The `CertificateVerifier` is designed around an integration pattern that does not change between AVSs and their customers. The goals of its design are an AVS to Consumer "code once and deploy everywhere" pattern to reduce overhead and maintenance and insure a smooth experience for builders across chains (and when integrating *multiple AVSs*).
 
-The `KeyRegistry` is also provided to give AVSs a secure interface to register, deregister, and rotate Operator signing Keys. This is a canonicalization of the key solutions provided via the `AVSRegistrar` middleware. In this core contract, AVSs can register, deregister, and rotate keys associated with Operators in-protocol. This contract allows for the right keys to be accepted across the supported multi-chain ecosystem where EigenLayer is supported.
+The `KeyRegistrar` is also provided to give AVSs a secure interface to register, deregister, and rotate Operator signing Keys. This is a canonicalization of the key solutions provided via the `AVSRegistrar` middleware. In this core contract, AVSs can register, deregister, and rotate keys associated with Operators in-protocol. This contract allows for the right keys to be accepted across the supported multi-chain ecosystem where EigenLayer is supported.
 
 The `CrossChainRegistry` stores mappings and configurations for contracts deployed by the AVSs on Layer 1 and other chains. This contract is used in generation of Operator tables and for setting things like staleness periods of stakes used in verification on target chains, along as control over which chains to support.
 
 The `OperatorTableCalculator` is an AVS-deployed contract that can be used for decorating stake weights with custom logic. For example, if an AVS wishes to weight certain assets as more than others, or integrate different services like an Oracle, an open-ended contract interface is provided. Default templates that require no interaction or custom logic are provided for AVSs out of the box.
 
-While some standards and contracts in this framework are modifiable or pluggable, the primary mandatory component is the `CertificateVerifier`. The `OperatorTableCalculator` is also mandatory in the initial multi-chain implementation. Supporting, modular infrastructure includes the stake table generation and transport mechanisms, with the initial implementation managed by Eigen Labs as the primary transporter.
+The `OperatorTableUpdater` exists to interface with off-chain transport mechanisms. It confirms the data that it is given from the global stake table and parses it into individual Operator Table updates on the `CertificateVerifier`. This ensures accuracy, timely updates for individual AVS's Operator Tables as Operators are slashed or ejected, and simplifies verification logic.
 
 Altogether, the contracts fit together in a configuration pictured below:
 
@@ -227,7 +227,425 @@ AVS Consumer --> CertificateVerifier : Verifies Certificate
 
 ## Specifications
 
+### Operator Table Calculation & Stake Weighting
+
+The `OperatorTableCalculator` is where AVSs define how Operator stakes should be weighted and formatted for their specific use case. This is a mandatory contract that each AVS must deploy to participate in multi-chain verification.
+
+The core purpose of this contract is to convert raw EigenLayer stake data into weighted Operator Tables that reflect the AVS's specific requirements - whether that's capping certain operators, weighting different assets differently, or integrating external price feeds. 
+
+For example, default "weights" of USDC and ETH would be treated the same if no weighting is given to either (e.g. 10 "ETH" == 10 "USDC" when presented as raw stake values). Operator shares of a given strategy (i.e. staked value for one asset) are stored in a numerical format and should be converted for the AVSs use-case. This was previously handled by the optional middleware "multipliers".
+
+The weights are capture in `OperatorInfo` structs:
+
+```solidity
+struct ECDSAOperatorInfo {
+    address pubkey;    // ECDSA signing key from KeyRegistrar (not operator address)
+    uint256[] weights; // Flexible array: [slashable_stake, delegated_stake, strategy_i_stake, ...]
+}
+
+struct BLSOperatorInfo {
+    BN254.G1Point pubkey;  // BLS public key from KeyRegistrar
+    uint256[] weights;     // Flexible array: [slashable_stake, delegated_stake, strategy_i_stake, ...]
+}
+```
+
+The `weights` array is completely flexible - AVSs can define any groupings they need. Common patterns include:
+
+- **Simple**: `[total_stake]`
+- **Asset-specific**: `[eth_stake, steth_stake, eigen_stake]`
+- **Detailed**: `[slashable_stake, delegated_stake, strategy_1_stake, strategy_2_stake]`
+
+Some examples of customization options are...
+
+- Stake Capping: Limit any single operator to maximum 10% of total weight
+- Asset Weighting: Weight ETH stakes 2x higher than other assets  
+- Oracle Integration: Use external price feeds to convert all stakes to USD values
+- Minimum Requirements: Filter out operators below certain stake thresholds (i.e. set their verification weight to zero)
+
+Defaults are provided out of the box. For AVSs that don't need custom logic, default calculators are provided for both `ECDSATableCalculator` and `BLSTableCalculator` that simply return unweighted stake values. For larger Operator Sets (50+ operators), BLS provides more efficient verification through aggregate signatures. The BLS calculator follows a similar pattern but optimizes for larger scale operations.
+
+The Calculator contract is left largely flexible for AVSs, with easy defaults. As long as the return type is an array of `OperatorInfos`, the upstream contracts will be able to parse them appropriately. The goal of the `OperatorTableCalculator` is to give AVSs complete control over how their stake is weighted while maintaining standardized interfaces for the broader multi-chain system. These stake weights are key to properly [verifying Operator certificates](./ELIP-008.md#certificates--verification).
+
+Below is provided the template for ECDSA (BLS is provided in the contracts repository):
+
+```solidity
+interface IECDSATableCalculatorTypes {
+    /**
+     * @notice A struct that contains information about a single operator
+     * @param pubkey The address of the signing ECDSA key of the operator and not the operator address itself.
+     * This is read from the KeyRegistrar contract.
+     * @param weights The weights of the operator for a single operatorSet
+     * @dev The `weights` array can be defined as a list of arbitrary groupings. For example,
+     * it can be [slashable_stake, delegated_stake, strategy_i_stake, ...]
+     */
+    struct ECDSAOperatorInfo {
+        address pubkey;
+        uint256[] weights;
+    }
+}
+
+interface IECDSATableCalculatorEvents {
+    /// @notice Emitted when the lookahead blocks are set
+    event LookaheadBlocksSet(uint256 lookaheadBlocks);
+}
+
+interface IECDSATableCalculatorErrors {
+    /// @notice Emitted when the lookahead blocks are too high
+    error LookaheadBlocksTooHigh();
+}
+
+interface IECDSATableCalculator is
+    IOperatorTableCalculator,
+    IECDSATableCalculatorTypes,
+    IECDSATableCalculatorEvents,
+    IECDSATableCalculatorErrors
+{
+    /**
+     * @notice calculates the operatorInfos for a given operatorSet
+     * @param operatorSet the operatorSet to calculate the operator table for
+     * @return operatorInfos the list of operatorInfos for the given operatorSet
+     * @dev The output of this function is converted to bytes via the `calculateOperatorTableBytes` function
+     */
+    function calculateOperatorTable(
+        OperatorSet calldata operatorSet
+    ) external view returns (ECDSAOperatorInfo[] memory operatorInfos);
+}
+```
+
+### Crosschain & Key Registries
+
+For convenience and reduced middleware trust assumptions, this proposal canonicalizes a `CrossChainRegistry` and a `KeyRegistrar`. Previously, key management was handled by the AVS in middleware, with room for error and lack of support for consistent key rotation. The `KeyRegistrar` brings these key mappings into the core and makes convenient view and setter functions available to AVSs and Operators. Additionally, with the introduction of multi-chain EigenLayer, the Core on Ethereum needs a mapping for where AVSs and contracts live on certain chains, as well as a way to capture AVS configuration and intent. The `CrossChainRegistry` is a contract that allows AVSs to enroll in multi-chain and select their target chains. This contract also captures trust parameters, like the staleness period of stake (i.e. an Operator Table updated at a certain reference block will fail verification after the configured staleness period elapses.)
+
+Provided below is the `KeyRegistrar` interface:
+
+```solidity
+interface IKeyRegistrarEvents is IKeyRegistrarTypes {
+    event KeyRegistered(OperatorSet operatorSet, address indexed operator, CurveType curveType, bytes pubkey);
+    event KeyDeregistered(OperatorSet operatorSet, address indexed operator, CurveType curveType);
+    event AggregateBN254KeyUpdated(OperatorSet operatorSet, BN254.G1Point newAggregateKey);
+    event OperatorSetConfigured(OperatorSet operatorSet, CurveType curveType);
+}
+
+interface IKeyRegistrar is IKeyRegistrarErrors, IKeyRegistrarEvents, ISemVerMixin {
+    /**
+     * @notice Configures an operator set with curve type
+     * @param operatorSet The operator set to configure
+     * @param curveType Type of curve (ECDSA, BN254)
+     * @dev Only authorized callers for the AVS can configure operator sets
+     */
+    function configureOperatorSet(OperatorSet memory operatorSet, CurveType curveType) external;
+
+    /**
+     * @notice Registers a cryptographic key for an operator with a specific operator set
+     * @param operator Address of the operator to register key for
+     * @param operatorSet The operator set to register the key for
+     * @param pubkey Public key bytes
+     * @param signature Signature proving ownership (only needed for BN254 keys)
+     * @dev Can be called by operator directly or by addresses they've authorized via PermissionController
+     * @dev Reverts if key is already registered
+     */
+    function registerKey(
+        address operator,
+        OperatorSet memory operatorSet,
+        bytes calldata pubkey,
+        bytes calldata signature
+    ) external;
+
+    /**
+     * @notice Deregisters a cryptographic key for an operator with a specific operator set
+     * @param operator Address of the operator to deregister key for
+     * @param operatorSet The operator set to deregister the key from
+     * @dev Can be called by avs directly or by addresses they've authorized via PermissionController
+     * @dev Reverts if key was not registered
+     * @dev Keys remain in global key registry to prevent reuse
+     */
+    function deregisterKey(address operator, OperatorSet memory operatorSet) external;
+
+    /**
+     * @notice Checks if an operator has a registered key
+     * @param operatorSet The operator set to check and update
+     * @param operator Address of the operator
+     * @return whether the operator has a registered key
+     * @dev This function is called by the AVSRegistrar when an operator registers for an AVS
+     * @dev Only authorized callers for the AVS can call this function
+     * @dev Reverts if operator doesn't have a registered key for this operator set
+     */
+    function checkKey(OperatorSet memory operatorSet, address operator) external view returns (bool);
+
+    /**
+     * @notice Checks if a key is registered for an operator with a specific operator set
+     * @param operatorSet The operator set to check
+     * @param operator Address of the operator
+     * @return True if the key is registered
+     */
+    function isRegistered(OperatorSet memory operatorSet, address operator) external view returns (bool);
+
+    /**
+     * @notice Gets the configuration for an operator set
+     * @param operatorSet The operator set to get configuration for
+     * @return The operator set configuration
+     */
+    function getOperatorSetCurveType(
+        OperatorSet memory operatorSet
+    ) external view returns (CurveType);
+
+    /**
+     * @notice Gets the BN254 public key for an operator with a specific operator set
+     * @param operatorSet The operator set to get the key for
+     * @param operator Address of the operator
+     * @return g1Point The BN254 G1 public key
+     * @return g2Point The BN254 G2 public key
+     */
+    function getBN254Key(
+        OperatorSet memory operatorSet,
+        address operator
+    ) external view returns (BN254.G1Point memory g1Point, BN254.G2Point memory g2Point);
+
+    /**
+     * @notice Gets the ECDSA public key for an operator with a specific operator set as bytes
+     * @param operatorSet The operator set to get the key for
+     * @param operator Address of the operator
+     * @return pubkey The ECDSA public key
+     */
+    function getECDSAKey(OperatorSet memory operatorSet, address operator) external view returns (bytes memory);
+
+    /**
+     * @notice Gets the ECDSA public key for an operator with a specific operator set
+     * @param operatorSet The operator set to get the key for
+     * @param operator Address of the operator
+     * @return pubkey The ECDSA public key
+     */
+    function getECDSAAddress(OperatorSet memory operatorSet, address operator) external view returns (address);
+
+    /**
+     * @notice Checks if a key hash is globally registered
+     * @param keyHash Hash of the key
+     * @return True if the key is globally registered
+     */
+    function isKeyGloballyRegistered(
+        bytes32 keyHash
+    ) external view returns (bool);
+
+    /**
+     * @notice Gets the key hash for an operator with a specific operator set
+     * @param operatorSet The operator set to get the key hash for
+     * @param operator Address of the operator
+     * @return keyHash The key hash
+     */
+    function getKeyHash(OperatorSet memory operatorSet, address operator) external view returns (bytes32);
+
+    /**
+     * @notice Returns the message hash for ECDSA key registration
+     * @param operator The operator address
+     * @param operatorSet The operator set
+     * @param keyAddress The address of the key
+     * @return The message hash for signing
+     */
+    function getECDSAKeyRegistrationMessageHash(
+        address operator,
+        OperatorSet memory operatorSet,
+        address keyAddress
+    ) external view returns (bytes32);
+
+    /**
+     * @notice Returns the message hash for BN254 key registration
+     * @param operator The operator address
+     * @param operatorSet The operator set
+     * @param keyData The BN254 key data
+     * @return The message hash for signing
+     */
+    function getBN254KeyRegistrationMessageHash(
+        address operator,
+        OperatorSet memory operatorSet,
+        bytes calldata keyData
+    ) external view returns (bytes32);
+
+    /**
+     * @notice Encodes the BN254 key data into a bytes array
+     * @param g1Point The BN254 G1 public key
+     * @param g2Point The BN254 G2 public key
+     * @return The encoded key data
+     */
+    function encodeBN254KeyData(
+        BN254.G1Point memory g1Point,
+        BN254.G2Point memory g2Point
+    ) external pure returns (bytes memory);
+}
+```
+
+Functions are provided to get, set, and verify key material. Initial support covers ECDSA and BN254 keys, but the interface is flexible to new key solutions like BLS12-381. This contract simplifies middleware management by AVSs by moving key concerns into the core. AVS middleware is free to consume these keys on or off-chain.
+
+The `CrossChainRegistry` has a more important role and is designed specifically for multi-chain verification. This is a singleton contract that only lives on Ethereum. AVSs first register in this contract to participate in the optional multi-chain system. AVSs can then specify the chains they wish to have their stake data transported to. Next, the AVS registers (or manages) the address `OperatorTableCalculator`.
+
+The `CrossChainRegistry` captures the addresses of the `OperatorTableCalculators` after deployment. This contract was explained in the [previous section](./ELIP-008.md#operator-table-calculation--stake-weighting). As AVSs deploy their own table calculation logic (or use the default template), they must update this registry contract with the addresses of their calculators. This is to ensure the off-chain generation protocol runs the correct stake weighting functions from each AVS's `OperatorTableCalculator` when it generates the merkelized stake roots for Operator Tables.
+
+When its time to generate a new root...
+
+1. `CrossChainRegistry.getActiveGenerationReservations()` is called to gather the Operator Sets opted-in to multi-chain transport.
+2. For each Operator Set, call the `CrossChainRegistry.calculateOperatorTableByes(operatorSet)`.
+3. The `CrossChainRegistry` calls into each `OperatorTableCalculator` to apply the right weighting logic, specified by the AVS.
+4. A global stake root is calculated from a created merkle tree, where each leaf is the hash of the bytes returned in step 2.
+
+This process yields a global stake root and a merkle tree that is transported to target chains.
+
+Below is the interface for the `CrossChainRegistry`.
+
+```solidity
+interface ICrossChainRegistry is ICrossChainRegistryErrors, ICrossChainRegistryEvents {
+    /**
+     * @notice Creates a generation reservation
+     * @param operatorSet the operatorSet to make a reservation for
+     * @param operatorTableCalculator the address of the operatorTableCalculator
+     * @param config the config to set for the operatorSet
+     * @param chainIDs the chainIDs to add as transport destinations
+     * @dev msg.sender must be UAM permissioned for operatorSet.avs
+     */
+    function createGenerationReservation(
+        OperatorSet calldata operatorSet,
+        IOperatorTableCalculator operatorTableCalculator,
+        OperatorSetConfig calldata config,
+        uint256[] calldata chainIDs
+    ) external;
+
+    /**
+     * @notice Removes a generation reservation for a given operatorSet
+     * @param operatorSet the operatorSet to remove
+     * @dev msg.sender must be UAM permissioned for operatorSet.avs
+     */
+    function removeGenerationReservation(
+        OperatorSet calldata operatorSet
+    ) external;
+
+    /**
+     * @notice Sets the operatorTableCalculator for the operatorSet
+     * @param operatorSet the operatorSet whose operatorTableCalculator is desired to be set
+     * @param operatorTableCalculator the contract to call to calculate the operator table
+     * @dev msg.sender must be UAM permissioned for operatorSet.avs
+     * @dev operatorSet must have an active reservation
+     */
+    function setOperatorTableCalculator(
+        OperatorSet calldata operatorSet,
+        IOperatorTableCalculator operatorTableCalculator
+    ) external;
+
+    /**
+     * @notice Sets the operatorSetConfig for a given operatorSet
+     * @param operatorSet the operatorSet to set the operatorSetConfig for
+     * @param config the config to set
+     * @dev msg.sender must be UAM permissioned for operatorSet.avs
+     * @dev operatorSet must have an active generation reservation
+     */
+    function setOperatorSetConfig(OperatorSet calldata operatorSet, OperatorSetConfig calldata config) external;
+
+    /**
+     * @notice Adds destination chains to transport to
+     * @param operatorSet the operatorSet to add transport destinations for
+     * @param chainIDs to add transport to
+     * @dev msg.sender must be UAM permissioned for operatorSet.avs
+     * @dev Will create a transport reservation if one doesn't exist
+     */
+    function addTransportDestinations(OperatorSet calldata operatorSet, uint256[] calldata chainIDs) external;
+
+    /**
+     * @notice Removes destination chains to transport to
+     * @param operatorSet the operatorSet to remove transport destinations for
+     * @param chainIDs to remove transport to
+     * @dev msg.sender must be UAM permissioned for operatorSet.avs
+     * @dev Will remove the transport reservation if all destinations are removed
+     */
+    function removeTransportDestinations(OperatorSet calldata operatorSet, uint256[] calldata chainIDs) external;
+
+    /**
+     * @notice Adds chainIDs to the whitelist of chainIDs that can be transported to
+     * @param chainIDs the chainIDs to add to the whitelist
+     * @param operatorTableUpdaters the operatorTableUpdaters for each whitelisted chainID
+     * @dev msg.sender must be the owner of the CrossChainRegistry
+     */
+    function addChainIDsToWhitelist(uint256[] calldata chainIDs, address[] calldata operatorTableUpdaters) external;
+
+    /**
+     * @notice Removes chainIDs from the whitelist of chainIDs that can be transported to
+     * @param chainIDs the chainIDs to remove from the whitelist
+     * @dev msg.sender must be the owner of the CrossChainRegistry
+     */
+    function removeChainIDsFromWhitelist(
+        uint256[] calldata chainIDs
+    ) external;
+
+    /**
+     *
+     *                         VIEW FUNCTIONS
+     *
+     */
+
+    /**
+     * @notice Gets the active generation reservations
+     * @return An array of operatorSets with active generationReservations
+     */
+    function getActiveGenerationReservations() external view returns (OperatorSet[] memory);
+
+    /**
+     * @notice Gets the operatorTableCalculator for a given operatorSet
+     * @param operatorSet the operatorSet to get the operatorTableCalculator for
+     * @return The operatorTableCalculator for the given operatorSet
+     */
+    function getOperatorTableCalculator(
+        OperatorSet memory operatorSet
+    ) external view returns (IOperatorTableCalculator);
+
+    /**
+     * @notice Gets the operatorSetConfig for a given operatorSet
+     * @param operatorSet the operatorSet to get the operatorSetConfig for
+     * @return The operatorSetConfig for the given operatorSet
+     */
+    function getOperatorSetConfig(
+        OperatorSet memory operatorSet
+    ) external view returns (OperatorSetConfig memory);
+
+    /**
+     * @notice Calculates the operatorTableBytes for a given operatorSet
+     * @param operatorSet the operatorSet to calculate the operator table for
+     * @return the encoded operatorTableBytes containing:
+     *         - operatorSet details
+     *         - curve type from KeyRegistrar
+     *         - operator set configuration
+     *         - calculated operator table from the calculator contract
+     * @dev This function aggregates data from multiple sources for cross-chain transport
+     */
+    function calculateOperatorTableBytes(
+        OperatorSet calldata operatorSet
+    ) external view returns (bytes memory);
+
+    /**
+     * @notice Gets the active transport reservations
+     * @return An array of operatorSets with active transport reservations
+     * @return An array of chainIDs that the operatorSet is configured to transport to
+     */
+    function getActiveTransportReservations() external view returns (OperatorSet[] memory, uint256[][] memory);
+
+    /**
+     * @notice Gets the transport destinations for a given operatorSet
+     * @param operatorSet the operatorSet to get the transport destinations for
+     * @return An array of chainIDs that the operatorSet is configured to transport to
+     */
+    function getTransportDestinations(
+        OperatorSet memory operatorSet
+    ) external view returns (uint256[] memory);
+
+    /**
+     * @notice Gets the list of chains that are supported by the CrossChainRegistry
+     * @return An array of chainIDs that are supported by the CrossChainRegistry
+     * @return An array of operatorTableUpdaters corresponding to each chainID
+     */
+    function getSupportedChains() external view returns (uint256[] memory, address[] memory);
+}
+```
+
 ### Certificates & Verification
+
+Key for integration
+Key for AVSs 
+
 
 Provided are:
 
