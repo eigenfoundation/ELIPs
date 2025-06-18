@@ -188,14 +188,14 @@ namespace TargetChain{
       requests Operator task 
       receives cert ()
     }
-    class OperatorTableUpdater{
-        confirmGlobalTableRoot
-        updateOperatorTable()
-    }
     class CertificateVerifier{
       Stake Table
       n Operator Tables
       verifyCert (bool)
+    }
+    class OperatorTableUpdater{
+        confirmGlobalTableRoot
+        updateOperatorTable()
     }
 }
 
