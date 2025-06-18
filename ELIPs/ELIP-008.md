@@ -57,11 +57,11 @@ These pieces of architecture work together to transport a single global root to 
 3. This is then transported to target chains and rehydrated. The Operator Tables can then be used for verifying Operator certificates.
 4. Daily, or as forcible updates are needed (e.g. when an Operator is ejected or slashed), the table is re-generated and transported again. This ensures up-to-date stake representations wherever the AVS is consumed.
 
-This multi-chain architecture dramatically reduces the complexity for AVS developers by abstracting away cross-chain coordination mechanics.  The framework maintains EigenLayer's security model while enabling efficient stake table generation (daily on mainnet, every 6 hours on testnet) and trust-minimized transport to supported chains including Base and Optimism.
+This multi-chain architecture dramatically reduces the complexity for AVS developers by abstracting away cross-chain coordination mechanics. The framework maintains EigenLayer's security model while enabling efficient stake table generation (daily on mainnet, every 6 hours on testnet) and trust-minimized transport to supported chains including Base and Optimism.
 
-This architecture maintains simplicity for AVS devs by allowing them to focus their efforts on the Certificate Verification as the sole entry point for their consumers, regardless of chain; the `CertificateVerifier` contract is the key concern of AVS and app builders. By leveraging out-of-the-box stake weight verification, AVSs can go-to-market with stake-backed verifiability of their services without any extra code. If service builders (or their customers) need more complex logic, they can wrap the interface to add functionality, like integrating stake caps or more complex Operator aggregate weighting.
+This architecture was designed around simplifying onchain AVS integrations with their customers. A secondary goal is complete abstraction of the multi-chain system for developers comfortable with the default implementation. In this design, AVSs are intended to focus their efforts on the `CertificateVerifier` as the sole entry point for their consumers, regardless of chain. By leveraging out-of-the-box stake weight verification, AVSs can go-to-market with stake-backed verifiability of their services without any extra code. If AVS builders (or their customers) need more complex verification logic, the `CertificateVerifier` interface can be wrapped with additional functionality, like integrating stake caps or more complex Operator aggregate weighting.
 
-The multi-chain framework, in a simplified form, has the following architecture, where any application consuming an EigenLayer AVS is the `AVSConsumer`:
+The EigenLayer multi-chain framework, in a simplified form, has the following architecture, where any application consuming an EigenLayer AVS is the `AVSConsumer`:
 
 ```mermaid
 classDiagram 
@@ -113,8 +113,8 @@ The Multi-Chain Verification framework introduces three new core contracts and a
 
 | Contract | Deployer | Deployment Target | Description |
 |----------|------|-------------------|-------------|
-| **`KeyRegistry`** | Core Singleton | Ethereum | A unified module for managing BN254 and ECDSA cryptographic keys with built-in key rotation support, extensible to additional curves like BLS381 |
-| **`CrossChainRegistry`** | Core Singleton | Ethereum | A coordination contract that manages AVS multi-chain configuration when interacting with EigenLayer's first-party generation and transport  |
+| **`KeyRegistry`** | Core Singleton | Ethereum | A unified module for managing and retrieving BN254 and ECDSA cryptographic keys for Operators with built-in key rotation support, extensible to additional curves like BLS381 |
+| **`CrossChainRegistry`** | Core Singleton | Ethereum | A coordination contract that manages AVS multi-chain configuration and tracks deployment addresses when using EigenLayer's generation and transport mechanisms  |
 | **`OperatorTableCalculator`** | Middleware Singleton | Ethereum | A contract for specifying stake weights per asset, or decorating more custom logic like stake capping |
 | **`CertificateVerifier`** | Core Replicated | Ethereum, Layer 2s | A verification contract deployed on multiple chains that enables AVS consumers to verify tasks against operator sets using transported stake tables |
 
@@ -155,7 +155,7 @@ namespace Middleware-on-Ethereum{
       ejectOperator ()
     }
     class RegistrationHooks{
-        KeyRegistration
+        RegistrationLogic
         OperatorCaps
         Churn
         Sockets
@@ -165,6 +165,8 @@ namespace Ethereum-EigenLayer-Core{
     class AllocationManager {
       registerForOperatorSets
       deregisterFromOperatorSets
+      allocateStake
+      deallocateStake
       slashOperator()
     }
     class KeyRegistrar{
@@ -176,6 +178,8 @@ namespace Ethereum-EigenLayer-Core{
     class CrossChainRegistry{
       setOperatorTableCalculator
       getOperatorTableCalculator
+      makeGenerationReservation
+      addTransportDestination
       calculateOperatorTableBytes()
   }
 }
@@ -183,6 +187,10 @@ namespace TargetChain{
     class AVSConsumer{
       requests Operator task 
       receives cert ()
+    }
+    class OperatorTableUpdater{
+        confirmGlobalTableRoot
+        updateOperatorTable()
     }
     class CertificateVerifier{
       Stake Table
@@ -198,21 +206,25 @@ namespace Offchain{
  }
  class Transport{
     getOperatorTables
+    n calculateOperatorTableBytes
     calculateGlobalStakeTable()
   }
 }
-AllocationManager <--> AVSRegistrar
+AllocationManager --> AVSRegistrar
 AVSAdmin --> CrossChainRegistry
 CrossChainRegistry --> OperatorTableCalculator : Calculates Operator Tables
 AVSRegistrar --> RegistrationHooks
 RegistrationHooks --> KeyRegistrar
 SlasherEjector --> AllocationManager : Slash or eject Operator 
 CrossChainRegistry --> Transport : Transports Operator tables
-Transport --> CertificateVerifier : Update stake and Operator status
+Transport --> OperatorTableUpdater: Update global stake root 
+OperatorTableUpdater --> CertificateVerifier: Update Operator Table
+CertificateVerifier : Update stake and Operator status
 AVSConsumer --> Operator : requests task
 Operator --> AVSConsumer: creates cert
 AVSConsumer --> CertificateVerifier : verifies certificate
 ```
+
 
 ## Specifications
 
