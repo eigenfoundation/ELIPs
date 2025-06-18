@@ -161,7 +161,7 @@ namespace Middleware-on-Ethereum{
         Sockets
     }
 }
-namespace EigenLayer-core-on-Ethereum{
+namespace Ethereum-EigenLayer-Core{
     class AllocationManager {
       registerForOperatorSets
       deregisterFromOperatorSets
