@@ -231,7 +231,7 @@ AVS Consumer --> CertificateVerifier : Verifies Certificate
 
 The `OperatorTableCalculator` is where AVSs define how Operator stakes should be weighted and formatted for their specific use case. This is a mandatory contract that each AVS must deploy to participate in multi-chain verification.
 
-The core purpose of this contract is to convert raw EigenLayer stake data into weighted Operator Tables that reflect the AVS's specific requirements - whether that's capping certain operators, weighting different assets differently, or integrating external price feeds. 
+The core purpose of this contract is to convert raw EigenLayer stake data into weighted Operator Tables that reflect the AVS's specific requirements - whether that's capping certain operators, weighting different assets differently, or integrating external price feeds.
 
 For example, default "weights" of USDC and ETH would be treated the same if no weighting is given to either (e.g. 10 "ETH" == 10 "USDC" when presented as raw stake values). Operator shares of a given strategy (i.e. staked value for one asset) are stored in a numerical format and should be converted for the AVSs use-case. This was previously handled by the optional middleware "multipliers".
 
@@ -643,16 +643,90 @@ interface ICrossChainRegistry is ICrossChainRegistryErrors, ICrossChainRegistryE
 
 ### Certificates & Verification
 
-Key for integration
-Key for AVSs 
+**The `CertificateVerifier` is the key integration point between AVSs and their customers.** This is the contract that allows off-chain services built atop EigenLayer restaking to interface with on-chain environments across all supported chains. Deployed to each target chain, this contract holds the `Operator Table` for each AVS and allows Operator `Certificates` to be verified against stake weighted rules, with options for proportional weighting logic, nominal weighting logic, and custom hooks.
 
+This contract was designed to serve key goals:
 
-Provided are:
+- **A Single Integration Point and Pattern**: AVSs and their customers only need to understand one contract interface, not many different patterns. One single contract interface for all EigenLayer services.
+- **Consistent Experience**: The same verification interface works identically across Ethereum, Base, Optimism, and other EVM chains with flexibility for future alt-VM support.
+- **Code Once, Deploy Everywhere**: Write integration logic once, deploy across all chains.
+- **Off-Chain to On-Chain Bridge**: This is where off-chain operator services become verifiable on-chain outputs using stake-weighted commitments.
+- **Stake-Weighted Verification**: Operator outputs are verified against stake criteria for acceptance and potential slashing. Operator outputs are backed by EigenLayer stake values from the maximally secure Layer One Ethereum.
 
-- Standardized methods for AVSs to define operator stake weights
-- Cryptographic certificate verification for cross-chain task validation
-- Support for both small (ECDSA) and large (BN254) Operator Sets
-- Stake staleness controls, governing expiry
+Everywhere the `CertificateVerifier` contract is available, AVSs can serve their customers and Operators can have certificates verified.
+
+The verification flow is outlined below:
+
+1. **Operator Execution**: Operators perform off-chain tasks (data feeds, computation, attestations)
+2. **Certificate Creation**: Operators sign results creating an `ECDSACertificate` or `BLSCertificate`.
+3. **Consumer Verification**: Applications call `CertificateVerifier.verifyCertificate()` to validate any received (or cached) certificates.
+4. **Stake Validation**: The `CertificateVerifier` checks the provided Certificate signatures against transported stake table, by comparing Operator keys and weights.
+5. **Threshold Enforcement**: Ensures sufficient stake signed the certificate (proportional, nominal, or custom) and returns a result to the requesting application.
+
+Below is the certificate structure:
+
+```solidity
+struct ECDSACertificate {
+    uint32 referenceTimestamp;  // When certificate was created
+    bytes32 messageHash;        // Hash of the signed message
+    bytes sig;                  // Concatenated operator signatures
+}
+
+/// BLS keys are a bit more complex
+/**
+    * @notice A witness for an operator
+    * @param operatorIndex the index of the nonsigner in the `BN254OperatorInfo` tree
+    * @param operatorInfoProofs merkle proofs of the nonsigner at the index. Empty if operator is in cache.
+    * @param operatorInfo the `BN254OperatorInfo` for the operator
+    */
+struct BN254OperatorInfoWitness {
+    uint32 operatorIndex;
+    bytes operatorInfoProof;
+    BN254OperatorInfo operatorInfo;
+}
+
+/**
+    * @notice A BN254 Certificate
+    * @param referenceTimestamp the timestamp at which the certificate was created
+    * @param messageHash the hash of the message that was signed by operators and used to verify the aggregated signature
+    * @param signature the G1 signature of the message
+    * @param apk the G2 aggregate public key
+    * @param nonSignerWitnesses an array of witnesses of non-signing operators
+    */
+struct BN254Certificate {
+    uint32 referenceTimestamp;
+    bytes32 messageHash;
+    BN254.G1Point signature;
+    BN254.G2Point apk;
+    BN254OperatorInfoWitness[] nonSignerWitnesses;
+}
+```
+
+The `CertificateVerifier` provides several options out of the box for both `ECDSA` and `BLS` keys...
+
+- `verifyCertificate()`: Returns raw signed stake amounts per weight category
+- `verifyCertificateProportion()`: Checks if signed stake meets % thresholds (e.g. >66% of total)
+- `verifyCertificateNominal()`: Checks if signed stake meets absolute thresholds (e.g. >1M ETH)
+
+An example integration Pattern flow may look like the following.
+
+```solidity
+// Same code works on Ethereum, Base, Optimism, etc.
+bool isValid = certificateVerifier.verifyCertificateProportion(
+    operatorSet,
+    certificate,
+    [6600] // Require 66% of stake
+);
+
+if (isValid) {
+    // Process verified result
+    processOperatorOutput(certificate.messageHash);
+}
+```
+
+The `CertificateVerifier` respects stake staleness configurations set in the `CrossChainRegistry` to invalidate old certificates or stake weight values, ensuring the AVS has control over how long outputs are considered verified.
+
+This contract is the gateway that makes EigenLayer's security and operator network accessible to applications across the multi-chain ecosystem, transforming off-chain operator services into verifiable, stake-backed on-chain outputs.
 
 # Rationale
 
