@@ -57,9 +57,55 @@ These pieces of architecture work together to transport a single global root to 
 3. This is then transported to target chains and rehydrated. The Operator Tables can then be used for verifying Operator certificates.
 4. Daily, or as forcible updates are needed (e.g. when an Operator is ejected or slashed), the table is re-generated and transported again. This ensures up-to-date stake representations wherever the AVS is consumed.
 
-Of these processes and components, most are pluggable to create flexibility on choice for AVS builders on their multi-chain journey, with regard to trust assumptions, centralization, cost, etc. This proposal outlines an out-of-the-box solution that leverages the EigenLayer Sidecar, core contracts, and middleware to deliver and end-to-end solution. These remain pluggable for further innovation and improvements.
-
 This multi-chain architecture dramatically reduces the complexity for AVS developers by abstracting away cross-chain coordination mechanics.  The framework maintains EigenLayer's security model while enabling efficient stake table generation (daily on mainnet, every 6 hours on testnet) and trust-minimized transport to supported chains including Base and Optimism.
+
+This architecture maintains simplicity for AVS devs by allowing them to focus their efforts on the Certificate Verification as the sole entry point for their consumers, regardless of chain; the `CertificateVerifier` contract is the key concern of AVS and app builders. By leveraging out-of-the-box stake weight verification, AVSs can go-to-market with stake-backed verifiability of their services without any extra code. If service builders (or their customers) need more complex logic, they can wrap the interface to add functionality, like integrating stake caps or more complex Operator aggregate weighting.
+
+The multi-chain framework, in a simplified form, has the following architecture, where any application consuming an EigenLayer AVS is the `AVSConsumer`:
+
+```mermaid
+classDiagram 
+direction TD
+namespace Ethereum{
+    class AVS {
+        AVSRegistrar
+    }
+    class OperatorTableCalculator {
+        StakeCapping
+        StakeWeighting (Multiplier, Oracle)
+        ProtocolVotingPowerCalc
+    }
+    class StakeGeneration {
+        crossChainRegistry
+        keyRegistry
+  }   
+}
+namespace TargetChain{
+    class AVSConsumer {
+      requests Operator task 
+      receives cert ()
+    }
+    class CertificateVerifier{
+      n Operator Tables
+     verifyCert (bool)
+ }
+}
+
+namespace Offchain{
+  class Operator {
+   consumer input
+   return certificate()
+  }
+}
+
+AVS --> OperatorTableCalculator : Deploys Operator Table Calculator
+StakeGeneration --> OperatorTableCalculator : Calculates Operator Tables
+Stake Generation --> transport : Transports Stake Table
+transport --> CertificateVerifier : Updates stakes and Operator Status
+AVSConsumer --> Operator : requests task
+Operator --> AVSConsumer: creates cert
+AVSConsumer --> CertificateVerifier : verifies certificate
+```
 
 ## Contract Architecture
 
@@ -87,22 +133,27 @@ Altogether, the contracts fit together in a configuration pictured below:
 ```mermaid
 classDiagram 
 direction TD
-namespace Middleware{
+namespace Middleware-on-Ethereum{
+    class OperatorTableCalculator {
+        StakeCapping
+        StakeWeighting (Multiplier, Oracle)
+        ProtocolVotingPowerCalc
+    }
     class AVSAdmin {
         metadataURI
-        AVSPermissions/multisigs/governance
+        Permissions/multisigs/governance
         verificationDelay
         transportPayments
     }
-    class AVSRegistrar
-    class OperatorTableCalculator {
-        StakeCapping
-        StakePricing (Multiplier, Oracle)
-        ProtocolVotingPowerCalc
+    class AVSRegistrar {
+         registerOperator
+         deregisterOperator
     }
-    class Slasher
-    class RewardsSubmitter
-    class Ejector
+    class SlasherEjector {
+      submitEvidence
+      slashOperator ()
+      ejectOperator ()
+    }
     class RegistrationHooks{
         KeyRegistration
         OperatorCaps
@@ -110,33 +161,57 @@ namespace Middleware{
         Sockets
     }
 }
-namespace EigenLayer Core on Ethereum{
-    class PermissionController
-    class AllocationManager
-    class RewardsCoordinator
-    class KeyRegistrar
-    class CrossChainRegistry
-}
-namespace Target Chain{
-    class ConsumerContract
-    class Optional-AVSIntegrationWrapper{
-        Pausable
+namespace EigenLayer-core-on-Ethereum{
+    class AllocationManager {
+      registerForOperatorSets
+      deregisterFromOperatorSets
+      slashOperator()
     }
-    class CertVerifier
+    class KeyRegistrar{
+      registerKey
+      deregisterKey
+      getKey (operator addr)
+      isRegistered (operator addr)
+    }
+    class CrossChainRegistry{
+      setOperatorTableCalculator
+      getOperatorTableCalculator
+      calculateOperatorTableBytes()
+  }
+}
+namespace TargetChain{
+    class AVSConsumer{
+      requests Operator task 
+      receives cert ()
+    }
+    class CertificateVerifier{
+      Stake Table
+      n Operator Tables
+      verifyCert (bool)
+    }
 }
 
-AVSAdmin --> PermissionController
+namespace Offchain{
+ class Operator {
+    consumer input
+    return certificate()
+ }
+ class Transport{
+    getOperatorTables
+    calculateGlobalStakeTable()
+  }
+}
+AllocationManager <--> AVSRegistrar
 AVSAdmin --> CrossChainRegistry
-AllocationManager --> AVSRegistrar
+CrossChainRegistry --> OperatorTableCalculator : Calculates Operator Tables
 AVSRegistrar --> RegistrationHooks
-RegistrationHooks --> KeyRegistrar 
-RewardsSubmitter --> RewardsCoordinator
-Ejector --> AllocationManager
-ConsumerContract --> Optional-AVSIntegrationWrapper
-Slasher --> AllocationManager
-CrossChainRegistry --> OperatorTableCalculator
-CrossChainRegistry --> CertVerifier
-Optional-AVSIntegrationWrapper --> CertVerifier
+RegistrationHooks --> KeyRegistrar
+SlasherEjector --> AllocationManager : Slash or eject Operator 
+CrossChainRegistry --> Transport : Transports Operator tables
+Transport --> CertificateVerifier : Update stake and Operator status
+AVSConsumer --> Operator : requests task
+Operator --> AVSConsumer: creates cert
+AVSConsumer --> CertificateVerifier : verifies certificate
 ```
 
 ## Specifications
