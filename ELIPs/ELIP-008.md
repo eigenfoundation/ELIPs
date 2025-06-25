@@ -109,15 +109,15 @@ AVSConsumer --> CertificateVerifier : verifies certificate
 
 ## Contract Architecture
 
-The Multi-Chain Verification framework introduces four new core contracts and new templates in EigenLayer middleware. These are not pluggable and are intended to interface with offchain, modular components. Below is a list:
+The Multi-Chain Verification framework introduces four new core contracts and new templates in EigenLayer middleware. These are not pluggable and are intended to interface with offchain, modular components. Below is a table of the new components:
 
-| Contract | Deployer | Deployment Target | Interface Type | Description |
-|----------|------|-------------------|--------------------| -------------|
-| **`KeyRegistrar`** | Core Singleton | Ethereum | User-Facing | A unified module for managing and retrieving BN254 and ECDSA cryptographic keys for Operators with built-in key rotation support, extensible to additional curves like BLS381 |
-| **`CrossChainRegistry`** | Core Singleton | Ethereum | Internal | A coordination contract that manages AVS multi-chain configuration and tracks deployment addresses when using EigenLayer's generation and transport mechanisms  |
-| **`OperatorTableCalculator`** | Middleware Singleton | Ethereum | Internal | A required middleware contract for specifying stake weights per asset, or decorating more custom logic like stake capping |
-| **`OperatorTableUpdater`** | Core Replicated | Ethereum, Layer 2s | Internal | A contract intended to parse and verify the global Stake Table Root and rehydrate individual Operator tables in the `CertificateVerifier` |
-| **`CertificateVerifier`** | Core Replicated | Ethereum, Layer 2s | User-Facing | A verification contract deployed on multiple chains that enables AVS consumers to verify tasks against operator sets using transported stake tables; the single integration point between AVSs and their consumers |
+| Contract Name | Deployment Target | Deployer | Description |
+|----------|-------------|--------------------| -------------|
+| **`KeyRegistrar`** | Ethereum Singleton | EigenLayer Core Protocol | A unified module for managing and retrieving BN254 and ECDSA cryptographic keys for Operators with built-in key rotation support, extensible to additional curves like BLS381 |
+| **`CrossChainRegistry`** |  Ethereum Singleton | EigenLayer Core Protocol | A coordination contract that manages AVS multi-chain configuration and tracks deployment addresses when using EigenLayer's generation and transport mechanisms  |
+| **`OperatorTableCalculator`** |  Ethereum Singleton | AVS Middleware | A required middleware contract deployed by an AVS for specifying stake weights per asset, or decorating more custom logic like stake capping |
+| **`OperatorTableUpdater`** |  One per target chain | EigenLayer Core Protocol | A contract intended to parse and verify the global Stake Table Root and rehydrate individual Operator tables in the `CertificateVerifier` |
+| **`CertificateVerifier`** | One per target chain | EigenLayer Core Protocol | A verification contract deployed on multiple chains that enables AVS consumers to verify tasks against operator sets using transported stake tables; the single integration point between AVSs and their consumers |
 
 The `CertificateVerifier` is the key new architectural piece and the primary integration point that AVSs need to understand. This contract, deployed on every supported chain, is the gateway to all EigenLayer services and holds the stake values from Ethereum for verifying Operator tasks. The `CertificateVerifier` is designed around an integration pattern that does not change between AVSs and their customers. The goals of its design are an AVS to Consumer "code once and deploy everywhere" pattern to reduce overhead and maintenance and insure a smooth experience for builders across chains (and when integrating *multiple AVSs*).
 
@@ -223,7 +223,7 @@ OperatorTableUpdater --> CertificateVerifier: Update Operator Table
 Operator --> AVSConsumer : Produces certificate
 Operator <-- AVSConsumer : Requests task
 AVS Consumer --> CertificateVerifier : Verifies Certificate
-```
+```s
 
 ## Specifications
 
@@ -312,7 +312,7 @@ interface IECDSATableCalculator is
 }
 ```
 
-### Crosschain & Key Registries
+### Cross-chain & Key Registries
 
 For convenience and reduced middleware trust assumptions, this proposal canonicalizes a `CrossChainRegistry` and a `KeyRegistrar`. Previously, key management was handled by the AVS in middleware, with room for error and lack of support for consistent key rotation. The `KeyRegistrar` brings these key mappings into the core and makes convenient view and setter functions available to AVSs and Operators. Additionally, with the introduction of multi-chain EigenLayer, the Core on Ethereum needs a mapping for where AVSs and contracts live on certain chains, as well as a way to capture AVS configuration and intent. The `CrossChainRegistry` is a contract that allows AVSs to enroll in multi-chain and select their target chains. This contract also captures trust parameters, like the staleness period of stake (i.e. an Operator Table updated at a certain reference block will fail verification after the configured staleness period elapses.)
 
