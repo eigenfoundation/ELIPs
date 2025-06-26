@@ -386,7 +386,7 @@ As always, AVS's require extremely careful management of keys, as a compromised 
 
 ## Rounding and Precision Analysis
 
-We conducted comprehensive manual analysis and directed fuzzing to analyze protocol rounding behavior in the context of redistributable slashing. It is highly recommended you read [ELIP-002](./ELIP-002.md#magnitude-allocations) to better understand allocations and magnitudes. In this context, our analysis explored three key areas:
+We conducted a [comprehensive manual analysis and directed fuzzing to analyze protocol rounding behavior](https://hackmd.io/@-HV50kYcRqOjl_7du8m1AA/HJz7-LlElx) in the context of redistributable slashing. It is highly recommended you read [ELIP-002](./ELIP-002.md#magnitude-allocations) to better understand allocations and magnitudes. In this context, our analysis explored three key areas:
 
 ### Precision Drift in Pending Deallocations
 
@@ -452,7 +452,7 @@ Based on our [rounding and precision analysis](./ELIP-006.md#rounding-and-precis
 *Token Decimal Considerations:*
 
 - **Standard tokens (18 decimals)**: Generally safe when following magnitude/share thresholds
-- **Low-decimal tokens require extreme caution**: 
+- **Low-decimal tokens require extreme caution**:
   - **USDC (6 decimals)**: Requires minimum 1000 USDC deposit to reach 1e9 precision
   - **USDT (6 decimals)**: Same considerations as USDC
   - **WBTC (8 decimals)**: Requires minimum 10 WBTC deposit to reach 1e9 precision
@@ -533,3 +533,4 @@ This proposal is intended to be completed within a two to three month period.
 
 - [Risks of an In-Protocol Redistribution Design](https://forum.eigenlayer.xyz/t/risks-of-an-in-protocol-redistribution-design/14458)
 - [Out-of-Protocol Redistribution](https://forum.eigenlayer.xyz/t/redistribution-vault-with-an-overloaded-erc20/14434)
+- [Rounding Analysis](https://hackmd.io/@-HV50kYcRqOjl_7du8m1AA/HJz7-LlElx)
