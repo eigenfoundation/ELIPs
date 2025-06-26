@@ -55,9 +55,9 @@ These pieces of architecture work together to transport a single global root to 
 1. The AVS writes and deploys the logic for calculating its single, weighted Operator Table (or using an undecorated one).
 2. EigenLayer then combines the many Operator Set representations to generate a merkelize a global stake table.
 3. This is then transported to target chains and rehydrated. The Operator Tables can then be used for verifying Operator certificates.
-4. Daily, or as forcible updates are needed (e.g. when an Operator is ejected or slashed), the table is re-generated and transported again. This ensures up-to-date stake representations wherever the AVS is consumed.
+4. Weekly, or as forcible updates are needed (e.g. when an Operator is ejected or slashed), the table is re-generated and transported again. This ensures up-to-date stake representations wherever the AVS is consumed.
 
-This multi-chain architecture dramatically reduces the complexity for AVS developers by abstracting away cross-chain coordination mechanics. The framework maintains EigenLayer's security model while enabling efficient stake table generation (daily on mainnet, every 6 hours on testnet) and trust-minimized transport to supported chains including Base and Optimism.
+This multi-chain architecture dramatically reduces the complexity for AVS developers by abstracting away cross-chain coordination mechanics. The framework maintains EigenLayer's security model while enabling efficient stake table generation (weekly, with immediate force updates for critical events like slashing/ejection) and trust-minimized transport to supported chains including Base and Optimism.
 
 This architecture was designed around simplifying onchain AVS integrations with their customers. A secondary goal is complete abstraction of the multi-chain system for developers comfortable with the default implementation. In this design, AVSs are intended to focus their efforts on the `CertificateVerifier` as the sole entry point for their consumers, regardless of chain. By leveraging out-of-the-box stake weight verification, AVSs can go-to-market with stake-backed verifiability of their services without any extra code. If AVS builders (or their customers) need more complex verification logic, the `CertificateVerifier` interface can be wrapped with additional functionality, like integrating stake caps or more complex Operator aggregate weighting.
 
@@ -223,7 +223,7 @@ OperatorTableUpdater --> CertificateVerifier: Update Operator Table
 Operator --> AVSConsumer : Produces certificate
 Operator <-- AVSConsumer : Requests task
 AVS Consumer --> CertificateVerifier : Verifies Certificate
-```s
+```
 
 ## Specifications
 
@@ -309,6 +309,47 @@ interface IECDSATableCalculator is
     function calculateOperatorTable(
         OperatorSet calldata operatorSet
     ) external view returns (ECDSAOperatorInfo[] memory operatorInfos);
+}
+```
+
+#### Implementation Examples
+
+**Simple Equal Weighting:**
+
+```solidity
+// Basic implementation: return raw stake values without modification
+function calculateOperatorTable(OperatorSet calldata operatorSet) 
+    external view returns (ECDSAOperatorInfo[] memory) {
+    return getRawStakeValues(operatorSet);
+}
+```
+
+**Advanced Custom Weighting:**
+
+```solidity
+// Advanced implementation with asset weighting and stake capping
+function calculateOperatorTable(OperatorSet calldata operatorSet) 
+    external view returns (ECDSAOperatorInfo[] memory) {
+    ECDSAOperatorInfo[] memory operators = getRawStakeValues(operatorSet);
+    
+    for (uint i = 0; i < operators.length; i++) {
+        // Apply asset-specific weighting
+        // weights[0] = ETH stake, weights[1] = stablecoin stake
+        operators[i].weights[0] *= 2;  // Weight ETH 2x higher
+        operators[i].weights[1] *= 1;  // Keep stablecoins at 1x
+        
+        // Implement stake capping - limit any operator to 10% of total
+        uint256 maxWeight = getTotalStake() / 10;
+        if (operators[i].weights[0] > maxWeight) {
+            operators[i].weights[0] = maxWeight;
+        }
+        
+        // Filter out operators below minimum threshold
+        if (operators[i].weights[0] < MINIMUM_STAKE_THRESHOLD) {
+            operators[i].weights[0] = 0;  // Zero weight = excluded from verification
+        }
+    }
+    return operators;
 }
 ```
 
@@ -708,7 +749,7 @@ The `CertificateVerifier` provides several options out of the box for both `ECDS
 - `verifyCertificateProportion()`: Checks if signed stake meets % thresholds (e.g. >66% of total)
 - `verifyCertificateNominal()`: Checks if signed stake meets absolute thresholds (e.g. >1M ETH)
 
-An example integration Pattern flow may look like the following.
+An example integration Pattern flow may look like the following:
 
 ```solidity
 // Same code works on Ethereum, Base, Optimism, etc.
@@ -728,6 +769,109 @@ The `CertificateVerifier` respects stake staleness configurations set in the `Cr
 
 This contract is the gateway that makes EigenLayer's security and operator network accessible to applications across the multi-chain ecosystem, transforming off-chain operator services into verifiable, stake-backed on-chain outputs.
 
+### Integration Models
+
+The `CertificateVerifier` enables three primary integration patterns for consuming AVS services:
+
+#### Pull Model (Request-Response)
+
+Applications request tasks from operators directly, receive certificates, and verify them on-demand:
+
+```solidity
+// 1. Consumer requests task from operator
+TaskRequest memory task = TaskRequest({data: inputData, deadline: block.timestamp + 1 hours});
+bytes memory result = operator.performTask(task);
+
+// 2. Operator responds with certificate
+Certificate memory cert = abi.decode(result, (Certificate));
+
+// 3. Consumer verifies immediately
+bool isValid = certificateVerifier.verifyCertificateProportion(operatorSet, cert, [6600]);
+require(isValid, "Insufficient stake backing");
+```
+
+#### Push Model (Cached Results)
+
+Operators publish certificates to storage (contract storage, IPFS, etc.), and applications pull cached results when needed:
+
+```solidity
+// 1. Query cached certificate from storage
+Certificate memory cachedCert = avs.getLatestResult(taskType);
+
+// 2. Check certificate freshness and validity
+require(block.timestamp - cachedCert.referenceTimestamp < MAX_STALENESS, "Certificate too old");
+bool isValid = certificateVerifier.verifyCertificateProportion(operatorSet, cachedCert, [5000]);
+require(isValid, "Insufficient stake backing");
+
+// 3. Use cached result
+processResult(cachedCert.messageHash);
+```
+
+#### Hybrid Model
+
+Combines both approaches - try cached results first, fallback to fresh requests for critical operations or when cache is stale.
+
+#### Custom Verification Logic
+
+For applications requiring specialized verification logic beyond proportional and nominal thresholds, the `CertificateVerifier` exposes raw stake weights:
+
+```solidity
+// Get raw stake weights for custom logic
+(bool validSigs, uint256[] memory weights) = certificateVerifier.verifyCertificate(operatorSet, cert);
+require(validSigs, "Invalid signatures");
+
+// Apply custom business logic
+uint256 totalStake = 0;
+uint256 validOperators = 0;
+for (uint i = 0; i < weights.length; i++) {
+    if (weights[i] >= MIN_OPERATOR_STAKE) {
+        totalStake += weights[i];
+        validOperators++;
+    }
+}
+
+// Custom requirements: need both 60% stake AND 3+ operators
+require(totalStake * 10000 >= getTotalOperatorSetStake() * 6000, "Need 60% stake");
+require(validOperators >= 3, "Need 3+ qualified operators");
+```
+
+## System Parameters Reference
+
+Provided below are the systems different parameters: mutable, immutable, and configurable. Understanding these will help with proper multi-chain implementation:
+
+### Mutable Parameters
+
+Mutable parameters will update occasionally or after some actions. These are worth monitoring to ensure up-to-date info for implementors and consumers.
+
+| **Parameter** | **Controlled By** | **Update Frequency** | **Impact** | **Monitoring Event** |
+| --- | --- | --- | --- | --- |
+| **Operator Tables** | EigenLayer Core | Weekly + force updates | Certificate verification validity | `CertificateVerifier.StakeTableUpdated` |
+| **Operator Keys** | Operators + AVS Admins | On-demand | Certificate signature validation | `KeyRegistrar.KeyRegistered/Deregistered` |
+| **Stake Weights** | `OperatorTableCalculator`, deployed by AVS | Per table update | Verification thresholds | Custom events in calculator contract |
+| **Operator Registration** | AVS + Operators | On-demand | Available operators for tasks | `AVSRegistrar.OperatorRegistered/Deregistered` |
+| **Slashing/Ejections** | EigenLayer Core | On-demand (immediate transport) | Operator validity and weights | `AllocationManager.OperatorSlashed` |
+
+### Immutable Parameters
+
+Immutable parameters are either fixed or set for usage in the protocol or controlled by protocol governance itself.
+
+| **Parameter** | **Set By** | **Description** |
+| --- | --- | --- |
+| **Operator Set ID** | AVS | Cryptographic curve and operator list hash |
+| **Contract Addresses** | EigenLayer Core | `CertificateVerifier`, `OperatorTableUpdater` addresses per chain |
+| **Table Update Frequency** | Off-chain Governance | Frequency for updates. Intended to change over-time or be made permissionless. |
+
+### Configurable Parameters
+
+The following parameters are configurable by users:
+
+| **Parameter** | **Configured By** | **Options** |
+| --- | --- | --- |
+| **Staleness Period** | AVS | 1-30 days (must exceed 7-day refresh) |
+| **Minimum Stake Weight** | AVS | Any uint256 value |
+| **Custom Stake Weighting** | AVS | Override `calculateOperatorTable()` with any logic |
+| **Verification Thresholds** | Consuming Apps | Proportional % or nominal amounts |
+
 # Rationale
 
 ## Technical Design Decisions
@@ -736,9 +880,9 @@ This contract is the gateway that makes EigenLayer's security and operator netwo
 
 A single verification contract per chain reduces deployment complexity and provides a unified interface for all AVS consumers. This design enables efficient gas usage through shared infrastructure while maintaining clear separation between operator sets.
 
-### Daily Stake Table Generation
+### Weekly Stake Table Generation
 
-Daily updates balance freshness with operational efficiency. This frequency accommodates most AVS use cases while keeping infrastructure costs manageable. Force updates ensure critical events (slashing, ejections) propagate immediately when needed.
+Weekly updates balance freshness with operational efficiency. This frequency accommodates most AVS use cases while keeping infrastructure costs manageable during the testing phase. Force updates ensure critical events (slashing, ejections) propagate immediately when needed. Post-Preview, this frequency may be adjusted based on usage patterns and requirements.
 
 ### Multi-Curve Cryptography Support
 
@@ -784,6 +928,19 @@ Immediate operator removal bypasses normal update cycles when security incidents
 
 System-wide pause capabilities enable rapid response to critical vulnerabilities while governance coordinates emergency fixes.
 
+## Implementation Security Guidelines
+
+For implementers, the following risk/mitigation pairs provide actionable security guidance:
+
+| **Risk** | **Mitigation** | **Implementation** |
+| --- | --- | --- |
+| **Stale Stake Data** | Configure appropriate staleness periods | Set `staleness > 7 days` in your `OperatorSetConfig` |
+| **Key Compromise** | Monitor for operator ejections and key rotations | Listen for `AllocationManager.OperatorSlashed` and `KeyRegistrar.KeyDeregistered` |
+| **Insufficient Stake** | Set minimum thresholds in verification | Use `verifyCertificateNominal()` with minimum stake requirements |
+| **Operator Centralization** | Implement stake capping in your calculator | Cap individual operators at 10-20% of total weight |
+| **Certificate Replay** | Check certificate freshness | Validate `referenceTimestamp` is recent and within staleness period |
+| **Transport Censorship** | Monitor for failed updates and implement fallbacks | Watch for missed `StakeTableUpdated` events, prepare emergency procedures |
+
 # Impact Summary
 
 ## AVS Ecosystem Impact
@@ -815,6 +972,29 @@ Access to Base, Optimism, and future L2 ecosystems significantly expands EigenLa
 ### Infrastructure Efficiency
 
 Shared multichain infrastructure reduces per-AVS costs while enabling economies of scale for security provision.
+
+## Ecosystem Benefits Summary
+
+### For AVS Builders
+
+- **Expanded Market Access**: Serve customers on Base, Optimism, and other L2s without custom bridges
+- **Reduced Development Overhead**: Single integration pattern across all supported chains  
+- **Enhanced Security**: Maintain Ethereum L1 security guarantees across all deployments
+- **Focus on Core Logic**: Spend time on business logic instead of cross-chain infrastructure
+
+### For Application Developers
+
+- **Simplified Integration**: One `CertificateVerifier` interface works across all AVSs and chains
+- **Lower Gas Costs**: Verify services on cheaper L2s while keeping L1 security
+- **Flexible Trust Models**: Choose between AVS-provided verification or implement custom logic
+- **Code Once, Deploy Everywhere**: Write integration logic once, deploy across all chains
+
+### For the Broader Ecosystem
+
+- **Network Effects**: Standardized interfaces reduce integration complexity between AVSs and apps
+- **Innovation Acceleration**: Focus on core business logic instead of cross-chain infrastructure
+- **Security Scaling**: EigenLayer's restaking security extends to the broader multi-chain ecosystem
+- **Reduced Fragmentation**: Common standards prevent incompatible multi-chain solutions
 
 # Action Plan
 
