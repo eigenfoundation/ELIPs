@@ -24,7 +24,7 @@ Collectively, Redistributable slashing promises expanded use-case diversity, gre
 
 ## Overview
 
-As of today, when slashed, ERC-20 funds are burned at the `0x0...00316e4` address; EigenPod Native ETH funds are permanently locked when slashed. This is done asynchronously following the `slashOperator` function. There is more detail in [ELIP-002](./ELIP-002.md#slashing-of-unique-stake) on slashing mechanics. The same `slashOperator` mechanics apply, in large part. Redistributable Slashing requires minimal changes to the core protocol...
+As of today, when slashed, ERC-20 funds are burned at the `0x0...00e16e4` address; EigenPod Native ETH funds are permanently locked when slashed. This is done asynchronously following the `slashOperator` function. There is more detail in [ELIP-002](./ELIP-002.md#slashing-of-unique-stake) on slashing mechanics. The same `slashOperator` mechanics apply, in large part. Redistributable Slashing requires minimal changes to the core protocol...
 
 - to create a new type of Redistributable Operator Set,
 - to handle a `redistributionRecipient`, that replaces the burn address when `clearBurnOrRedistributableShares` is called to transfer funds out of the protocol,
@@ -220,7 +220,7 @@ interface IShareManager {
 
 ### Burn & Distribution Mechanics
 
-The flow and code-paths for exiting slashed funds from the protocol have changed. Previously, ERC-20 funds flowed out of the protocol through withdrawals or a burn (transfer to `0x00...00316e4`) at a regular cadence. Native ETH was withdrawn or locked in EigenPods permanently during a slash. Following this upgrade, when a slash occurs, funds are exited in two steps. In order to maintain the protocol guarantee that `slashOperator` should never fail, outflow transfers are non-atomic.
+The flow and code-paths for exiting slashed funds from the protocol have changed. Previously, ERC-20 funds flowed out of the protocol through withdrawals or a burn (transfer to `0x00...00e16e4`) at a regular cadence. Native ETH was withdrawn or locked in EigenPods permanently during a slash. Following this upgrade, when a slash occurs, funds are exited in two steps. In order to maintain the protocol guarantee that `slashOperator` should never fail, outflow transfers are non-atomic.
 
 When a single slash occurs...
 -Similar to the original burning implementation, burnable shares are first increased in `StrategyManager` storage.
