@@ -878,21 +878,21 @@ The following parameters are configurable by users:
 
 ### Singleton CertVerifier Architecture
 
-A single verification contract per chain reduces deployment complexity and provides a unified interface for all AVS consumers. This design enables efficient gas usage through shared infrastructure while maintaining clear separation between operator sets.
+A single verification contract per chain reduces deployment complexity for all participants and provides a unified interface for all AVS consumers. This design enables a code-once, deploy anywhere shared infrastructure while maintaining clear separation between Operator Sets. This also allows for consuming applications to do their own verification and for AVSs and apps to implement complex logic, as needed.
 
 ### Weekly Stake Table Generation
 
-Weekly updates balance freshness with operational efficiency. This frequency accommodates most AVS use cases while keeping infrastructure costs manageable during the testing phase. Force updates ensure critical events (slashing, ejections) propagate immediately when needed. Post-Preview, this frequency may be adjusted based on usage patterns and requirements.
+Weekly updates balance freshness with operational efficiency. This frequency accommodates most AVS use cases while keeping infrastructure costs manageable (and free to users) during the testing phase. Continued optimizations are being made to see i. Force updates ensure critical events (slashing, ejections) propagate immediately when needed. Post-Preview, this frequency may be adjusted based on usage patterns and requirements.
 
 ### Multi-Curve Cryptography Support
 
-ECDSA support enables smaller operator sets (<50 operators) with lower gas costs, while BN254 accommodates larger sets with aggregate signatures. This dual approach optimizes for different AVS scales and security requirements.
+ECDSA support enables smaller operator sets (<50 operators) with lower complexity and gas costs in some instances, while BN254 accommodates larger sets with aggregate signatures. This dual approach optimizes for different AVS scales, costs, and security requirements.
 
 ## Economic Considerations
 
 ### Infrastructure Provider Model
 
-Eigen Labs serves as the initial stake table generator and transporter to establish reliable service. The protocol design enables future decentralization to the EigenDA operator set, creating sustainable economic incentives for infrastructure provision.
+Eigen Labs serves as the initial stake table generator and transporter to establish the multi-chain feature set and to ensure SLAs on reliable service. The protocol design enables future decentralization to custom solutions, partner solutions, or EigenCloud Operators. The goal is to prove value before focusing on economic incentives for infrastructure provision.
 
 ### Reservation-Based Access
 
@@ -902,31 +902,34 @@ AVSs make upfront reservations for generation and transport services, ensuring p
 
 ## Cross-Chain Attack Vectors
 
-### Stake Table Manipulation**
+### Stake Table Manipulation
 
-Malicious generation of incorrect stake tables could enable unauthorized task validation. Mitigation: Cryptographic commitments from trusted `GlobalRootConfirmerSet` with social consensus fallback for disputes.
+**Risk**: Malicious generation of incorrect stake tables could enable unauthorized task validation.
+**Mitigation**: Initial implementation is permissioned for generation and transport of tables to EigenLabs infrastructure. Cryptographic commitments from trusted `GlobalRootConfirmerSet` can be verified permissionlessly, with social consensus fallback for disputes. Over time, we will explore solutions to sufficiently decentralized.
 
-### Transport Censorship
+### Timing-based Malicious Verification
 
-Transport providers could selectively delay or prevent stake table updates. Mitigation: Multiple transport providers and emergency update mechanisms allowing direct on-chain posting.
+**Risk**: Operators may perform malicious actions causing an ejection, slash, or challenge. They would then try to take advantage of timing lag to produce certificates that would have stale stakes on non-L1 chains.
+**Mitigation**: Changes that are material to verification (namely, anything impacting the Operator table: a slash, registration, or deregistration) will automatically trigger updates. There is some confirmation lag due to the nature of cross-chain communications, but AVSs can choose to use finalized blocks in their verification designs.
 
 ### Key Compromise Scenarios
 
-Operator key compromise could enable unauthorized certificate signing. Mitigation: Key rotation mechanisms with configurable delays and emergency ejection capabilities.
+**Risk**: Operator key compromise could enable unauthorized certificate signing.
+**Mitigation**: Key rotation mechanisms with configurable delays and emergency ejection capabilities.
 
 ## Protocol-Level Safeguards
 
 ### Staleness Controls
 
-Maximum age limits for operator tables prevent reliance on outdated security assumptions. Each operator set can configure appropriate staleness thresholds based on their security model.
+Maximum age limits for Operator Table stakes can prevent situations where weights are assumed valid by one party handling a certificate. The AVS is intended to set this parameter based on their use-case. It is provided so that consuming applications shouldn't require deep knowledge of the underlying stake weighting of EigenLayer to verify the data they are given off-chain or do additional diligence to avoid outdated security assumptions. Each Operator Set can configure appropriate staleness thresholds based on their security model.
 
 ### Emergency Ejection
 
-Immediate operator removal bypasses normal update cycles when security incidents require rapid response. This mechanism prevents compromised operators from continuing to validate tasks.
+Immediate operator removal bypasses the normal seven day update cycle. When security incidents or a breakdown of process requires rapid response, consuming applications should *not* not able to verify certificates from ejected Operators. Ejected Operators should not be able to validate tasks, even if they picked up outstanding requests in that time.
 
 ### Pause Mechanisms
 
-System-wide pause capabilities enable rapid response to critical vulnerabilities while governance coordinates emergency fixes.
+System-wide pause capabilities are built into the multi-chain system that enable rapid response to critical vulnerabilities while governance coordinates emergency fixes. These follow the mechanics of the [Pauser multi-sig](https://docs.eigenfoundation.org/protocol-governance/technical-architecture).
 
 ## Implementation Security Guidelines
 
@@ -945,57 +948,263 @@ For implementers, the following risk/mitigation pairs provide actionable securit
 
 ## AVS Ecosystem Impact
 
-### Reduced Development Complexity
+### Enhanced Market Reach and Revenue Opportunities
 
-AVSs can focus on core business logic rather than cross-chain infrastructure. Standard interfaces eliminate custom bridge implementations and reduce audit requirements.
+**Immediate Benefits:**
 
-### Enhanced Market Access
+- **10x Market Expansion**: Access to Layer 2 ecosystems (Base, Optimism, Arbitrum) where significant dApp activity occurs
+- **Customer Acquisition**: Meet developers where they build - on cost-effective L2s with faster transaction times
+- **Revenue Diversification**: Generate income from multiple chains without proportional infrastructure investment
+- **Competitive Differentiation**: First-mover advantage for AVSs that adopt multi-chain early
 
-Multichain operation opens new revenue streams and user bases without proportional increases in development or operational complexity.
+**Development Workflow Changes:**
+
+- **Simplified Architecture**: Replace custom bridge solutions with standardized `CertificateVerifier` integrations and focus on building business logic and customer value
+- **Reduced Audit Surface**: Single codebase works across all chains, reducing security review requirements by ~70%
+- **Operational Efficiency**: Monitor one set of contracts and interfaces instead of chain-specific implementations
+
+**Migration Requirements for Existing AVSs:**
+
+1. **Deploy `OperatorTableCalculator`**: Implement stake weighting logic (can use provided templates)
+2. **Register with `CrossChainRegistry`**: Opt-in to multi-chain with target chain specification
+3. **Update Operator Integration**: Modify operator binaries to produce standardized certificates
+4. **Consumer Communication**: Inform customers about new multi-chain capabilities and integration patterns
+
+### Technical Integration Impact
+
+**Breaking Changes:**
+
+- **Certificate Format Standardization**: Existing signature aggregation must conform to `ECDSACertificate` or `BN254Certificate` structures
+- **Verification Interface**: Replace custom verification logic with `CertificateVerifier` integration
+- **Key Management**: Migrate to `KeyRegistrar` for centralized, secure key rotation
+
+**Backward Compatibility:**
+
+- Existing L1-only operations continue unchanged
+- Migration to multi-chain is opt-in
+- Gradual transition supported via hybrid L1/multi-chain operation
 
 ## Operator Impact
 
-### Simplified Multichain Participation
+### Operational Simplification and New Revenue Streams
 
-Single registration process enables operators to serve multiple chains without managing separate infrastructure per network.
+**Simplified Multi-Chain Operations:**
 
-### New Revenue Opportunities
+- **Single Registration**: One key registration process via `KeyRegistrar` works across all target chains
+- **Unified Monitoring**: Monitor operator health and performance through consistent interfaces
+- **Reduced Infrastructure**: No need to maintain separate verification infrastructure per chain
 
-Infrastructure providers earn fees for stake table generation and transport services, creating additional income streams beyond standard operator rewards.
+**New Economic Opportunities:**
 
-## Protocol Impact
+- **Transport Services**: Qualified operators can participate in stake table generation and transport (post-Preview)
+- **Premium Services**: Offer faster certificate generation for real-time applications
+- **Specialized Services**: Develop chain-specific optimizations while maintaining standard interfaces
 
-### Market Expansion
+**Operational Requirements:**
 
-Access to Base, Optimism, and future L2 ecosystems significantly expands EigenLayer's addressable market and competitive positioning.
+1. **Key Registration**: Register ECDSA or BN254 keys via `KeyRegistrar.registerKey()`
+2. **Certificate Generation**: Update operator software to produce standardized certificate formats
+3. **Multi-Chain Monitoring**: Track stake table updates across target chains
+4. **Security Hardening**: Enhanced key management practices given multi-chain exposure
 
-### Infrastructure Efficiency
+**Risk Considerations:**
 
-Shared multichain infrastructure reduces per-AVS costs while enabling economies of scale for security provision.
+- **Increased Attack Surface**: Key compromise affects verification across all chains
+- **Stake Freshness**: Must monitor stake table staleness to ensure valid certificate generation
+- **Chain-Specific Risks**: Gas price volatility and network congestion on different chains
 
-## Ecosystem Benefits Summary
+## Application Developer Impact
 
-### For AVS Builders
+### Simplified Integration and Enhanced Capabilities
 
-- **Expanded Market Access**: Serve customers on Base, Optimism, and other L2s without custom bridges
-- **Reduced Development Overhead**: Single integration pattern across all supported chains  
-- **Enhanced Security**: Maintain Ethereum L1 security guarantees across all deployments
-- **Focus on Core Logic**: Spend time on business logic instead of cross-chain infrastructure
+**Developer Experience Improvements:**
 
-### For Application Developers
+- **Unified Interface**: Single `CertificateVerifier` interface across all AVSs and chains
+- **Code Reusability**: 90%+ code reuse across chain deployments
+- **Reduced Integration Time**: From weeks to days for multi-chain AVS integration
+- **Predictable Gas Costs**: Verification costs are consistent and optimized across chains
 
-- **Simplified Integration**: One `CertificateVerifier` interface works across all AVSs and chains
-- **Lower Gas Costs**: Verify services on cheaper L2s while keeping L1 security
-- **Flexible Trust Models**: Choose between AVS-provided verification or implement custom logic
-- **Code Once, Deploy Everywhere**: Write integration logic once, deploy across all chains
+**New Integration Patterns:**
 
-### For the Broader Ecosystem
+- **Pull Model**: Direct operator requests for real-time data
+- **Push Model**: Consume cached results for high-throughput applications  
+- **Hybrid Model**: Optimize for both latency and freshness
+- **Custom Verification**: Implement business-specific verification logic around standard interfaces
 
-- **Network Effects**: Standardized interfaces reduce integration complexity between AVSs and apps
-- **Innovation Acceleration**: Focus on core business logic instead of cross-chain infrastructure
-- **Security Scaling**: EigenLayer's restaking security extends to the broader multi-chain ecosystem
-- **Reduced Fragmentation**: Common standards prevent incompatible multi-chain solutions
+**Migration Path:**
+
+1. **Interface Update**: Replace custom verification with `CertificateVerifier` calls
+2. **Chain Deployment**: Deploy same contract logic to target chains
+3. **Certificate Handling**: Update front-end to handle standardized certificate formats
+4. **Monitoring Integration**: Add stake table freshness monitoring
+
+**Cost Optimization Opportunities:**
+
+- **L2 Gas Savings**: 10-100x gas cost reduction on Layer 2s vs Ethereum L1
+- **Batched Verification**: Verify multiple certificates in single transaction
+- **Selective Verification**: Choose verification frequency based on application requirements
+
+## Staker and Operator Set Impact
+
+### Enhanced Security and Transparency
+
+**Security Enhancements:**
+
+- **Ethereum-Rooted Security**: All stake originates and is secured on Ethereum L1
+- **Cryptographic Verification**: Merkle proofs ensure stake table integrity across chains
+- **Configurable Staleness**: AVSs set appropriate freshness requirements
+
+**Transparency Improvements:**
+
+- **Public Verification**: Stake table generation is cryptographically verifiable
+- **Monitoring Tools**: Real-time visibility into stake distribution and verification activity
+- **Emergency Procedures**: Clear escalation paths for operator ejection and key rotation
+
+## Infrastructure Provider Impact
+
+### New Business Models and Opportunities
+
+**EigenLabs (Preview Period):**
+
+- **Infrastructure Development**: Build and operate initial stake table generation and transport
+- **Standards Creation**: Establish patterns for future decentralized operation
+- **Community Building**: Support ecosystem adoption through tooling and documentation
+
+**Future Decentralized Providers:**
+
+- **Transport Services**: Generate revenue from stake table transport across chains
+- **Specialized Infrastructure**: Offer enhanced SLAs, faster updates, or premium features
+- **Integration Services**: Provide AVS migration and optimization consulting
+
+## Network Effects and Ecosystem Benefits
+
+### Compounding Value Creation
+
+**Immediate Network Effects:**
+
+- **Standard Interfaces**: Each new AVS increases value for app developers familiar with `CertificateVerifier`
+- **Cross-Chain Liquidity**: Stake efficiency improves as operators serve multiple chains
+- **Developer Ecosystem**: Shared tooling, documentation, and best practices
+
+**Long-Term Ecosystem Impact:**
+
+- **Security Scaling**: EigenLayer security extends to broader multi-chain ecosystem
+- **Innovation Acceleration**: Developers focus on unique value rather than infrastructure
+- **Reduced Fragmentation**: Prevents incompatible multi-chain solutions
+
+**Competitive Positioning:**
+
+- **First-Mover Advantage**: EigenLayer becomes the de facto multi-chain security standard
+- **Ecosystem Lock-In**: High switching costs once applications integrate multi-chain verification
+- **Platform Expansion**: Foundation for future multi-chain features and capabilities
+
+## Breaking Changes and Migration Considerations
+
+### Technical Breaking Changes
+
+**Certificate Format Changes:**
+
+```solidity
+// OLD: Custom signature formats per AVS
+bytes memory customSignature = avs.getSignature(taskId);
+
+// NEW: Standardized certificate structures
+ECDSACertificate memory cert = ECDSACertificate({
+    referenceTimestamp: uint32(block.timestamp),
+    messageHash: taskHash,
+    sig: concatenatedSignatures
+});
+```
+
+**Verification Interface Changes:**
+
+```solidity
+// OLD: AVS-specific verification
+bool valid = customAVS.verifyResult(result, signatures);
+
+// NEW: Standardized verification
+bool valid = certificateVerifier.verifyCertificateProportion(
+    operatorSet, certificate, [6600] // 66% threshold
+);
+```
+
+**Key Management Migration:**
+
+- **From**: AVS-specific key registries
+- **To**: Centralized `KeyRegistrar` with rotation support
+- **Benefits**: Reduced trust assumptions, standard key rotation procedures
+
+### Migration Timeline and Support
+
+**Phase 1 - Preparation:**
+
+- AVS deploys `OperatorTableCalculator`
+- Operators register keys in `KeyRegistrar`
+- Application developers review integration changes
+
+**Phase 2 - Parallel Operation:**
+
+- Run both legacy and multi-chain systems
+- Test certificate generation and verification
+- Monitor performance and debugging
+
+**Phase 3 - Full Migration:**
+
+- Cut over to multi-chain verification
+- Deprecate legacy systems
+- Optimize for multi-chain operation
+
+**Support Resources:**
+
+- Migration guides and best practices documentation
+- Developer support channels and office hours
+- Testing infrastructure and debugging tools
+- Reference implementations for common patterns
 
 # Action Plan
+
+This section outlines the comprehensive implementation strategy for EigenLayer Multi-Chain Verification, including development phases, testing protocols, security measures, and long-term evolution plans.
+
+## Implementation Phases
+
+- **Phase 1: Foundation and Preview Launch (2025)**: Support initial chains, enable integrations, gather feedback from the ecosystem. This includes the use of some trusted infrastructure during the preview period. Audit and ship on and offchain components. 
+- **Phase 2: Ecosystem Expansion and Optimization (Late 2025,early 2026)**: Expand the number of supported chains, make modular components of the architecture permissionless, iterate features and experience.
+- **Phase 3: Decentralization and Scaling (2026)**: Incorporate decentralized and/or staked operation of stake table generation and transport, optimize for cost and usability, consider expansion beyond the EVM.
+
+## Risk Mitigation Strategies
+
+**Centralization Risks (Preview Period):**
+
+- **Risk**: EigenLabs controls stake table generation
+- **Mitigation**: Public verification of all generated roots, open-source generation code, public challenges
+- **Timeline**: Decentralization by 2026
+
+**Cross-Chain Security Risks:**
+
+- **Risk**: Stake table corruption or manipulation
+- **Mitigation**: Cryptographic commitments, third party consensus mechanisms, emergency pausing
+- **Monitoring**: Real-time root verification, operator set monitoring
+
+**Key Management Risks:**
+
+- **Risk**: Operator key compromise affecting multiple chains and verification of malicious data
+- **Mitigation**: Key rotation procedures, emergency ejection mechanisms, forced stake table updates
+- **Best Practices**: Hardware security module requirements, multi-sig operator patterns
+
+## Testing and Quality Assurance
+
+**Testnet Validation:**
+
+- Comprehensive testing on Sepolia and Base Sepolia
+- Partner AVS integration testing with real workloads
+- Operator onboarding and training programs
+- Performance benchmarking and optimization
+
+**Mainnet Preview:**
+
+- Gradual rollout with limited AVS participation
+- Real economic incentives with constrained risk exposure
+- Continuous monitoring and feedback collection
+- Iterative improvements based on operational data
 
 # References & Relevant Discussions
