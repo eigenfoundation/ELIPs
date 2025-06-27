@@ -220,15 +220,16 @@ interface IShareManager {
 
 ### Burn & Distribution Mechanics
 
-The flow and code-paths for exiting slashed funds from the protocol have changed. Previously, ERC-20 funds flowed out of the protocol through withdrawals or a burn (transfer to `0x00...00e16e4`) at a regular cadence. Native ETH was withdrawn or locked in EigenPods permanently during a slash. Following this upgrade, when a slash occurs, funds are exited in two steps. In order to maintain the protocol guarantee that `slashOperator` should never fail, outflow transfers are non-atomic.
+The flow and code-paths for exiting slashed funds from the protocol have changed. Previously, ERC-20 funds flowed out of the protocol through withdrawals or a burn (transfer to `0x00...00e16e4`) at a regular cadence. Native ETH is still locked in EigenPods permanently during a slash. Following this upgrade, when a slash occurs, funds are exited in two steps. In order to maintain the protocol guarantee that `slashOperator` should never fail, outflow transfers are non-atomic.
 
 When a single slash occurs...
--Similar to the original burning implementation, burnable shares are first increased in `StrategyManager` storage.
--The `StrategyManager` handles the conversion of shares to underlying tokens and their distribution.
 
-In another call, funds are transferred directly to the `redistributionRecipient` (or burned if using a non-redistributing operator set) through the `clearBurnOrRedistributeShares` function on the `StrategyManager`.
+- Similar to the original burning implementation, slashed shares are first increased in `StrategyManager` storage as "burnable or redistributable" shares.
+- In another call, slashed shares are converted and funds are transferred directly to the `redistributionRecipient` (or burned if using a non-redistributing operator set). This is done through a permissionless call to the `clearBurnOrRedistributeShares` function on the `StrategyManager`.
 
- The new flow is illustrated in the below diagram:
+This two party flow is done non-atomically to maintain the guarantee that a slash should never fail, in the case where a token transfer or some other upstream issue of removing funds from the protocol may fail. This flow is maintained, with the addition of redistributable shares, using the non-atomic approach while enabling direct distribution to redistribution recipients without a delay. The AVS can call `clearBurnOrRedistributeShares` or it will be called after some time by a cron job to ensure funds do not remain in the protocol after a slash.
+
+The new flow is illustrated in the below diagram:
 
 ```mermaid
 sequenceDiagram
@@ -253,8 +254,6 @@ sequenceDiagram
     STR-->>RR: *Internal*<br>transfer<br>(token, underlyingAmount)
     Note right of RR: Final protocol fund outflow
 ```
-
-Previously, funds would be slashed and exited in a single step, with funds being marked to burn and a continuously running cron job executing fund exits. This was done non-atomically with slashing to maintain the guarantee that a slash should never fail, in the case where a token transfer or some other upstream issue of removing funds from the protocol may fail. The new flow maintains this non-atomic approach while enabling direct distribution to redistribution recipients without a delay.
 
 The `StrategyManager` interface has been updated to handle direct redistribution of funds, replacing the previously available `burnShares` functionality.
 
@@ -374,7 +373,7 @@ Together, these are enough to forgo this scope in the initial implementation of 
 
 # Security Considerations
 
-The original slashing design, launched alongside [ELIP-002](./ELIP-002.md), recognized multiple classes catastrophic slashing bug. A catastrophic slashing bug is considered to be one where an AVS (or malicious party) can...
+The original slashing design, launched alongside [ELIP-002](./ELIP-002.md), recognized multiple classes of catastrophic slashing bug. A catastrophic slashing bug is considered to be one where an AVS (or malicious party) can...
 
 - slash more stake than is allocated to a given Operator in an Operator Set (or more than the sum of the set, up to the entire protocol TVL),
 - slash the unique stake of an Operator that is not registered to an AVS's Operator Set,
@@ -386,7 +385,7 @@ As always, AVS's require extremely careful management of keys, as a compromised 
 
 ## Rounding and Precision Analysis
 
-We conducted a [comprehensive manual analysis and directed fuzzing to analyze protocol rounding behavior](https://hackmd.io/@-HV50kYcRqOjl_7du8m1AA/HJz7-LlElx) in the context of redistributable slashing. It is highly recommended you read [ELIP-002](./ELIP-002.md#magnitude-allocations) to better understand allocations and magnitudes. In this context, our analysis explored three key areas:
+We conducted a comprehensive manual analysis and directed fuzzing to analyze protocol rounding behavior in the context of redistributable slashing. It is highly recommended you read [ELIP-002](./ELIP-002.md#magnitude-allocations) to better understand allocations and magnitudes. In this context, our analysis explored three key areas:
 
 ### Precision Drift in Pending Deallocations
 
@@ -422,7 +421,7 @@ Because redistribution may allow AVSs to benefit from a theft related to slashin
 
 ### Operator Selection and Slashing Parameters
 
-Based on our [rounding and precision analysis](./ELIP-006.md#rounding-and-precision-analysis), AVSs should consider the following guidelines (or implement invariants) when designing their slashing protocols to avoid precision loss issues. These are primarily intended for AVSs slashing in very small increments repeatedly, or Operators that have very low magnitudes. While staked funds are safe, it is possible that redistributed amounts following a slash will be lower than anticipated when dealing with the conditions outlined below.
+Based on our [rounding and precision analysis](./ELIP-006.md#rounding-and-precision-analysis), AVSs should consider the following guidelines (or implement invariants) when designing their slashing protocols to avoid precision loss issues.Generally, slashing in very small increments, slashing operators with very low magnitudes, or slashing operators with very low share balances may lead to precision loss that results in burned/redistributed amounts being far lower than expected. The following guidelines should be followed to minimize this risk.
 
 **Operator Selection Criteria:**
 
@@ -431,7 +430,15 @@ Based on our [rounding and precision analysis](./ELIP-006.md#rounding-and-precis
 - **Reject operators with allocated magnitude under 1e9**: Operators with very low allocated magnitude are more susceptible to precision loss during slashing
 - **Rationale**: When slashing small magnitudes, the `mulWadRoundUp` operations can result in zero redistributed amounts due to rounding
 - **Checking**: Query `getAllocatedMagnitude()` for each operator-strategy pair before allowing registration
-- **Example**: An operator with 1e6 magnitude being slashed at 0.01% (1e14 WAD) results in `1e6 * 1e14 / 1e18 = 0.1`, which rounds to 0
+- **Example**:
+  - Slash and Allocation Parameters:
+    - Max magnitude: `1e18`
+    - Allocated magnitude: `1e4`
+    - wadsToSlash: `1e14`
+    - operatorShares: `1e17`
+  - Results:
+    - Magnitude slashed: 1 dust
+    - Shares slashed: 0
 
 *Share Thresholds:*
 
@@ -460,6 +467,8 @@ Based on our [rounding and precision analysis](./ELIP-006.md#rounding-and-precis
 - **Risk assessment**: Evaluate if your expected operator ecosystem can meet these deposit requirements
 
 **Implementation Recommendations:**
+
+We provide several recommendations to avoid some of the pitfalls mentioned above. [Provided here is a demo](https://gist.github.com/wadealexc/1997ae306d1a5a08e5d26db1fac8d533) that can help in illustrating some of the validations as well. Below are additional, basic examples:
 
 *Pre-Registration Validation:*
 
@@ -533,4 +542,3 @@ This proposal is intended to be completed within a two to three month period.
 
 - [Risks of an In-Protocol Redistribution Design](https://forum.eigenlayer.xyz/t/risks-of-an-in-protocol-redistribution-design/14458)
 - [Out-of-Protocol Redistribution](https://forum.eigenlayer.xyz/t/redistribution-vault-with-an-overloaded-erc20/14434)
-- [Rounding Analysis](https://hackmd.io/@-HV50kYcRqOjl_7du8m1AA/HJz7-LlElx)
