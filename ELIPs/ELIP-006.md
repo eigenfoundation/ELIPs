@@ -728,9 +728,9 @@ To recap the new or modified functionality:
 
 There are many interactions between the normal code-paths of the protocol and redistribution that are handled carefully with new security mechanisms. With redistributable slashing, the protocol implements what amounts to a new withdrawal path for funds. EigenLayer provides guarantees around withdrawals via the 14-day stake guarantee window. If the protocol provided the same delay, a two week period would detrimentally impact the usability of redistributable slashing, including programmatic fund redistribution use-cases and insurance products.
 
-To this end, this proposal suggests a default slash escrow period amounting to four day, in blocks. This is enough time to ensure oversight by the `Pauser multi-sig`, accounting for coordination (or extraneous) delays and on-chain censorship resistance. This delay exists *only* to allow the `Pauser multi-sig` to execute a pause on slashes that are deemed implementation bugs (e.g. a slash value is greater than the Operator Sets allocated stake).
+To this end, this proposal suggests a default slash escrow period amounting to four day, in blocks. This is enough time to ensure oversight by the `Pauser multi-sig`, accounting for coordination (or extraneous) delays and on-chain censorship resistance. This delay exists *only* to allow the `Pauser multi-sig` to execute a pause on slashes that are deemed implementation bugs (e.g. a slash value is greater than the Operator Sets allocated stake). 
 
-The delay exists per Strategy in the protocol. EIGEN will have a larger delay. This delay can be modified via governance and its configuration is reserved for future protocol use, need, and compatibility.
+The delay exists per Strategy in the protocol. EIGEN will have a larger delay. This delay can be modified via governance and its configuration is reserved for future protocol use, need, and compatibility. 
 
 ## Governance Design
 
