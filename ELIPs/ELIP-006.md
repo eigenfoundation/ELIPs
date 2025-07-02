@@ -24,12 +24,11 @@ Collectively, Redistributable slashing promises expanded use-case diversity, gre
 
 ## Overview
 
-As of today, when slashed, ERC-20 funds are burned at the `0x0...00e16e4` address; EigenPod Native ETH funds are permanently locked when slashed. This is done asynchronously following the `slashOperator` function. There is more detail in [ELIP-002](./ELIP-002.md#slashing-of-unique-stake) on slashing mechanics. The same `slashOperator` mechanics apply, in large part. Redistributable Slashing requires minimal changes to the core protocol...
+As of today, when slashed, ERC-20 funds are burned at the `0x0...00e16e4` address; EigenPod Native ETH funds are permanently locked when slashed. This is done asynchronously following the `slashOperator` function. There is more detail in [ELIP-002](./ELIP-002.md#slashing-of-unique-stake) on slashing mechanics. The same `slashOperator` mechanics apply, in large part for redistributable slashing. Redistributable slashing requires minimal changes to the core protocol...
 
 - to create a new type of Redistributable Operator Set,
 - to handle a `redistributionRecipient`, that replaces the burn address when `clearBurnOrRedistributableShares` is called to transfer funds out of the protocol,
-- to better decorate each slash with an identifier (`slashId`) that helps in downstream programmatic redistribution and accounting,
-- and to modify some permission and withdrawal handling to strengthen guarantees of `slashOperator` (in both the burn and redistribute case).
+- to better decorate each slash with an identifier (`slashId`) that helps in downstream programmatic redistribution and accounting.
 
 These changes are externally facing in the `AllocationManager` interface. This is accompanied by changes to the storage of the `AllocationManager` as well. Internally, we have modified the `ShareManager` and `StrategyManager` interfaces, as well as some storage and internal logic.
 
@@ -37,7 +36,11 @@ These changes are externally facing in the `AllocationManager` interface. This i
 
 ### Redistributing Operator Sets
 
-To take advantage of redistributable slashing, an AVS must instantiate a new `RedistributingOperatorSet`. These sets specify a `redistributionRecipient` address that CANNOT be changed later on. This is the address that will receive assets after a slash is triggered. This may be set to any address on Ethereum (EOA or Contract). AVSs may set whatever contracts they like upstream, but should make strong guarantees about the way they function in order to attract and retain Stakers and Operators.
+To take advantage of redistributable slashing, an AVS must instantiate a new `RedistributingOperatorSet`. These sets specify a `redistributionRecipient` address that CANNOT be changed later on. This is the address that will receive assets after a slash is triggered. This may be set to any address on Ethereum (EOA or Contract). AVSs may set whatever address they like upstream, but should make strong guarantees about the way any contracts function in order to attract and retain Stakers and Operators.
+
+> ⚠️   **Warn**
+>
+> Redistributing Operator Sets cannot configure the EIGEN or Native ETH Strategies. These assets are unsupported for redistributable slashing. More details on the [Rationale](./ELIP-006.md#native-eth--eigen-redistribution) are given below.
 
 New getter and setter functions are provided in the `AllocationManger` interface:
 
@@ -220,14 +223,14 @@ interface IShareManager {
 
 ### Burn & Distribution Mechanics
 
-The flow and code-paths for exiting slashed funds from the protocol have changed. Previously, ERC-20 funds flowed out of the protocol through withdrawals or a burn (transfer to `0x00...00e16e4`) at a regular cadence. Native ETH is still locked in EigenPods permanently during a slash. Following this upgrade, when a slash occurs, funds are exited in two steps. In order to maintain the protocol guarantee that `slashOperator` should never fail, outflow transfers are non-atomic.
+The flow and code-paths for exiting slashed funds from the protocol have changed. Previously, ERC-20 funds flowed out of the protocol through withdrawals or a burn (transfer to `0x00...00e16e4`) at a regular cadence. Following this upgrade, when a slash occurs, funds are exited in two steps. In order to maintain the protocol guarantee that `slashOperator` should never fail, outflow transfers are non-atomic.
 
 When a single slash occurs...
 
 - Similar to the original burning implementation, slashed shares are first increased in `StrategyManager` storage as "burnable or redistributable" shares.
 - In another call, slashed shares are converted and funds are transferred directly to the `redistributionRecipient` (or burned if using a non-redistributing operator set). This is done through a permissionless call to the `clearBurnOrRedistributeShares` function on the `StrategyManager`.
 
-This two party flow is done non-atomically to maintain the guarantee that a slash should never fail, in the case where a token transfer or some other upstream issue of removing funds from the protocol may fail. This flow is maintained, with the addition of redistributable shares, using the non-atomic approach while enabling direct distribution to redistribution recipients without a delay. The AVS can call `clearBurnOrRedistributeShares` or it will be called after some time by a cron job to ensure funds do not remain in the protocol after a slash.
+This two part flow is done non-atomically to maintain the guarantee that a slash should never fail, even in the case where a token transfer or some other upstream issue of removing funds from the protocol may fail. This flow is maintained, with the addition of redistributable shares, using the non-atomic approach while transferring funds to redistribution recipients without a delay. The AVS can call `clearBurnOrRedistributeShares` or it will be called after some time by a cron job to ensure funds do not remain in the protocol after a slash.
 
 The new flow is illustrated in the below diagram:
 
@@ -242,13 +245,13 @@ sequenceDiagram
     participant STR as Strategy Contract
     participant RR as Redistribution Recipient
 
-    Note over AVS,RR: Slashing Initiation
+    Note over AVS,SM: Tx 1. Slashing Operator
     AVS->>ALM: slashOperator<br>(avs, slashParams)
     ALM-->>DM: *Internal* <br>slashOperatorShares<br>(operator, strategies,<br> prevMaxMags, newMaxMags)
     Note over DM,SM: Share Management
     DM-->>SM: *Internal*<br>increaseBurnOrRedistributableShares<br>(operatorSet, slashId, strategy, addedSharesToBurn)
     
-    Note over SM,RR: Direct Fund Distribution
+    Note over SM,RR: Tx 2. Burn or Redistribute Funds
     SM->>SM: clearBurnOrRedistributableShares(operatorSet, slashId)
     SM-->>STR: *Internal*<br>withdraw<br>(recipient, token, underlyingAmount)
     STR-->>RR: *Internal*<br>transfer<br>(token, underlyingAmount)
@@ -351,7 +354,7 @@ To recap the new or modified functionality:
 
 Redistributable slashing is a modest upgrade in code, but has broad ramifications to the incentives and guarantees of the EigenLayer system. The majority of the design in this proposal is to ensure as much safety as possible for Stakers as redistribution creates a direct increase in the incentive to slash Operators by AVSs.
 
-As funds are released from the protocol to an address specified by the AVS, it is important that Stakers have the right legibility to understand the risk of allocating to any Operators running an AVS with redistributable slashing enabled. This is the primary reason for the `redistributionRecipient` being an immutable address that must be set at the instantiation of the Operator Set. This provides a few guarantees:
+As funds are released from the protocol to an address specified by the AVS, it is important that Stakers have the right legibility to understand the risk of delegating to any Operators running an AVS with redistributable slashing enabled. This is the primary reason for the `redistributionRecipient` being an immutable address that must be set at the instantiation of the Operator Set. This provides a few guarantees:
 
 - The AVS cannot change this address. While they may use an upstream proxy or pass-through contract, the immutability of this address in EigenLayer means an AVS can layer additional guarantees by guarding the upgradability of the upstream contract via controls such as governance, timelocks, immutability, etc.
 - The capability to redistribute cannot be modified. An Operator Set must be redistributable at its creation. As a result, the protocol can make guarantees to Stakers and Operators over the lifetime of that Operator Set. A standard Operator Set cannot suddenly redistribute. And one that redistributes cannot remove that property.
@@ -359,7 +362,7 @@ As funds are released from the protocol to an address specified by the AVS, it i
 
 These guarantees provide a hedge to increased slashing risk and changed incentives.
 
-## Native ETH Redistribution
+## Native ETH & EIGEN Redistribution
 
 Native ETH will not be included in the scope of this proposal. Its exclusion is primarily tied to mechanics of the beacon chain. With redistributable slashing on the ETH strategy, exiting validators from the beacon chain to compensate the `redistributionRecipient` is required. We cannot make guarantees that the effective balance is high enough or that a partial withdrawal covers the balance of a slash without dipping validator balance below the 32 ETH minimum.
 
@@ -370,6 +373,8 @@ Consistently exiting Ethereum validators creates some problems for users and the
 - Impacts Ethereum network security, in some adversarial cases.
 
 Together, these are enough to forgo this scope in the initial implementation of redistributable slashing. With the increase in the [max effective balance of validators](https://eips.ethereum.org/EIPS/eip-7251) enabled in Ethereum's Pectra upgrade, there are possible designs that can alleviate the above concerns (like partial withdrawals above the minimum required balance of 32 ETH). These are being actively explored as part of improvements to EigenPods, including exploration of forced withdrawal mechanisms with regard to slashing on EigenLayer and ETH validators.
+
+EIGEN cannot be used in redistributable slashing at this time, as it requires a delay on token protocol outflow. This is to support its use in intersubjective faults.
 
 # Security Considerations
 
@@ -407,9 +412,9 @@ Our analysis confirmed that precision loss in withdrawal queue slashing causes f
 
 Precision loss is inversely proportional to:
 
-- The operator's allocated magnitude
+- The Operator's allocated magnitude
 - The proportion of magnitude slashed  
-- The number of shares held by the operator
+- The number of shares held by the Operator
 
 # Impact Summary
 
@@ -421,7 +426,7 @@ Because redistribution may allow AVSs to benefit from a theft related to slashin
 
 ### Operator Selection and Slashing Parameters
 
-Based on our [rounding and precision analysis](./ELIP-006.md#rounding-and-precision-analysis), AVSs should consider the following guidelines (or implement invariants) when designing their slashing protocols to avoid precision loss issues.Generally, slashing in very small increments, slashing operators with very low magnitudes, or slashing operators with very low share balances may lead to precision loss that results in burned/redistributed amounts being far lower than expected. The following guidelines should be followed to minimize this risk.
+Based on our [rounding and precision analysis](./ELIP-006.md#rounding-and-precision-analysis), AVSs should consider the following guidelines (or implement invariants) when designing their slashing protocols to avoid precision loss issues. Generally, slashing in very small increments, slashing operators with very low magnitudes, or slashing operators with very low share balances may lead to precision loss that results in burned/redistributed amounts being far lower than expected. The following guidelines should be followed to minimize this risk.
 
 **Operator Selection Criteria:**
 
@@ -520,7 +525,7 @@ Following these guidelines helps ensure that slashing operates reliably and redi
 
 Operators must similarly ensure focus is given to key management and op-sec when running *any* redistributable AVS. A compromise in an Operator key could cause a malicious actor to register for a malicious AVS, and slash and redistribute allocated Staker funds to some address. Operators would suffer potentially irreparable reputational damage and distrust from Stakers.
 
-Operators should be aware that meta-data will identify them as `Redistributable` when participating in any redistributing Operator Sets. This is to aid in Staker risk legibility. Operators may wish to avoid this change in their presented profile when seeking to attract Stake (or may chose to engage protocols of various risks with higher rewards). Running an Operator Set with redistributable slashing will always remain opt-in for Operators.
+Operators should be aware that meta-data will identify them as `Redistributable` when registering for any redistributing Operator Sets. This is to aid in Staker risk legibility. Operators may wish to avoid this change in their presented profile when seeking to attract Stake (or may chose to engage protocols of various risks with higher rewards). Deregistering from *all* redistributing Operator Sets will remove the demarcation. Running an Operator Set with redistributable slashing will always remain opt-in for Operators.
 
 ## Stakers
 
@@ -530,11 +535,11 @@ Additionally, Stakers are potentially at risk from malicious AVSs and malicious 
 
 # Action Plan
 
-This proposal will move to a testing phase on testnet with the above interfaces and approaches. EigenLayer is actively soliciting community feedback on the feature before moving it to Mainnet. As this is primarily an opt-in feature for Operators (and, by proxy Stakers).
+This proposal will move to a testing phase on testnet with the above interfaces and approaches. EigenLayer is actively soliciting community feedback on the feature before moving it to mainnet. As this is primarily an opt-in feature for Operators (and, by proxy Stakers).
 
 1. Implementation and public comment period (now)
 2. Public testing period and iteration of the code-base, with a public audit and associated patches (next)
-3. Evaluation by Protocol Council and release to Mainnet, following acceptance (later)
+3. Evaluation by Protocol Council and release to mainnet, following acceptance (later)
 
 This proposal is intended to be completed within a two to three month period.
 
