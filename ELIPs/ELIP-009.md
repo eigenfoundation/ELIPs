@@ -12,7 +12,7 @@
 
 This upgrade introduces support for validator consolidation, providing up to **64x reduction** in proof size and gas costs for restakers with multiple validators. Operators may convert existing validators to compounding `0x02` credentials, allowing Ethereum consensus layer rewards to compound directly without any user intervention or network fees.
 
-In addition, MOOCOW provides support for execution layer triggerable validator withdrawals. This feature solidifies the EigenPod owner’s control over validator assets, opening new opportunities in staker-operator relationships. This feature is also crucial to and forwards-compatible with the planned implementation of redistribution for native ETH (See ELIP-006).
+In addition, MOOCOW provides support for execution layer triggerable validator withdrawals. This feature solidifies the EigenPod owner’s control over validator assets, opening new opportunities in staker-operator relationships. This feature is also crucial to and forwards-compatible with the planned implementation of redistribution for native ETH (See [ELIP-006](./ELIP-006.md).
 
 MOOCOW is fully backwards-compatible with existing EigenPod interfaces and the PEPE checkpoint proof system. The upgrade adds four new methods to EigenPods and enhances existing event systems without altering any existing method ABIs, making it completely opt-in for current integrations.
 
