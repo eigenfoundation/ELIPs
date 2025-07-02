@@ -1,6 +1,6 @@
 | Author(s) | Created | Status | References | Discussions |
 |-------------|-----------|---------|------|----------|
-| [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [0xClandestine](https://github.com/0xClandestine) | 2025-04-30 | `testing` | [List of relevant work/PRs, if any] | [Discussion Forum Post](https://forum.eigenlayer.xyz/t/elip-006-redistributable-slashing/14553) |
+| [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [0xClandestine](https://github.com/0xClandestine) | 2025-04-30 | `testing` | [PR 1355](https://github.com/Layr-Labs/eigenlayer-contracts/pull/1355), [PR 1485](https://github.com/Layr-Labs/eigenlayer-contracts/pull/1485), [Contract Documentation](https://github.com/Layr-Labs/eigenlayer-contracts/tree/main/docs) | [Discussion Forum Post](https://forum.eigenlayer.xyz/t/elip-006-redistributable-slashing/14553) |
 
 # ELIP-006: Redistributable Slashing
 
