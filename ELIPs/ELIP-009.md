@@ -202,7 +202,7 @@ For further reference: [https://github.com/ethereum/consensus-specs/blob/dev/spe
 
 ### Predeploy Fee Mechanism
 
-Both `requestConsolidation()` and `requestWithdrawal()` are payable methods, accepting a "request fee." This is a new concept introduced in Pectra: both predeploys must be sent a fee along with any requests. This means that when calling either function, you must supply a sufficient fee as msg.value.
+Both `requestConsolidation()` and `requestWithdrawal()` are payable methods, accepting a "request fee." This is a new concept introduced in Pectra: both predeploys must be sent a fee along with any requests. This means that when calling either function, you must supply a sufficient fee as `msg.value`.
 
 The new interface exposes getters for this: `getConsolidationRequestFee()` and `getWithdrawalRequestFee()` return the fee for one request, for the current block. The correct amount to send is `fee * requests.length`, i.e. multiply the return value by the number of requests you intend to send.
 
