@@ -20,7 +20,7 @@ MOOCOW is fully backwards-compatible with existing EigenPod interfaces and the P
 
 The Ethereum Pectra upgrade introduced two EIPs that provide the execution layer owner (withdrawal address) of the validator powerful new capabilities:
 
-- [**EIP-7251**](https://eips.ethereum.org/EIPS/eip-7251): Enables consolidation, allowing multiple validators to combine into single validators with up to 2,048 ETH. Additionally, existing validators with 0x01 withdrawal credentials may convert to compounding `0x02` credentials that automatically compound their consensus layer rewards.  
+- [**EIP-7251**](https://eips.ethereum.org/EIPS/eip-7251): Enables consolidation, allowing multiple validators to combine into single validators with up to 2,048 ETH. Additionally, existing validators with `0x01` withdrawal credentials may convert to compounding `0x02` credentials that automatically compound their consensus layer rewards.  
 - [**EIP-7002**](https://eips.ethereum.org/EIPS/eip-7002): Enables execution layer triggerable withdrawals, allowing pod owners to manage validators directly from their pods
 
 Consolidation and withdrawal requests are required to come from the withdrawal credentials, and the withdrawal credentials (the pod) don't yet have a means to create those requests. This proposal upgrades the pod to give access to these new features of Ethereum. They address multiple existing pain points in the EigenPod system:
@@ -104,7 +104,7 @@ To request a conversion from `0x01` to `0x02` credentials, an EigenPod Owner or 
 
 When the request is successfully completed, the updated validator index remains the same, but now has a 2,048 ETH max effective balance and automatically compounds consensus-layer rewards on the beacon chain (up to that max effective balance).
 
-***Note:*** this update cannot be reversed. A validator with `0x02` credentials will not regularly sweep consensus layer rewards until it has accumulated over 2,048 ETH. If you want to withdraw some amount of ETH before that time, you need to use the new `requestWithadawal` method on the EigenPod interface.  
+***Note:*** this update cannot be reversed. A validator with `0x02` credentials will not regularly sweep consensus layer rewards until it has accumulated over 2,048 ETH. If you want to withdraw some amount of ETH before that time, you need to use the new `requestWithdrawal` method on the EigenPod interface.  
 
 #### Consolidation
 
