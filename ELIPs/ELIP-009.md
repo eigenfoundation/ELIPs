@@ -120,7 +120,7 @@ Consolidation requests do not interact with or change the EigenPod’s restaked 
 
 Note that consolidation requests CAN FAIL for a variety of reasons. Failures occur when the request is processed on the beacon chain, and are invisible to the pod. The pod and predeploy cannot guarantee a request will succeed; it's up to the pod owner to determine this for themselves. If your request fails, you can retry by initiating another request via this method.
 
-Also note that while source validators that are not pointed at the EigenPod can be consolidated into EigenPod validators with 0x02 credentials, the requests to do so must be signed by the source validator’s withdrawal address and do not require these functions.
+Also note that while source validators that are not pointed at the EigenPod can be consolidated into EigenPod validators with `0x02` credentials, the requests to do so must be signed by the source validator’s withdrawal address and do not require these functions.
 
 Some requirements that are NOT checked by the Pod itself, which may cause an ignored request on the beacon chain (while consuming the predeploy fee):
 
