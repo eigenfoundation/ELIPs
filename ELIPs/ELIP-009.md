@@ -1,6 +1,6 @@
 | Author(s) | Created | Status | References | Discussions |
 | :---- | :---- | :---- | :---- | :---- |
-| [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [Alex Wade](mailto:alex@eigenlabs.org), [Matt Curtis](mailto:matt.curtis@eigenlabs.org) | 2025-06-28 | `testing` | [EigenLayer Contracts PR #1425](https://github.com/Layr-Labs/eigenlayer-contracts/pull/1425), [CLI PR \#177](https://github.com/Layr-Labs/eigenpod-proofs-generation/pull/177) | [Discussion Forum Post](https://forum.eigenlayer.xyz/t/elip-009-moocow-massively-optimized-operations-consolidation-and-withdrawals/14641) |
+| [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [Alex Wade](mailto:alex@eigenlabs.org), [Matt Curtis](mailto:matt.curtis@eigenlabs.org) | 2025-06-28 | `merged` | [EigenLayer Contracts PR #1425](https://github.com/Layr-Labs/eigenlayer-contracts/pull/1425), [CLI PR \#177](https://github.com/Layr-Labs/eigenpod-proofs-generation/pull/177) | [Discussion Forum Post](https://forum.eigenlayer.xyz/t/elip-009-moocow-massively-optimized-operations-consolidation-and-withdrawals/14641) |
 
 # ELIP-009: MOOCOW: Massively Optimized Operations for Consolidation and Withdrawals
 
