@@ -940,7 +940,7 @@ Mutable parameters will update occasionally or after some actions. These are wor
 | Parameter | Controlled By | Update Frequency | Impact | Monitoring Event |
 | :---- | :---- | :---- | :---- | :---- |
 | **Operator Tables** | EigenLayer Core | Weekly + event-driven updates | Certificate verification validity | `CertificateVerifier.TableUpdated` |
-| **Operator Keys** | Operators | On-demand | Certificate signature validation | `KeyRegistrar.KeyRegistered/KeyDeregistered` |
+| **Operator Keys** | Operators | Updates with Operator Table | Certificate signature validation | `KeyRegistrar.KeyRegistered/KeyDeregistered` |
 | **Staleness Period** | AVS | On-demand | Certificate validity | `CrossChainRegistry.OperatorSetConfigSet` |
 | **Operator Registration/deregistration** | AVS + Operators | On-demand (immediate transport) | Available operators for tasks | `AVSRegistrar.OperatorRegistered/Deregistered` |
 | **Slashing/Ejections** | EigenLayer Core | On-demand (immediate transport) | Operator validity and weights | `AllocationManager.OperatorSlashed` |
@@ -961,7 +961,7 @@ The following parameters are configurable by users:
 
 | Parameter | Configured By | Options |
 | :---- | :---- | :---- |
-| **Staleness Period** | AVS | 0 (does not expire), > Table Update Frequency |
+| **Staleness Period** | AVS | 0 (does not expire) OR ≥ Table Update Frequency |
 | **Custom Operator Weighting** | AVS | Supply `calculateOperatorTable()` with any logic |
 | **Verification Thresholds** | Certificate Consumer | Proportional % or nominal amounts |
 
