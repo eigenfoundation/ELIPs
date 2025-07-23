@@ -530,8 +530,7 @@ Operators should be aware that meta-data will identify them as `Redistributable`
 ## Stakers
 
 This proposal has the largest impact to the risk, reward, and incentive model for Stakers. In general, there is a larger incentive to slash user funds when redistribution is enabled. Stakers should carefully consider the protocols that their delegated Operators are running, and consider the risk and reward trade-offs. Redistributable Operator Sets may offer higher rewards, but these should be considered against the increased slashing risks.
-
-Additionally, Stakers are potentially at risk from malicious AVSs and malicious Operator. If the AVSs governance or its slashing functionality is corrupted, an attacker may be able to drain Operator-delegated funds. If an Operator itself is compromised, it may stand-up its own AVS to steal user funds. Stakers should carefully consider the reputation and legitimacy of Operators when making delegations. We outline [these attack scenarios](https://forum.eigenlayer.xyz/t/risks-of-an-in-protocol-redistribution-design/14458) more detail on our forum.
+Additionally, Stakers are potentially at risk from malicious AVSs and malicious Operator. If the AVSs governance or its slashing functionality is corrupted, an attacker may be able to drain Operator-delegated funds. If an Operator itself is compromised, it may stand-up its own AVS to steal user funds. Stakers should carefully consider the reputation and legitimacy of Operators when making delegations. We outline [these attack scenarios](https://forum.eigenlayer.xyz/t/risks-of-an-in-protocol-redistribution-design/14458) more detail on our forum. 
 
 # Action Plan
 
