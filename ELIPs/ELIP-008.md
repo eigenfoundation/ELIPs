@@ -1,6 +1,6 @@
 | Author(s) | Created | Status | References | Discussions |
 | :---- | :---- | :---- | :---- | :---- |
-| [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [Yash Patil](mailto:yash@eigenlabs.org), [Matt Curtis](mailto:matt.curtis@eigenlabs.org)| 2025-06-03 | `testing` | [PR 1494](https://github.com/Layr-Labs/eigenlayer-contracts/pull/1494), [PR 1549](https://github.com/Layr-Labs/eigenlayer-contracts/pull/1549) | [Discussion Forum Post](https://forum.eigenlayer.xyz/t/elip-008-eigenlayer-multi-chain-verification/14678) |
+| [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [Yash Patil](mailto:yash@eigenlabs.org), [Matt Curtis](mailto:matt.curtis@eigenlabs.org), [Madeline Murray](mailto:c-madeline.murray@eigenlabs.orgc-madeline.murray@eigenlabs.org)| 2025-06-03 | `testing` | [PR 1494](https://github.com/Layr-Labs/eigenlayer-contracts/pull/1494), [PR 1549](https://github.com/Layr-Labs/eigenlayer-contracts/pull/1549) | [Discussion Forum Post](https://forum.eigenlayer.xyz/t/elip-008-eigenlayer-multi-chain-verification/14678) |
 
 # ELIP-008: EigenLayer Multi-Chain Verification
 
