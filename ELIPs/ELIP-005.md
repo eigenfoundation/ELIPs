@@ -1,6 +1,6 @@
 | Author(s) | Created | Status | References | Discussions |
 | :---- | :---- | :---- | :---- | :---- |
-| [Bowen Li](mailto:bowen.li@eigenlabs.org) [Jeff Commons](mailto:jeff@eigenfoundation.org)  | 2025-02-28 | Draft | | |
+| [Bowen Li](mailto:bowen.li@eigenlabs.org) [Jeff Commons](mailto:jeff@eigenfoundation.org)  | 2025-02-28 | `merged` | | |
 
 # ELIP-005: Simplification and Enhancement Of EIGEN and BackingEIGEN Token Contracts 
 
