@@ -1,6 +1,6 @@
 | Author(s) | Created | Status | References | Discussions |
 | :---- | :---- | :---- | :---- | :---- |
-| [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [Yash Patil](mailto:yash@eigenlabs.org) | 2025-06-03 | `draft` | [List of relevant work/PRs, if any] | Discussion Forum Post |
+| [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [Yash Patil](mailto:yash@eigenlabs.org) | 2025-06-03 | `testing` | [List of relevant work/PRs, if any] | [Discussion Forum Post](https://forum.eigenlayer.xyz/t/elip-008-eigenlayer-multi-chain-verification/14678) |
 
 # ELIP-008: EigenLayer Multi-Chain Verification
 
