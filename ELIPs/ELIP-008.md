@@ -1,6 +1,6 @@
 | Author(s) | Created | Status | References | Discussions |
-|-------------|-----------|---------|------|----------|
-| [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [Yash Patil](mailto:yash@eigenlabs.org) | 2025-06-03 | `draft` | [List of relevant work/PRs, if any] | Discussion Forum Post|
+| :---- | :---- | :---- | :---- | :---- |
+| [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [Yash Patil](mailto:yash@eigenlabs.org) | 2025-06-03 | `draft` | [List of relevant work/PRs, if any] | Discussion Forum Post |
 
 # ELIP-008: EigenLayer Multi-Chain Verification
 
@@ -10,28 +10,21 @@
 
 Today, Service Builders are constrained on where they can launch their AVSs. Consumers of AVS services (apps and dapps) can only integrate on Ethereum if they want to inherit the strong security and stake guarantees of EigenLayer. It is costly for AVSs to develop, maintain, and execute (gas) a multi-chain solution today as all of the data and accounting lives on Ethereum.
 
-**Enter Multi-Chain Verification.** EigenLayer today uses the maximally secure, decentralized Ethereum L1 for stake accounting. This proposal outlines a set of open standards and contracts that bring AVS and Operator stake weights to many chains. New EigenLayer contracts, deployed on many EVM chains, will enable verification of Operator outputs on target chains with the same protocol guarantees as on Ethereum. The target chain core contracts house Operator stake weights and registration status while providing a consistent integration pattern no matter the environment.
+**Enter Multi-Chain Verification.** EigenLayer today uses the maximally secure, decentralized Ethereum L1 for stake accounting. This proposal outlines a set of open standards and contracts that bring AVS and Operator stake weights to many chains. New EigenLayer contracts, deployed on many EVM chains, will enable verification of Operator outputs on target chains with the same protocol guarantees as on Ethereum. The target chain core contracts house Operator weights and registration status while providing a consistent integration pattern no matter the environment.
 
-With this proposal, AVSs can launch their services and make verified Operator outputs available on any EVM chain, meeting their customers where they are. The standards-based model makes uniform existing AVS multi-chain solutions and accelerates net-new ones. App builders can easily and cheaply consume verifiable services with a code-once, deploy-anywhere integration across their supported chains. Projects on Layer 2s can integrate AVSs into their protocols with minimal additional trust assumptions and low dev and gas costs. Together, these new features make it easier than ever to launch verifiable service across web3.
+With this proposal, AVSs can launch their services and make verified Operator outputs available on any EVM chain, meeting their customers where they are. This standards-based model simplifies existing multi-chain solutions built by AVSs and accelerates the creation of new ones. App builders can easily and cheaply consume verifiable services with a code-once, deploy-anywhere integration across their supported chains. Projects on Layer 2s can integrate AVSs into their protocols with minimal additional trust assumptions and low dev and gas costs. Together, these new features make it easier than ever to launch verifiable service across web3.
 
 # Motivation
 
-AVS developers face significant limitations in their ability to service customers beyond Ethereum L1 without introducing additional development complexity or trust assumptions. This constraint is particularly impactful as many new projects that need verifiable components or services launch on alternative chains like Layer 2s to reach new customers or lower costs. The current situation forces app developers building across multiple chains to implement and maintain costly integrations to leverage AVS services effectively (or to avoid them altogether). As AVSs themselves are often offchain, this limitation is challenging when seeking to bring results back onchain.
+AVS developers face significant limitations in their ability to service customers beyond Ethereum L1 without introducing additional development complexity or trust assumptions. This constraint is particularly impactful as many new projects that need verifiable components or services launch on alternative chains like Layer 2s to reach new customers or lower costs. The current situation forces app developers building across multiple chains to implement and maintain costly integrations to leverage AVS services effectively (or to avoid them altogether). As AVS Operators commonly perform tasks offchain, this limitation is challenging when seeking to bring results back into an onchain environment.
 
-The core challenge stems from EigenLayer's current architecture. All critical information - including Operator registration status and delegated/allocated stake - is written and stored exclusively on Ethereum. This is a key property for decentralization and security of EigenLayer. While Operators running AVS code output results with accompanying signatures, the economic weights that validate these signatures are currently stored in non-standardized formats in the EigenLayer middleware on L1.
-
-This creates problems...
-
-1. App developers seeking to leverage AVS services with EigenLayer's trust and security model need local copies of stake tables on target chains to verify signatures and consume AVS outputs.
-2. EigenLayer doesn't currently provide services to make stake tables available outside of Ethereum, limiting builder reach.
-3. This limitation has led to various non-standard and costly alternatives or places a heavy development burden on both AVS and app developers.
-4. Non-standard formats and interfaces on target chains create multiplicative integration patterns among apps, AVSs, and supported chains.
+The core challenge stems from EigenLayer's current architecture. All critical information including Operator registration status and delegated/allocated stake is written and stored exclusively on Ethereum. This is a key property for decentralization and security of EigenLayer. The economic weights that validate these signatures are currently stored in non-standardized formats in the EigenLayer middleware on L1.
 
 The impact of these limitations is substantial...
 
-- Few AVSs can effectively service clients outside Ethereum L1,
-- Operational complexity and cost increases significantly when offering services across multiple chains,
-- Workaround solutions may introduce additional trust assumptions or centralization,
+- Few AVSs can effectively service clients outside Ethereum L1,  
+- Operational complexity and cost increases significantly when offering services across multiple chains,  
+- Workaround solutions may introduce additional trust assumptions or centralization,  
 - Service builders spend time developing alternative solutions instead of building for and delighting their customers.
 
 This proposal introduces Multi-Chain Verification to address these challenges, aiming to create a standardized framework for AVSs to launch and apps to consume services on any chain through simplified core and middleware verification contracts and infrastructure. These will provide straightforward tooling for integrating AVSs into applications while maintaining EigenLayer's trust and security properties, reducing the development overhead for cross-chain deployments of AVSs.
@@ -44,22 +37,24 @@ This proposal introduces Multi-Chain Verification to address these challenges, a
 
 To support multi-chain verification and consumption of AVS outputs on chains like Layer 2s, several concepts are introduced to the architecture:
 
-- **An Operator Table**: A data structure for representing stake-weighted Operator delegations and Allocations of a given Operator Set. This is a representation of EigenLayer stake subjective to the AVS's needs and perspective within their protocol.
-- **The Stake Table**: A data structure representing the global view of all Operator Sets with AVS-decorated stake weights. One of these lives on each target chain, and represents many Operator Tables.
-- **Stake Weighting & Table Calculation**: Previously a non-standard or enforced concept on EigenLayer outside of `multipliers`, stake weighting now has a standardized process in the core and middleware. An `OperatorTableCalculator` is vended for AVSs to decorate stake weighting of different assets and to apply the formats required by the Operator Table.
-- **Certificates & Certificate Verification**: A data structure for signed Operator outputs (`certificate`) and a core contract (`CertificateVerifier`) for verifying those outputs against the Operator Table and stake-weighted rules (e.g. signed weight above nominal or proportional stake thresholds).
+- **Operator Weights**: Previously a non-standard or enforced concept on EigenLayer outside of `multipliers`, stake weighting now has a standardized process in the core and middleware. The AVS defines an array of numerical values that represent an individual Operator's weight for work and reward distribution in the Operator Set. In the simplest form this may represent an Operator’s delegation or Allocation of a single asset; however this is left fully customizable for AVSs with more complicated work distribution criteria.  
+- **An Operator Table**: A data structure for representing the Operator Weights of all Operators in a given Operator Set.
+- **Table Calculation**: To facilitate the Core protocol’s generation of Operator Weights, AVSs define an `OperatorTableCalculator` for each Operator Set to decorate stake weighting of different assets and apply the formats required by the AVS.  
+- **The Stake Table**: A data structure (merkle tree) representing the global view of all Operator Sets and their corresponding Operator Tables. One of these lives on each target chain. The root of the stake table is the global table root.
+- **Certificates & Certificate Verification**: A data structure for signed Operator outputs (`certificate`) and a core contract (`CertificateVerifier`) for verifying those outputs against the Operator Table and Operator consensus rules (e.g. signed weight above nominal or proportional stake thresholds).  
 - **Stake Generation & Transport**: A specification for generating and verifying the global stake table Merkle root and transporting it to core contracts on many chains. This proposal outlines one approach taken by EigenLabs, but this process is pluggable by AVSs and other third-parties.
 
 These pieces of architecture work together to transport a single global root to many target chains. In sequence...
 
-1. The AVS writes and deploys the logic for calculating its single, weighted Operator Table (or using an undecorated one).
-2. EigenLayer then combines the many Operator Set representations to generate a merkelize a global stake table.
-3. This is then transported to target chains and rehydrated. The Operator Tables can then be used for verifying Operator certificates.
-4. Weekly, or as forcible updates are needed (e.g. when an Operator is ejected or slashed), the table is re-generated and transported again. This ensures up-to-date stake representations wherever the AVS is consumed.
+1. The AVS makes a reservation for Operator Table generation and transport, defining the logic for calculating Operator Weights.  
+2. EigenLayer calculates Operator Weights and combines the many Operator Set representations to generate and merkelize a global Stake Table.  
+3. The global Stake Table is transported to target chains and rehydrated.
+4. Operator Tables can then be used to verify Operator certificates.  
+5. Weekly, or as force updates are needed (e.g. when an Operator is ejected or slashed), the table is re-generated and transported again, ensuring up-to-date weight representations wherever the AVS is consumed.
 
-This multi-chain architecture dramatically reduces the complexity for AVS developers by abstracting away cross-chain coordination mechanics. The framework maintains EigenLayer's security model while enabling efficient stake table generation (weekly, with immediate force updates for critical events like slashing/ejection) and trust-minimized transport to supported chains including Base and Optimism.
+This multi-chain architecture dramatically reduces the complexity for AVS developers by abstracting away cross-chain coordination mechanics. The framework maintains EigenLayer's security model while enabling efficient stake table generation (weekly, with immediate event-driven updates for critical events like slashing/ejection) and trust-minimized transport to supported chains including Base and others.
 
-This architecture was designed around simplifying onchain AVS integrations with their customers. A secondary goal is complete abstraction of the multi-chain system for developers comfortable with the default implementation. In this design, AVSs are intended to focus their efforts on the `CertificateVerifier` as the sole entry point for their consumers, regardless of chain. By leveraging out-of-the-box stake weight verification, AVSs can go-to-market with stake-backed verifiability of their services without any extra code. If AVS builders (or their customers) need more complex verification logic, the `CertificateVerifier` interface can be wrapped with additional functionality, like integrating stake caps or more complex Operator aggregate weighting.
+This architecture was designed around simplifying onchain AVS integrations with their customers. A secondary goal is complete abstraction of the multi-chain system for developers comfortable with the default implementation. In this design, AVSs are intended to focus their efforts on the `CertificateVerifier` as the sole entry point for their consumers, regardless of chain. By leveraging out-of-the-box stake weight verification, AVSs can go-to-market with stake-backed verifiability of their services without any extra code. If AVS builders (or their customers) need more complex verification logic (such as verifying multiple certificates atomically), the `CertificateVerifier` interface can be wrapped with additional functionality.
 
 The EigenLayer multi-chain framework, in a simplified form, has the following architecture, where any application consuming an EigenLayer AVS is the `AVSConsumer`:
 
@@ -109,25 +104,25 @@ AVSConsumer --> CertificateVerifier : verifies certificate
 
 ## Contract Architecture
 
-The Multi-Chain Verification framework introduces four new core contracts and new templates in EigenLayer middleware. These are not pluggable and are intended to interface with offchain, modular components. Below is a table of the new components:
+The Multi-Chain Verification framework introduces four new core contracts and new templates in EigenLayer middleware. These are intended to interface with offchain, modular components. Below is a table of the new components:
 
 | Contract Name | Deployment Target | Deployer | Description |
-|----------|-------------|--------------------| -------------|
-| **`KeyRegistrar`** | Ethereum Singleton | EigenLayer Core Protocol | A unified module for managing and retrieving BN254 and ECDSA cryptographic keys for Operators with built-in key rotation support, extensible to additional curves like BLS381 |
-| **`CrossChainRegistry`** |  Ethereum Singleton | EigenLayer Core Protocol | A coordination contract that manages AVS multi-chain configuration and tracks deployment addresses when using EigenLayer's generation and transport mechanisms  |
-| **`OperatorTableCalculator`** |  Ethereum Singleton | AVS Middleware | A required middleware contract deployed by an AVS for specifying stake weights per asset, or decorating more custom logic like stake capping |
-| **`OperatorTableUpdater`** |  One per target chain | EigenLayer Core Protocol | A contract intended to parse and verify the global Stake Table Root and rehydrate individual Operator tables in the `CertificateVerifier` |
-| **`CertificateVerifier`** | One per target chain | EigenLayer Core Protocol | A verification contract deployed on multiple chains that enables AVS consumers to verify tasks against operator sets using transported stake tables; the single integration point between AVSs and their consumers |
+| :---- | :---- | :---- | :---- |
+| **`KeyRegistrar`** | Ethereum Singleton | EigenLayer Core Protocol | A unified module for managing and retrieving BN254 and ECDSA cryptographic keys for Operators, extensible to additional curves like BLS381 |
+| **`CrossChainRegistry`** | Ethereum Singleton | EigenLayer Core Protocol | A coordination contract that  manages the registration/deregistration of operatorSets to the multi-chain protocol and exposes read-only functions to generate the OperatorTable. |
+| **`OperatorTableCalculator`** | Ethereum Singleton | AVS Middleware | A middleware contract specified by an AVS for calculating operator  weights, or customizable to decorate weights with custom logic like stake capping |
+| **`OperatorTableUpdater`** | One per target chain | EigenLayer Core Protocol | A contract intended to parse and verify the global Stake Table Root and rehydrate individual Operator tables in the `CertificateVerifier` |
+| **`CertificateVerifier`** | One per target chain | EigenLayer Core Protocol | A verification contract deployed on multiple chains that enables AVS consumers to verify certificates signed by operators  against transported Operator tables; the single integration point between AVSs and their consumers |
 
-The `CertificateVerifier` is the key new architectural piece and the primary integration point that AVSs need to understand. This contract, deployed on every supported chain, is the gateway to all EigenLayer services and holds the stake values from Ethereum for verifying Operator tasks. The `CertificateVerifier` is designed around an integration pattern that does not change between AVSs and their customers. The goals of its design are an AVS to Consumer "code once and deploy everywhere" pattern to reduce overhead and maintenance and insure a smooth experience for builders across chains (and when integrating *multiple AVSs*).
+The `CertificateVerifier` is the key new architectural piece and the primary integration point that AVSs need to understand. This contract, deployed on every supported target chain, is the gateway to all EigenLayer services and holds the weight values from Ethereum for verifying Operator tasks. The `CertificateVerifier` is designed around an integration pattern that does not change between AVSs and their customers. The goals of its design are an AVS to Consumer "code once and deploy everywhere" pattern to reduce overhead and maintenance and ensure a smooth experience for builders across chains (and when integrating *multiple AVSs*).
 
-The `KeyRegistrar` is also provided to give AVSs a secure interface to register, deregister, and rotate Operator signing Keys. This is a canonicalization of the key solutions provided via the `AVSRegistrar` middleware. In this core contract, AVSs can register, deregister, and rotate keys associated with Operators in-protocol. This contract allows for the right keys to be accepted across the supported multi-chain ecosystem where EigenLayer is supported.
+The `KeyRegistrar` manages cryptographic keys for operators across different operator sets. It supports both ECDSA and BN254 key types and ensures global uniqueness of keys across all operator sets. The purpose of this contract is to provide trusted, protocol-controlled code for AVSs to register Operator key material to Operator Sets. This is a canonicalization of the key solutions provided via the `AVSRegistrar` middleware.
 
-The `CrossChainRegistry` stores mappings and configurations for contracts deployed by the AVSs on Layer 1 and other chains. This contract is used in generation of Operator tables and for setting things like staleness periods of stakes used in verification on target chains, along as control over which chains to support.
+The `CrossChainRegistry` is a core contract that manages the registration/deregistration of operatorSets to the multi-chain protocol. The contract also exposes read-only functions to calculate an operator table, which is used offchain to generate the global Stake Table. This is the entrypoint for AVSs utilizing the MultiChain Verification protocol, housing configuration of staleness periods and the `OperatorTableCalculator` that should be used to define operator weights for each Operator Set.
 
-The `OperatorTableCalculator` is an AVS-deployed contract that can be used for decorating stake weights with custom logic. For example, if an AVS wishes to weight certain assets as more than others, or integrate different services like an Oracle, an open-ended contract interface is provided. Default templates that require no interaction or custom logic are provided for AVSs out of the box.
+The `OperatorTableCalculator` is an AVS-deployed contract that can be used for decorating stake weights with custom logic. This open-ended contract interface allows AVSs to implement complex weighting features such as stake capping, differential asset weighting, oracle integrations, and minimum requirements. Default templates that require no interaction or custom logic are provided for AVSs out of the box.
 
-The `OperatorTableUpdater` exists to interface with off-chain transport mechanisms. It confirms the data that it is given from the global stake table and parses it into individual Operator Table updates on the `CertificateVerifier`. This ensures accuracy, timely updates for individual AVS's Operator Tables as Operators are slashed or ejected, and simplifies verification logic.
+The `OperatorTableUpdater` exists to interface with off-chain transport mechanisms. It confirms the data that it is given from the global stake table and parses it into individual Operator Table updates on the `CertificateVerifier`. This ensures accurate, timely updates for individual AVS's Operator Tables as Operators are slashed or ejected.
 
 Altogether, the contracts fit together in a configuration pictured below:
 
@@ -227,15 +222,13 @@ AVS Consumer --> CertificateVerifier : Verifies Certificate
 
 ## Specifications
 
-### Operator Table Calculation & Stake Weighting
+### Operator Weighting & Operator Table Calculation
 
-The `OperatorTableCalculator` is where AVSs define how Operator stakes should be weighted and formatted for their specific use case. This is a mandatory contract that each AVS must deploy to participate in multi-chain verification.
+The `OperatorTableCalculator` is where AVSs define how Operator stakes should be weighted and formatted for their specific use case on a per Operator Set basis. An AVS must deploy their own calculator (setting the weights themselves) or select a calculator address which works for their use-case. The AVS is required to configure the address of their chosen contract in the `CrossChainRegistry` to participate in multi-chain. This must be a valid L1 contract that conforms to the specs below.
 
-The core purpose of this contract is to convert raw EigenLayer stake data into weighted Operator Tables that reflect the AVS's specific requirements - whether that's capping certain operators, weighting different assets differently, or integrating external price feeds.
+The purpose of this contract is to convert raw EigenLayer stake data into Operator weights that reflect the AVS's specific requirements whether that's capping certain operators, weighting different assets differently, or integrating external price feeds.
 
-For example, default "weights" of USDC and ETH would be treated the same if no weighting is given to either (e.g. 10 "ETH" == 10 "USDC" when presented as raw stake values). Operator shares of a given strategy (i.e. staked value for one asset) are stored in a numerical format and should be converted for the AVSs use-case. This was previously handled by the optional middleware "multipliers".
-
-The weights are capture in `OperatorInfo` structs:
+The weights are captured in `OperatorInfo` structs:
 
 ```solidity
 struct ECDSAOperatorInfo {
@@ -249,24 +242,15 @@ struct BLSOperatorInfo {
 }
 ```
 
-The `weights` array is completely flexible - AVSs can define any groupings they need. Common patterns include:
+The `weights` array is completely flexible AVSs can define any groupings they intend to utilize in the CertificateVerifier. Common patterns include:
 
-- **Simple**: `[total_stake]`
-- **Asset-specific**: `[eth_stake, steth_stake, eigen_stake]`
+- **Simple**: `[total_stake]`  
+- **Asset-specific**: `[eth_stake, steth_stake, eigen_stake]`  
 - **Detailed**: `[slashable_stake, delegated_stake, strategy_1_stake, strategy_2_stake]`
 
-Some examples of customization options are...
+For AVSs that don't need custom logic, default calculators are provided for both `ECDSATableCalculator` and `BLSTableCalculator` that simply return the number of underlying strategy shares. For larger Operator Sets (50+ operators), BLS provides more efficient verification through aggregate signatures.
 
-- Stake Capping: Limit any single operator to maximum 10% of total weight
-- Asset Weighting: Weight ETH stakes 2x higher than other assets  
-- Oracle Integration: Use external price feeds to convert all stakes to USD values
-- Minimum Requirements: Filter out operators below certain stake thresholds (i.e. set their verification weight to zero)
-
-Defaults are provided out of the box. For AVSs that don't need custom logic, default calculators are provided for both `ECDSATableCalculator` and `BLSTableCalculator` that simply return unweighted stake values. For larger Operator Sets (50+ operators), BLS provides more efficient verification through aggregate signatures. The BLS calculator follows a similar pattern but optimizes for larger scale operations.
-
-The Calculator contract is left largely flexible for AVSs, with easy defaults. As long as the return type is an array of `OperatorInfos`, the upstream contracts will be able to parse them appropriately. The goal of the `OperatorTableCalculator` is to give AVSs complete control over how their stake is weighted while maintaining standardized interfaces for the broader multi-chain system. These stake weights are key to properly [verifying Operator certificates](./ELIP-008.md#certificates--verification).
-
-Below is provided the template for ECDSA (BLS is provided in the contracts repository):
+Below is provided the interface for ECDSA (BLS is provided in the contracts repository):
 
 ```solidity
 interface IECDSATableCalculatorTypes {
@@ -312,61 +296,102 @@ interface IECDSATableCalculator is
 }
 ```
 
-#### Implementation Examples
+The default implementation weighs operators by the number of allocated strategy shares across all strategies in the Operator Set. This is a sufficient proxy for Operator Sets with single strategies, or if the value of all underlying shares are identical. Note that the number of shares is decimal dependent: assets with non-standard decimals (E.G. USDC, USDT, WBTC) will return significantly lower numbers of shares. For example, `1 wETH \= 10^18 shares`. `1 USDC \= 10^6 shares`.
 
-**Simple Equal Weighting:**
+AVSs that wish to weight Operator Sets by other metrics, such as asset value, will need to modify the default implementation of the TableCalculator for their use case. Some examples of customization options might include...
+
+- Hard Coded Asset Weighting: Weight ETH share 3000x higher than USD shares.  
+- Oracle Integration: Use external price feeds to convert all stakes to USD values  
+- Stake Capping: Limit any single Operator to maximum 10% of total weight  
+- Minimum Requirements: Filter out Operators below certain stake thresholds (i.e. set their verification weight to zero)  
+- Operator Bonding: Operator self-staked assets have double weight
+
+The Calculator contract is left largely flexible for AVSs, with easy defaults. As long as the return type is an array of `OperatorInfos`, the upstream contracts will be able to parse them appropriately. The goal of the `OperatorTableCalculator` is to give AVSs complete control over how their Operators are weighted while maintaining standardized interfaces for the broader multi-chain system. These Operator weights are key to properly [verifying Operator certificates](./ELIP-008.md#certificates--verification).
+
+The following is the default implementation for calculating Operator Weights in the `ECDSATableCalculator`:
 
 ```solidity
-// Basic implementation: return raw stake values without modification
-function calculateOperatorTable(OperatorSet calldata operatorSet) 
-    external view returns (ECDSAOperatorInfo[] memory) {
-    return getRawStakeValues(operatorSet);
-}
-```
+/**
+ * @notice Get the operator weights for a given operatorSet based on the slashable stake.
+ * @param operatorSet The operatorSet to get the weights for
+ * @return operators The addresses of the operators in the operatorSet
+ * @return weights The weights for each operator in the operatorSet, this is a 2D array where the first index is the operator
+ * and the second index is the type of weight. In this case its of length 1 and returns the slashable stake for the operatorSet.
+ */
+function _getOperatorWeights(
+    OperatorSet calldata operatorSet
+) internal view override returns (address[] memory operators, uint256[][] memory weights) {
+    // Get all operators & strategies in the operatorSet
+    address[] memory registeredOperators = allocationManager.getMembers(operatorSet);
+    IStrategy[] memory strategies = allocationManager.getStrategiesInOperatorSet(operatorSet);
 
-**Advanced Custom Weighting:**
+    // Get the minimum slashable stake for each operator
+    uint256[][] memory minSlashableStake = allocationManager.getMinimumSlashableStake({
+        operatorSet: operatorSet,
+        operators: registeredOperators,
+        strategies: strategies,
+        futureBlock: uint32(block.number + LOOKAHEAD_BLOCKS)
+    });
 
-```solidity
-// Advanced implementation with asset weighting and stake capping
-function calculateOperatorTable(OperatorSet calldata operatorSet) 
-    external view returns (ECDSAOperatorInfo[] memory) {
-    ECDSAOperatorInfo[] memory operators = getRawStakeValues(operatorSet);
-    
-    for (uint i = 0; i < operators.length; i++) {
-        // Apply asset-specific weighting
-        // weights[0] = ETH stake, weights[1] = stablecoin stake
-        operators[i].weights[0] *= 2;  // Weight ETH 2x higher
-        operators[i].weights[1] *= 1;  // Keep stablecoins at 1x
-        
-        // Implement stake capping - limit any operator to 10% of total
-        uint256 maxWeight = getTotalStake() / 10;
-        if (operators[i].weights[0] > maxWeight) {
-            operators[i].weights[0] = maxWeight;
+    operators = new address[](registeredOperators.length);
+    weights = new uint256[][](registeredOperators.length);
+    uint256 operatorCount = 0;
+    for (uint256 i = 0; i < registeredOperators.length; ++i) {
+        // For the given operator, loop through the strategies and sum together to calculate the operator's weight for the operatorSet
+        uint256 totalWeight;
+        for (uint256 stratIndex = 0; stratIndex < strategies.length; ++stratIndex) {
+            totalWeight += minSlashableStake[i][stratIndex];
         }
-        
-        // Filter out operators below minimum threshold
-        if (operators[i].weights[0] < MINIMUM_STAKE_THRESHOLD) {
-            operators[i].weights[0] = 0;  // Zero weight = excluded from verification
+
+        // If the operator has nonzero slashable stake, add them to the operators array
+        if (totalWeight > 0) {
+            // Initialize operator weights array of length 1 just for slashable stake
+            weights[operatorCount] = new uint256[](1);
+            weights[operatorCount][0] = totalWeight;
+
+            // Add the operator to the operators array
+            operators[operatorCount] = registeredOperators[i];
+            operatorCount++;
         }
     }
-    return operators;
+
+    // Resize arrays to be the size of the number of operators with nonzero slashable stake
+    assembly {
+        mstore(operators, operatorCount)
+        mstore(weights, operatorCount)
+    }
+
+    return (operators, weights);
 }
 ```
 
-### Cross-chain & Key Registries
+### Key Registrar
 
-For convenience and reduced middleware trust assumptions, this proposal canonicalizes a `CrossChainRegistry` and a `KeyRegistrar`. Previously, key management was handled by the AVS in middleware, with room for error and lack of support for consistent key rotation. The `KeyRegistrar` brings these key mappings into the core and makes convenient view and setter functions available to AVSs and Operators. Additionally, with the introduction of multi-chain EigenLayer, the Core on Ethereum needs a mapping for where AVSs and contracts live on certain chains, as well as a way to capture AVS configuration and intent. The `CrossChainRegistry` is a contract that allows AVSs to enroll in multi-chain and select their target chains. This contract also captures trust parameters, like the staleness period of stake (i.e. an Operator Table updated at a certain reference block will fail verification after the configured staleness period elapses.)
+For convenience and reduced middleware trust assumptions, this proposal canonicalizes a `CrossChainRegistry` and a `KeyRegistrar`. Previously, key management was handled by the AVS in middleware, without standardization and a lack of support for consistent key rotation. The `KeyRegistrar` brings these key mappings into the core and makes convenient view and setter functions available to AVSs and Operators.
+
+This contract enforces global uniqueness of Operator keys across all registered Operator Sets. Operators are responsible for supplying unique key material prior to registering for an Operator Set. Operators can rotate keys by deregistering a key for a given Operator Set; however, to prevent the possibility of race conditions, this can only be performed after an Operator has removed all Allocations and is no longer slashable by the AVS. While we recognize that this is not an ideal rotation path, this functionality ensures that key rotation is possible without fully migrating stake to a new Operator, and we will continue to explore more convenient options. Deregistered keys are also retained in the global database to ensure that reuse is not possible.
 
 Provided below is the `KeyRegistrar` interface:
 
 ```solidity
 interface IKeyRegistrarEvents is IKeyRegistrarTypes {
+    /// @notice Emitted when a key is registered
     event KeyRegistered(OperatorSet operatorSet, address indexed operator, CurveType curveType, bytes pubkey);
+    /// @notice Emitted when a key is deregistered
     event KeyDeregistered(OperatorSet operatorSet, address indexed operator, CurveType curveType);
+    /// @notice Emitted when the aggregate BN254 key is updated
     event AggregateBN254KeyUpdated(OperatorSet operatorSet, BN254.G1Point newAggregateKey);
+    /// @notice Emitted when an operator set is configured
     event OperatorSetConfigured(OperatorSet operatorSet, CurveType curveType);
 }
 
+/// @notice The `KeyRegistrar` is used by AVSs to set their key type and by operators to register and deregister keys to operatorSets    /// @notice The `KeyRegistrar` is used by AVSs to set their key type and by operators to register and deregister keys to operatorSets
+/// @notice The integration pattern is as follows:
+/// 1. The AVS calls `configureOperatorSet` to set the key type for their operatorSet
+/// 2. Operators call `registerKey` to register their keys to the operatorSet
+/// @dev This contract requires that keys are unique across all operatorSets, globally
+/// @dev For the multichain protocol, the key type of the operatorSet must be set in the `KeyRegistrar`, but the
+///      AVS is not required to use the KeyRegistrar for operator key registration/deregistration and can implement its own registry
 interface IKeyRegistrar is IKeyRegistrarErrors, IKeyRegistrarEvents, ISemVerMixin {
     /**
      * @notice Configures an operator set with curve type
@@ -380,10 +405,13 @@ interface IKeyRegistrar is IKeyRegistrarErrors, IKeyRegistrarEvents, ISemVerMixi
      * @notice Registers a cryptographic key for an operator with a specific operator set
      * @param operator Address of the operator to register key for
      * @param operatorSet The operator set to register the key for
-     * @param pubkey Public key bytes
-     * @param signature Signature proving ownership (only needed for BN254 keys)
+     * @param pubkey Public key bytes. For ECDSA, this is the address of the key. For BN254, this is the G1 and G2 key combined (see `encodeBN254KeyData`)
+     * @param signature Signature proving ownership. For ECDSA this is a signature of the `getECDSAKeyRegistrationMessageHash`. For BN254 this is a signature of the `getBN254KeyRegistrationMessageHash`.
      * @dev Can be called by operator directly or by addresses they've authorized via PermissionController
      * @dev Reverts if key is already registered
+     * @dev There exist no restriction on the state of the operator with respect to the operatorSet. That is, an operator
+     *      does not have to be registered for the operator in the `AllocationManager` to register a key for it
+     * @dev For ECDSA, we allow a smart contract to be the pubkey (via ERC1271 signatures), but note that the multichain protocol DOES NOT support smart contract signatures
      */
     function registerKey(
         address operator,
@@ -396,35 +424,26 @@ interface IKeyRegistrar is IKeyRegistrarErrors, IKeyRegistrarEvents, ISemVerMixi
      * @notice Deregisters a cryptographic key for an operator with a specific operator set
      * @param operator Address of the operator to deregister key for
      * @param operatorSet The operator set to deregister the key from
-     * @dev Can be called by avs directly or by addresses they've authorized via PermissionController
+     * @dev Can be called by the operator directly or by addresses they've authorized via PermissionController
      * @dev Reverts if key was not registered
+     * @dev Reverts if operator is still slashable for the operator set (prevents key rotation while slashable)
      * @dev Keys remain in global key registry to prevent reuse
      */
     function deregisterKey(address operator, OperatorSet memory operatorSet) external;
 
     /**
-     * @notice Checks if an operator has a registered key
-     * @param operatorSet The operator set to check and update
-     * @param operator Address of the operator
-     * @return whether the operator has a registered key
-     * @dev This function is called by the AVSRegistrar when an operator registers for an AVS
-     * @dev Only authorized callers for the AVS can call this function
-     * @dev Reverts if operator doesn't have a registered key for this operator set
-     */
-    function checkKey(OperatorSet memory operatorSet, address operator) external view returns (bool);
-
-    /**
      * @notice Checks if a key is registered for an operator with a specific operator set
      * @param operatorSet The operator set to check
      * @param operator Address of the operator
-     * @return True if the key is registered
+     * @return True if the key is registered, false otherwise
+     * @dev If the operatorSet is not configured, this function will return false
      */
     function isRegistered(OperatorSet memory operatorSet, address operator) external view returns (bool);
 
     /**
-     * @notice Gets the configuration for an operator set
-     * @param operatorSet The operator set to get configuration for
-     * @return The operator set configuration
+     * @notice Gets the curve type for an operator set
+     * @param operatorSet The operator set to get the curve type for
+     * @return The curve type, either ECDSA, BN254, or NONE
      */
     function getOperatorSetCurveType(
         OperatorSet memory operatorSet
@@ -436,6 +455,7 @@ interface IKeyRegistrar is IKeyRegistrarErrors, IKeyRegistrarEvents, ISemVerMixi
      * @param operator Address of the operator
      * @return g1Point The BN254 G1 public key
      * @return g2Point The BN254 G2 public key
+     * @dev Reverts if the operatorSet is not configured for BN254
      */
     function getBN254Key(
         OperatorSet memory operatorSet,
@@ -446,7 +466,8 @@ interface IKeyRegistrar is IKeyRegistrarErrors, IKeyRegistrarEvents, ISemVerMixi
      * @notice Gets the ECDSA public key for an operator with a specific operator set as bytes
      * @param operatorSet The operator set to get the key for
      * @param operator Address of the operator
-     * @return pubkey The ECDSA public key
+     * @return pubkey The ECDSA public key in bytes format
+     * @dev Reverts if the operatorSet is not configured for ECDSA
      */
     function getECDSAKey(OperatorSet memory operatorSet, address operator) external view returns (bytes memory);
 
@@ -454,7 +475,8 @@ interface IKeyRegistrar is IKeyRegistrarErrors, IKeyRegistrarEvents, ISemVerMixi
      * @notice Gets the ECDSA public key for an operator with a specific operator set
      * @param operatorSet The operator set to get the key for
      * @param operator Address of the operator
-     * @return pubkey The ECDSA public key
+     * @return pubkey The ECDSA public key in address format
+     * @dev Reverts if the operatorSet is not configured for ECDSA
      */
     function getECDSAAddress(OperatorSet memory operatorSet, address operator) external view returns (address);
 
@@ -472,11 +494,26 @@ interface IKeyRegistrar is IKeyRegistrarErrors, IKeyRegistrarEvents, ISemVerMixi
      * @param operatorSet The operator set to get the key hash for
      * @param operator Address of the operator
      * @return keyHash The key hash
+     * @dev Reverts if the operatorSet is not configured
      */
     function getKeyHash(OperatorSet memory operatorSet, address operator) external view returns (bytes32);
 
     /**
-     * @notice Returns the message hash for ECDSA key registration
+     * @notice Gets the operator from signing key
+     * @param operatorSet The operator set to get the operator for
+     * @param keyData The key data. For ECDSA, this is the signing key address. For BN254, this can be either the G1 key or the G1 and G2 key combined.
+     * @return operator. Returns 0x0 if the key is not registered
+     * @return status registration status. Returns false if the key is not registered
+     * @dev This function decodes the key data based on the curve type of the operator set
+     * @dev This function will return the operator address even if the operator is not registered for the operator set
+     */
+    function getOperatorFromSigningKey(
+        OperatorSet memory operatorSet,
+        bytes memory keyData
+    ) external view returns (address, bool);
+
+    /**
+     * @notice Returns the message hash for ECDSA key registration, which must be signed by the operator when registering an ECDSA key
      * @param operator The operator address
      * @param operatorSet The operator set
      * @param keyAddress The address of the key
@@ -489,7 +526,7 @@ interface IKeyRegistrar is IKeyRegistrarErrors, IKeyRegistrarEvents, ISemVerMixi
     ) external view returns (bytes32);
 
     /**
-     * @notice Returns the message hash for BN254 key registration
+     * @notice Returns the message hash for BN254 key registration, which must be signed by the operator when registering a BN254 key
      * @param operator The operator address
      * @param operatorSet The operator set
      * @param keyData The BN254 key data
@@ -514,20 +551,45 @@ interface IKeyRegistrar is IKeyRegistrarErrors, IKeyRegistrarEvents, ISemVerMixi
 }
 ```
 
-Functions are provided to get, set, and verify key material. Initial support covers ECDSA and BN254 keys, but the interface is flexible to new key solutions like BLS12-381. This contract simplifies middleware management by AVSs by moving key concerns into the core. AVS middleware is free to consume these keys on or off-chain.
+Functions are provided to get, set, and verify key material. Initial support covers ECDSA and BN254 keys, but the interface is flexible and may be extended in the future to include new key solutions like BLS12-381. The `KeyRegistrar` simplifies middleware management by AVSs by moving key concerns into the core. AVS middleware is free to consume these keys on or off-chain.
 
-The `CrossChainRegistry` has a more important role and is designed specifically for multi-chain verification. This is a singleton contract that only lives on Ethereum. AVSs first register in this contract to participate in the optional multi-chain system. AVSs can then specify the chains they wish to have their stake data transported to. Next, the AVS registers (or manages) the address `OperatorTableCalculator`.
+### Cross Chain Registry
 
-The `CrossChainRegistry` captures the addresses of the `OperatorTableCalculators` after deployment. This contract was explained in the [previous section](./ELIP-008.md#operator-table-calculation--stake-weighting). As AVSs deploy their own table calculation logic (or use the default template), they must update this registry contract with the addresses of their calculators. This is to ensure the off-chain generation protocol runs the correct stake weighting functions from each AVS's `OperatorTableCalculator` when it generates the merkelized stake roots for Operator Tables.
+The `CrossChainRegistry` is the entrypoint for participation in multi-chain Operator Table generation and transport. This is a singleton contract deployed on Ethereum. It is responsible for storing GenerationReservations created by AVSs for each Operator Set.
 
-When its time to generate a new root...
+A GenerationReservation is composed of:
 
-1. `CrossChainRegistry.getActiveGenerationReservations()` is called to gather the Operator Sets opted-in to multi-chain transport.
-2. For each Operator Set, call the `CrossChainRegistry.calculateOperatorTableByes(operatorSet)`.
-3. The `CrossChainRegistry` calls into each `OperatorTableCalculator` to apply the right weighting logic, specified by the AVS.
+- The Operator Set the Reservation is made for,
+- The `OperatorTableCalculator` used to calculate Operator weights for the Operator Set,
+- An `OperatorSetConfig` that contains:
+  - An `owner` address that is given permission to call setters on downstream L2 contracts,  
+  - the `maxStalenessPeriod` defining how long an Operator Table remains valid after being transported. When set to 0, the Operator Table does not expire.
+
+The contract then exposes read-only functions used by the transporter to generate each Operator Set’s Operator Table and combine them into a global Stake Table.
+
+When it’s time to generate a new root...
+
+1. `CrossChainRegistry.getActiveGenerationReservations()` is called to gather the Operator Sets opted-in to multi-chain transport.  
+2. For each Operator Set, call the `CrossChainRegistry.calculateOperatorTableByes(operatorSet)`.  
+3. The `CrossChainRegistry` calls into each `OperatorTableCalculator` to apply the weighting logic specified by the AVS.  
 4. A global stake root is calculated from a created merkle tree, where each leaf is the hash of the bytes returned in step 2.
 
-This process yields a global stake root and a merkle tree that is transported to target chains.
+This process yields a `globalTableRoot` and a merkle tree that is transported to target chains.
+
+The tree for the `globalTableRoot` is:
+
+```mermaid
+flowchart TB  
+    R((GlobalTableRoot))  
+    R --> N0((Internal Node 0-1))  
+    R --> N1((Internal Node 2-3))  
+    N0 --> L0[[Leaf 0<br/>OperatorSet Table #0]]  
+    N0 --> L1[[Leaf 1<br/>OperatorSet Table #1]]  
+    N1 --> L2[[Leaf 2<br/>OperatorSet Table #2]]  
+    N1 --> L3[[Leaf 3<br/>OperatorSet Table #3]]
+```
+
+Where each OperatorSet Table is the bytes generated by the `CrossChain Registry`.
 
 Below is the interface for the `CrossChainRegistry`.
 
@@ -538,20 +600,23 @@ interface ICrossChainRegistry is ICrossChainRegistryErrors, ICrossChainRegistryE
      * @param operatorSet the operatorSet to make a reservation for
      * @param operatorTableCalculator the address of the operatorTableCalculator
      * @param config the config to set for the operatorSet
-     * @param chainIDs the chainIDs to add as transport destinations
-     * @dev msg.sender must be UAM permissioned for operatorSet.avs
+     * @dev msg.sender must be an authorized caller for operatorSet.avs
+     * @dev Once a generation reservation is created, the operator table will be transported to all chains that are whitelisted
+     * @dev It is expected that the AVS has:
+     *      - Deployed or is using a generalizable `OperatorTableCalculator` to calculate its operator's stake weights
+     *      - Set the `KeyType` for the operatorSet in the `KeyRegistrar`, even if the AVS is not using the `KeyRegistrar` for operator key registration/deregistration
+     *      - Created an operatorSet in the `AllocationManager`
      */
     function createGenerationReservation(
         OperatorSet calldata operatorSet,
         IOperatorTableCalculator operatorTableCalculator,
-        OperatorSetConfig calldata config,
-        uint256[] calldata chainIDs
+        OperatorSetConfig calldata config
     ) external;
 
     /**
      * @notice Removes a generation reservation for a given operatorSet
      * @param operatorSet the operatorSet to remove
-     * @dev msg.sender must be UAM permissioned for operatorSet.avs
+     * @dev msg.sender must be an authorized caller for operatorSet.avs
      */
     function removeGenerationReservation(
         OperatorSet calldata operatorSet
@@ -561,7 +626,7 @@ interface ICrossChainRegistry is ICrossChainRegistryErrors, ICrossChainRegistryE
      * @notice Sets the operatorTableCalculator for the operatorSet
      * @param operatorSet the operatorSet whose operatorTableCalculator is desired to be set
      * @param operatorTableCalculator the contract to call to calculate the operator table
-     * @dev msg.sender must be UAM permissioned for operatorSet.avs
+     * @dev msg.sender must be an authorized caller for operatorSet.avs
      * @dev operatorSet must have an active reservation
      */
     function setOperatorTableCalculator(
@@ -573,31 +638,14 @@ interface ICrossChainRegistry is ICrossChainRegistryErrors, ICrossChainRegistryE
      * @notice Sets the operatorSetConfig for a given operatorSet
      * @param operatorSet the operatorSet to set the operatorSetConfig for
      * @param config the config to set
-     * @dev msg.sender must be UAM permissioned for operatorSet.avs
+     * @dev msg.sender must be an authorized caller for operatorSet.avs
      * @dev operatorSet must have an active generation reservation
+     * @dev The max staleness period is NOT checkpointed and is applied globally regardless of the reference timestamp of a certificate
      */
     function setOperatorSetConfig(OperatorSet calldata operatorSet, OperatorSetConfig calldata config) external;
 
     /**
-     * @notice Adds destination chains to transport to
-     * @param operatorSet the operatorSet to add transport destinations for
-     * @param chainIDs to add transport to
-     * @dev msg.sender must be UAM permissioned for operatorSet.avs
-     * @dev Will create a transport reservation if one doesn't exist
-     */
-    function addTransportDestinations(OperatorSet calldata operatorSet, uint256[] calldata chainIDs) external;
-
-    /**
-     * @notice Removes destination chains to transport to
-     * @param operatorSet the operatorSet to remove transport destinations for
-     * @param chainIDs to remove transport to
-     * @dev msg.sender must be UAM permissioned for operatorSet.avs
-     * @dev Will remove the transport reservation if all destinations are removed
-     */
-    function removeTransportDestinations(OperatorSet calldata operatorSet, uint256[] calldata chainIDs) external;
-
-    /**
-     * @notice Adds chainIDs to the whitelist of chainIDs that can be transported to
+     * @notice Adds chainIDs to the whitelist of chainIDs that are transported to by the multichain protocol
      * @param chainIDs the chainIDs to add to the whitelist
      * @param operatorTableUpdaters the operatorTableUpdaters for each whitelisted chainID
      * @dev msg.sender must be the owner of the CrossChainRegistry
@@ -605,12 +653,22 @@ interface ICrossChainRegistry is ICrossChainRegistryErrors, ICrossChainRegistryE
     function addChainIDsToWhitelist(uint256[] calldata chainIDs, address[] calldata operatorTableUpdaters) external;
 
     /**
-     * @notice Removes chainIDs from the whitelist of chainIDs that can be transported to
+     * @notice Removes chainIDs from the whitelist of chainIDs
      * @param chainIDs the chainIDs to remove from the whitelist
      * @dev msg.sender must be the owner of the CrossChainRegistry
      */
     function removeChainIDsFromWhitelist(
         uint256[] calldata chainIDs
+    ) external;
+
+    /**
+     * @notice Sets the table update cadence in seconds
+     * @param tableUpdateCadence the table update cadence
+     * @dev msg.sender must be the owner of the CrossChainRegistry
+     * @dev The table update cadence cannot be 0
+     */
+    function setTableUpdateCadence(
+        uint32 tableUpdateCadence
     ) external;
 
     /**
@@ -658,101 +716,157 @@ interface ICrossChainRegistry is ICrossChainRegistryErrors, ICrossChainRegistryE
     ) external view returns (bytes memory);
 
     /**
-     * @notice Gets the active transport reservations
-     * @return An array of operatorSets with active transport reservations
-     * @return An array of chainIDs that the operatorSet is configured to transport to
-     */
-    function getActiveTransportReservations() external view returns (OperatorSet[] memory, uint256[][] memory);
-
-    /**
-     * @notice Gets the transport destinations for a given operatorSet
-     * @param operatorSet the operatorSet to get the transport destinations for
-     * @return An array of chainIDs that the operatorSet is configured to transport to
-     */
-    function getTransportDestinations(
-        OperatorSet memory operatorSet
-    ) external view returns (uint256[] memory);
-
-    /**
      * @notice Gets the list of chains that are supported by the CrossChainRegistry
      * @return An array of chainIDs that are supported by the CrossChainRegistry
      * @return An array of operatorTableUpdaters corresponding to each chainID
      */
     function getSupportedChains() external view returns (uint256[] memory, address[] memory);
+
+    /**
+     * @notice Gets the table update cadence
+     * @return The table update cadence
+     * @dev The table update cadence is applicable to all chains
+     */
+    function getTableUpdateCadence() external view returns (uint32);
 }
+```
+
+### Generation
+
+Initially EigenLabs will take the role of Generator executing the globalTableRoot generation process at minimum every 7 days, in addition to any time forced updates are required. Forced updates will be triggered whenever an Operator is added or removed from an Operator Set (voluntarily or by ejection), in addition to any slashing of an Operator.
+
+Internally, the Generator is represented as an Operator Set that generates a certificate signing the globalTableRoot with its BN254 keys. The system is designed such that this responsibility can readily be transitioned to a decentralized and stake-backed Operator Set in the future.
+
+```mermaid
+sequenceDiagram  
+    participant GEN as Generator  
+    participant ELT as Transporter  
+    participant CCR as CrossChainRegistry  
+      
+    %% ELT 1: Eigen Labs Operator gets calculator  
+    GEN-->>CCR: calculateOperatorTableBytes
+
+    %% Step 2: Get the certificate  
+    GEN-->>ELT: Signed globalOperatorTableRoot response
+```
+
+### Transport & Rehydration
+
+The `OperatorTableUpdater` is a contract deployed by EigenLabs to each destination chain to facilitate the transportation and rehydration Operator Tables. It maintains a set of valid `globalTableRoots` that are confirmed by a designated generator (using the certificate verification methods described below) along with the `referenceTimestamp` at which they were generated, and allows updating individual operator tables by providing merkle proofs against these roots. Both functions are permissionless.
+
+After the `globalTableRoot` is generated, a Transporter must provide the valid globalTableRoot certificate to the contract, then make calls to update each individual Operator Table in the `CertificateVerifier`. EigenLabs will perform this on a weekly cadence for all Operator Sets. In the case of forced updates, only the triggering Operator Sets will have their Operator Table updated. Other AVSs may permissionlessly update their Operator Table by submitting a valid proof if desired.
+
+```mermaid
+sequenceDiagram  
+    participant GEN as Generator  
+    participant ELT as Transporter  
+    participant CCR as CrossChainRegistry  
+    participant OTU as OperatorTableUpdater (supported chains)  
+    participant CV as CertificateVerifier (supported chains)
+
+    %% Step 1: Get the certificate  
+    GEN-->>ELT: Signed globalOperatorTableRoot response  
+    ELT-->>CCR: Get supported destination chains
+
+    %% Step 2: Certificate Submitted to Ethereum  
+    ELT->>OTU: confirmGlobalTableRoot(certificate, referenceTimestamp, root) on all chains  
+    OTU-->>CV: verifyCertificate(globalTableRoot certificate)  
+    CV-->>OTU: isValid  
+    note over OTU: Stores globalTableRoot  
+      
+    %% Step 3: Transport Table  
+    ELT->> OTU: updateOperatorTable(operatorSet, proof)  
+    OTU-->CV: updateOperatorTable
 ```
 
 ### Certificates & Verification
 
-**The `CertificateVerifier` is the key integration point between AVSs and their customers.** This is the contract that allows off-chain services built atop EigenLayer restaking to interface with on-chain environments across all supported chains. Deployed to each target chain, this contract holds the `Operator Table` for each AVS and allows Operator `Certificates` to be verified against stake weighted rules, with options for proportional weighting logic, nominal weighting logic, and custom hooks.
+**The `CertificateVerifier` is the key integration point between AVSs and their customers.** This is the contract that allows off-chain services built atop EigenLayer restaking to interface with on-chain environments across all supported chains. Deployed to each target chain, this contract holds the `Operator Table` for each AVS and allows Operator `Certificates` to be verified against Operator weighted rules (as defined by the AVS in the OperatorTableCalculator), with built in options for proportional and nominal weighting logics.
 
 This contract was designed to serve key goals:
 
-- **A Single Integration Point and Pattern**: AVSs and their customers only need to understand one contract interface, not many different patterns. One single contract interface for all EigenLayer services.
-- **Consistent Experience**: The same verification interface works identically across Ethereum, Base, Optimism, and other EVM chains with flexibility for future alt-VM support.
-- **Code Once, Deploy Everywhere**: Write integration logic once, deploy across all chains.
-- **Off-Chain to On-Chain Bridge**: This is where off-chain operator services become verifiable on-chain outputs using stake-weighted commitments.
+- **A Single Integration Point and Pattern**: AVSs and their customers only need to understand one contract interface, not many different patterns. One single contract interface for all EigenLayer services.  
+- **Consistent Experience**: The same verification interface works identically across Ethereum, Base, Optimism, and other EVM chains with flexibility for future alt-VM support.  
+- **Code Once, Deploy Everywhere**: Write integration logic once, deploy across all chains.  
+- **Off-Chain to On-Chain Bridge**: This is where off-chain operator services become verifiable on-chain outputs using stake-weighted commitments.  
 - **Stake-Weighted Verification**: Operator outputs are verified against stake criteria for acceptance and potential slashing. Operator outputs are backed by EigenLayer stake values from the maximally secure Layer One Ethereum.
 
 Everywhere the `CertificateVerifier` contract is available, AVSs can serve their customers and Operators can have certificates verified.
 
 The verification flow is outlined below:
 
-1. **Operator Execution**: Operators perform off-chain tasks (data feeds, computation, attestations)
-2. **Certificate Creation**: Operators sign results creating an `ECDSACertificate` or `BLSCertificate`.
-3. **Consumer Verification**: Applications call `CertificateVerifier.verifyCertificate()` to validate any received (or cached) certificates.
-4. **Stake Validation**: The `CertificateVerifier` checks the provided Certificate signatures against transported stake table, by comparing Operator keys and weights.
+1. **Operator Execution**: Operators perform off-chain tasks (data feeds, computation, attestations)  
+2. **Certificate Creation**: Operators sign results creating an `ECDSACertificate` or `BLSCertificate`.  
+3. **Consumer Verification**: Applications call `CertificateVerifier.verifyCertificate()` to validate any received (or cached) certificates.  
+4. **Stake Validation**: The `CertificateVerifier` checks the Certificate signatures against the transported stake table’s Operator keys and sums the weight of signing Operators.  
 5. **Threshold Enforcement**: Ensures sufficient stake signed the certificate (proportional, nominal, or custom) and returns a result to the requesting application.
 
 Below is the certificate structure:
 
 ```solidity
-struct ECDSACertificate {
-    uint32 referenceTimestamp;  // When certificate was created
-    bytes32 messageHash;        // Hash of the signed message
-    bytes sig;                  // Concatenated operator signatures
-}
+    /**
+     * @notice A Certificate used to verify a set of ECDSA signatures
+     * @param referenceTimestamp a reference timestamp that corresponds to a timestamp at which an operator table was updated for the operatorSet.
+     * @param messageHash the hash of the message that was signed by the operators. The messageHash
+     *        MUST be calculated using `calculateCertificateDigest`
+     * @param sig the concatenated signature of each signing operator, in ascending order of signer address
+     * @dev ECDSA certificates DO NOT support smart contract signatures
+     * @dev The `referenceTimestamp` is used to key into the operatorSet's stake weights. It is NOT the timestamp at which the certificate was generated off-chain
+     */
+    struct ECDSACertificate {
+        uint32 referenceTimestamp;
+        bytes32 messageHash;
+        bytes sig;
+    }
 
 /// BLS keys are a bit more complex
-/**
-    * @notice A witness for an operator
-    * @param operatorIndex the index of the nonsigner in the `BN254OperatorInfo` tree
-    * @param operatorInfoProofs merkle proofs of the nonsigner at the index. Empty if operator is in cache.
-    * @param operatorInfo the `BN254OperatorInfo` for the operator
-    */
-struct BN254OperatorInfoWitness {
-    uint32 operatorIndex;
-    bytes operatorInfoProof;
-    BN254OperatorInfo operatorInfo;
-}
+    /**
+     * @notice A witness for an operator, used to identify the non-signers for a given certificate
+     * @param operatorIndex the index of the nonsigner in the `BN254OperatorInfo` tree
+     * @param operatorInfoProofs merkle proof of the nonsigner at the index. Empty if the non-signing operator is   already stored from a previous verification
+     * @param operatorInfo the `BN254OperatorInfo` for the operator. Empty if the non-signing operator is already stored from a previous verification
+     * @dev Non-signing operators are stored in the `BN254CertificateVerifier` upon the first successful certificate verification that includes a merkle proof for the non-signing operator.
+     *  This is done to avoid the need for resupplying proofs of non-signing operators for each certificate verification at a given reference timestamp
+     */
+    struct BN254OperatorInfoWitness {
+        uint32 operatorIndex;
+        bytes operatorInfoProof;
+        BN254OperatorInfo operatorInfo;
+    }
 
-/**
-    * @notice A BN254 Certificate
-    * @param referenceTimestamp the timestamp at which the certificate was created
-    * @param messageHash the hash of the message that was signed by operators and used to verify the aggregated signature
-    * @param signature the G1 signature of the message
-    * @param apk the G2 aggregate public key
-    * @param nonSignerWitnesses an array of witnesses of non-signing operators
-    */
-struct BN254Certificate {
-    uint32 referenceTimestamp;
-    bytes32 messageHash;
-    BN254.G1Point signature;
-    BN254.G2Point apk;
-    BN254OperatorInfoWitness[] nonSignerWitnesses;
-}
+    /**
+     * @notice A BN254 Certificate
+     * @param referenceTimestamp a reference timestamp that corresponds to a timestamp at which an operator table was updated for the operatorSet.
+     * @param messageHash the hash of the message that was signed by operators and used to verify the aggregated signature
+     * @param signature the G1 signature of the message
+     * @param apk the G2 aggregate public key
+     * @param nonSignerWitnesses an array of witnesses of non-signing operators
+     * @dev The `referenceTimestamp` is used to key into the operatorSet's stake weights. It is NOT the timestamp at which the certificate was generated off-chain
+     */
+    struct BN254Certificate {
+        uint32 referenceTimestamp;
+        bytes32 messageHash;
+        BN254.G1Point signature;
+        BN254.G2Point apk;
+        BN254OperatorInfoWitness[] nonSignerWitnesses;
+    }
+
 ```
+
+Each certificate must include a `referenceTimestamp` that corresponds to the timestamp of an Operator Table update. This timestamp is used to validate the staleness of the Operator Table. If the referenceTimestamp is older than the maxStalenessPeriod configured in the CrossChainRegistry, the Operator Table is considered stale and validation will fail.
+
+Note that the `CertificateVerifier` checks for age-related staleness only. Certificates referencing old Operator Tables remain valid until the `maxStalenessPeriod` configured in the `GenerationReservation`, even if an Operator is slashed based on their contents. For example: consider a oracle certificate backed by $1M of allocated stake that says the Bitcoin price is $1. Even though all signing operators are slashed for 100% of their allocations, the original certificate will indicate that $1M of allocated stake attested that the Bitcoin price is $1. AVS consumers must be aware of and account for other forms of certificate staleness.
 
 The `CertificateVerifier` provides several options out of the box for both `ECDSA` and `BLS` keys...
 
-- `verifyCertificate()`: Returns raw signed stake amounts per weight category
-- `verifyCertificateProportion()`: Checks if signed stake meets % thresholds (e.g. >66% of total)
+- `verifyCertificate()`: Returns raw signed stake amounts per weight category  
+- `verifyCertificateProportion()`: Checks if signed stake meets % thresholds (e.g. >66% of total)  
 - `verifyCertificateNominal()`: Checks if signed stake meets absolute thresholds (e.g. >1M ETH)
 
 An example integration Pattern flow may look like the following:
 
 ```solidity
-// Same code works on Ethereum, Base, Optimism, etc.
+// Same code works on Ethereum, Base, etc.
 bool isValid = certificateVerifier.verifyCertificateProportion(
     operatorSet,
     certificate,
@@ -813,27 +927,7 @@ Combines both approaches - try cached results first, fallback to fresh requests 
 
 #### Custom Verification Logic
 
-For applications requiring specialized verification logic beyond proportional and nominal thresholds, the `CertificateVerifier` exposes raw stake weights:
-
-```solidity
-// Get raw stake weights for custom logic
-(bool validSigs, uint256[] memory weights) = certificateVerifier.verifyCertificate(operatorSet, cert);
-require(validSigs, "Invalid signatures");
-
-// Apply custom business logic
-uint256 totalStake = 0;
-uint256 validOperators = 0;
-for (uint i = 0; i < weights.length; i++) {
-    if (weights[i] >= MIN_OPERATOR_STAKE) {
-        totalStake += weights[i];
-        validOperators++;
-    }
-}
-
-// Custom requirements: need both 60% stake AND 3+ operators
-require(totalStake * 10000 >= getTotalOperatorSetStake() * 6000, "Need 60% stake");
-require(validOperators >= 3, "Need 3+ qualified operators");
-```
+For consumers requiring specialized verification logic beyond proportional and nominal thresholds, the `CertificateVerifier` exposes a number of introspective functions to retrieve stored information such as the latest timestamp that the Operator Table was updated, the total Operator weights for the Operator Set, and the number of registered operators. This allows Certificate consumers to apply their own validation logic. For example, requiring 60% of stake AND 3+ Operators to sign off.
 
 ## System Parameters Reference
 
@@ -843,34 +937,33 @@ Provided below are the systems different parameters: mutable, immutable, and con
 
 Mutable parameters will update occasionally or after some actions. These are worth monitoring to ensure up-to-date info for implementors and consumers.
 
-| **Parameter** | **Controlled By** | **Update Frequency** | **Impact** | **Monitoring Event** |
-| --- | --- | --- | --- | --- |
-| **Operator Tables** | EigenLayer Core | Weekly + force updates | Certificate verification validity | `CertificateVerifier.StakeTableUpdated` |
-| **Operator Keys** | Operators + AVS Admins | On-demand | Certificate signature validation | `KeyRegistrar.KeyRegistered/Deregistered` |
-| **Stake Weights** | `OperatorTableCalculator`, deployed by AVS | Per table update | Verification thresholds | Custom events in calculator contract |
-| **Operator Registration** | AVS + Operators | On-demand | Available operators for tasks | `AVSRegistrar.OperatorRegistered/Deregistered` |
+| Parameter | Controlled By | Update Frequency | Impact | Monitoring Event |
+| :---- | :---- | :---- | :---- | :---- |
+| **Operator Tables** | EigenLayer Core | Weekly + event-driven updates | Certificate verification validity | `CertificateVerifier.TableUpdated` |
+| **Operator Keys** | Operators | On-demand | Certificate signature validation | `KeyRegistrar.KeyRegistered/KeyDeregistered` |
+| **Staleness Period** | AVS | On-demand | Certificate validity | `CrossChainRegistry.OperatorSetConfigSet` |
+| **Operator Registration/deregistration** | AVS + Operators | On-demand (immediate transport) | Available operators for tasks | `AVSRegistrar.OperatorRegistered/Deregistered` |
 | **Slashing/Ejections** | EigenLayer Core | On-demand (immediate transport) | Operator validity and weights | `AllocationManager.OperatorSlashed` |
 
 ### Immutable Parameters
 
 Immutable parameters are either fixed or set for usage in the protocol or controlled by protocol governance itself.
 
-| **Parameter** | **Set By** | **Description** |
-| --- | --- | --- |
-| **Operator Set ID** | AVS | Cryptographic curve and operator list hash |
-| **Contract Addresses** | EigenLayer Core | `CertificateVerifier`, `OperatorTableUpdater` addresses per chain |
-| **Table Update Frequency** | Off-chain Governance | Frequency for updates. Intended to change over-time or be made permissionless. |
+| Parameter | Set By | Description |
+| :---- | :---- | :---- |
+| **Operator Set ID** | AVS | Unique identifier for the Operator Set |
+| **Operator Set Cryptographic Curve** | AVS | Presently ECDSA or BN254 |
+| **Contract Addresses** | EigenLayer Core | Core contracts, `CertificateVerifier`, `OperatorTableUpdater` addresses per chain |
 
 ### Configurable Parameters
 
 The following parameters are configurable by users:
 
-| **Parameter** | **Configured By** | **Options** |
-| --- | --- | --- |
-| **Staleness Period** | AVS | 1-30 days (must exceed 7-day refresh) |
-| **Minimum Stake Weight** | AVS | Any uint256 value |
-| **Custom Stake Weighting** | AVS | Override `calculateOperatorTable()` with any logic |
-| **Verification Thresholds** | Consuming Apps | Proportional % or nominal amounts |
+| Parameter | Configured By | Options |
+| :---- | :---- | :---- |
+| **Staleness Period** | AVS | 0 (does not expire), > Table Update Frequency |
+| **Custom Operator Weighting** | AVS | Supply `calculateOperatorTable()` with any logic |
+| **Verification Thresholds** | Certificate Consumer | Proportional % or nominal amounts |
 
 # Rationale
 
@@ -882,7 +975,7 @@ A single verification contract per chain reduces deployment complexity for all p
 
 ### Weekly Stake Table Generation
 
-Weekly updates balance freshness with operational efficiency. This frequency accommodates most AVS use cases while keeping infrastructure costs manageable (and free to users) during the testing phase. Continued optimizations are being made to see i. Force updates ensure critical events (slashing, ejections) propagate immediately when needed. Post-Preview, this frequency may be adjusted based on usage patterns and requirements.
+Weekly updates balance freshness with operational efficiency. This frequency accommodates most AVS use cases while keeping infrastructure costs manageable (and free to users) during the testing phase. Forced updates ensure critical events (slashing, ejections) propagate immediately when needed. Post-Preview, this frequency may be adjusted based on usage patterns and requirements.
 
 ### Multi-Curve Cryptography Support
 
@@ -896,7 +989,7 @@ Eigen Labs serves as the initial stake table generator and transporter to establ
 
 ### Reservation-Based Access
 
-AVSs make upfront reservations for generation and transport services, ensuring predictable costs and enabling infrastructure planning. This model prevents spam while guaranteeing service availability for legitimate users.
+AVSs make upfront reservations for generation and transport services. For the Preview, a whitelist may be used to prevent service issues. Over time, reservations may expand to support different economic or business models for both developers and the multi-chain protocol itself.
 
 # Security Considerations
 
@@ -904,13 +997,13 @@ AVSs make upfront reservations for generation and transport services, ensuring p
 
 ### Stake Table Manipulation
 
-**Risk**: Malicious generation of incorrect stake tables could enable unauthorized task validation.
-**Mitigation**: Initial implementation is permissioned for generation and transport of tables to EigenLabs infrastructure. Cryptographic commitments from trusted `GlobalRootConfirmerSet` can be verified permissionlessly, with social consensus fallback for disputes. Over time, we will explore solutions to sufficiently decentralized.
+**Risk**: Malicious generation of incorrect stake tables could enable unauthorized task validation.  
+**Mitigation**: Initial implementation is permissioned for generation and transport of tables to EigenLabs infrastructure. Cryptographic commitments from trusted `Generator` can be verified permissionlessly, with social consensus fallback for disputes. Over time, we will explore solutions to decentralize.
 
 ### Timing-based Malicious Verification
 
 **Risk**: Operators may perform malicious actions causing an ejection, slash, or challenge. They would then try to take advantage of timing lag to produce certificates that would have stale stakes on non-L1 chains.
-**Mitigation**: Changes that are material to verification (namely, anything impacting the Operator table: a slash, registration, or deregistration) will automatically trigger updates. There is some confirmation lag due to the nature of cross-chain communications, but AVSs can choose to use finalized blocks in their verification designs.
+**Mitigation**: Changes that are material to verification (namely, anything impacting the Operator table: a slash, ejection, registration, or deregistration) will automatically trigger updates. While there is some confirmation lag due to the nature of cross-chain communications, Certificates generated against the most recent Operator Table will not include ejected Operators.
 
 ### Key Compromise Scenarios
 
@@ -925,286 +1018,40 @@ Maximum age limits for Operator Table stakes can prevent situations where weight
 
 ### Emergency Ejection
 
-Immediate operator removal bypasses the normal seven day update cycle. When security incidents or a breakdown of process requires rapid response, consuming applications should *not* not able to verify certificates from ejected Operators. Ejected Operators should not be able to validate tasks, even if they picked up outstanding requests in that time.
+Immediate operator removal bypasses the normal seven day update cycle. When security incidents or a breakdown of process requires rapid response, AVSs should not continue producing certificates signed by ejected Operators. As long as the AVS generates certificates against the most recently transported Operator Table, the signatures of ejected Operators should not be included, even if they picked up outstanding tasks before the ejection occurs. AVS consumers should be aware that certificates signed on work completed before the Operator Table is updated can still be validated, and must design around that capability.
 
 ### Pause Mechanisms
 
 System-wide pause capabilities are built into the multi-chain system that enable rapid response to critical vulnerabilities while governance coordinates emergency fixes. These follow the mechanics of the [Pauser multi-sig](https://docs.eigenfoundation.org/protocol-governance/technical-architecture).
 
-## Implementation Security Guidelines
-
-For implementers, the following risk/mitigation pairs provide actionable security guidance:
-
-| **Risk** | **Mitigation** | **Implementation** |
-| --- | --- | --- |
-| **Stale Stake Data** | Configure appropriate staleness periods | Set `staleness > 7 days` in your `OperatorSetConfig` |
-| **Key Compromise** | Monitor for operator ejections and key rotations | Listen for `AllocationManager.OperatorSlashed` and `KeyRegistrar.KeyDeregistered` |
-| **Insufficient Stake** | Set minimum thresholds in verification | Use `verifyCertificateNominal()` with minimum stake requirements |
-| **Operator Centralization** | Implement stake capping in your calculator | Cap individual operators at 10-20% of total weight |
-| **Certificate Replay** | Check certificate freshness | Validate `referenceTimestamp` is recent and within staleness period |
-| **Transport Censorship** | Monitor for failed updates and implement fallbacks | Watch for missed `StakeTableUpdated` events, prepare emergency procedures |
-
 # Impact Summary
 
 ## AVS Ecosystem Impact
 
-### Enhanced Market Reach and Revenue Opportunities
+In-protocol standards for cross-chain AVS consumption patterns will allow developers to focus their energies on a single point of integration with the `CertificateVerifier`, rather than investigating AVS-specific solutions. Similarly, AVS developers need not develop their own custom stake tracking and bridging solutions to access Operator weights - Operator keys can be handled in-protocol via the `KeyRegistrar`, while AVS developers need only to define a method for calculating Operator weights to have the available on all supported chains. This greatly simplifies the scope and complexity of on-chain AVS middleware.
 
-**Immediate Benefits:**
-
-- **10x Market Expansion**: Access to Layer 2 ecosystems (Base, Optimism, Arbitrum) where significant dApp activity occurs
-- **Customer Acquisition**: Meet developers where they build - on cost-effective L2s with faster transaction times
-- **Revenue Diversification**: Generate income from multiple chains without proportional infrastructure investment
-- **Competitive Differentiation**: First-mover advantage for AVSs that adopt multi-chain early
-
-**Development Workflow Changes:**
-
-- **Simplified Architecture**: Replace custom bridge solutions with standardized `CertificateVerifier` integrations and focus on building business logic and customer value
-- **Reduced Audit Surface**: Single codebase works across all chains, reducing security review requirements by ~70%
-- **Operational Efficiency**: Monitor one set of contracts and interfaces instead of chain-specific implementations
-
-**Migration Requirements for Existing AVSs:**
-
-1. **Deploy `OperatorTableCalculator`**: Implement stake weighting logic (can use provided templates)
-2. **Register with `CrossChainRegistry`**: Opt-in to multi-chain with target chain specification
-3. **Update Operator Integration**: Modify operator binaries to produce standardized certificates
-4. **Consumer Communication**: Inform customers about new multi-chain capabilities and integration patterns
-
-### Technical Integration Impact
-
-**Breaking Changes:**
-
-- **Certificate Format Standardization**: Existing signature aggregation must conform to `ECDSACertificate` or `BN254Certificate` structures
-- **Verification Interface**: Replace custom verification logic with `CertificateVerifier` integration
-- **Key Management**: Migrate to `KeyRegistrar` for centralized, secure key rotation
-
-**Backward Compatibility:**
-
-- Existing L1-only operations continue unchanged
-- Migration to multi-chain is opt-in
-- Gradual transition supported via hybrid L1/multi-chain operation
+This proposal includes no breaking changes: all contracts and features described are net-new, and existing AVSs will continue to function without modifications. We anticipate gradual migrations to hybrid L1/multi-chain operation over time.
 
 ## Operator Impact
 
-### Operational Simplification and New Revenue Streams
+Existing Operators will be unaffected. The introduction of the KeyRegistrar gives Operators a mechanism to register and rotate (with a potential delay) AVS-specific keys, in addition to increasing operational security by preventing identical keys from reuse across multiple AVSs. This contract represents a minor modification to the existing AVS registration process for AVSs who opt into using the KeyRegistrar, with Operators registering key material prior to AVS registration rather than during registration.
 
-**Simplified Multi-Chain Operations:**
+## Staker Impact
 
-- **Single Registration**: One key registration process via `KeyRegistrar` works across all target chains
-- **Unified Monitoring**: Monitor operator health and performance through consistent interfaces
-- **Reduced Infrastructure**: No need to maintain separate verification infrastructure per chain
-
-**New Economic Opportunities:**
-
-- **Transport Services**: Qualified operators can participate in stake table generation and transport (post-Preview)
-- **Premium Services**: Offer faster certificate generation for real-time applications
-- **Specialized Services**: Develop chain-specific optimizations while maintaining standard interfaces
-
-**Operational Requirements:**
-
-1. **Key Registration**: Register ECDSA or BN254 keys via `KeyRegistrar.registerKey()`
-2. **Certificate Generation**: Update operator software to produce standardized certificate formats
-3. **Multi-Chain Monitoring**: Track stake table updates across target chains
-4. **Security Hardening**: Enhanced key management practices given multi-chain exposure
-
-**Risk Considerations:**
-
-- **Increased Attack Surface**: Key compromise affects verification across all chains
-- **Stake Freshness**: Must monitor stake table staleness to ensure valid certificate generation
-- **Chain-Specific Risks**: Gas price volatility and network congestion on different chains
-
-## Application Developer Impact
-
-### Simplified Integration and Enhanced Capabilities
-
-**Developer Experience Improvements:**
-
-- **Unified Interface**: Single `CertificateVerifier` interface across all AVSs and chains
-- **Code Reusability**: 90%+ code reuse across chain deployments
-- **Reduced Integration Time**: From weeks to days for multi-chain AVS integration
-- **Predictable Gas Costs**: Verification costs are consistent and optimized across chains
-
-**New Integration Patterns:**
-
-- **Pull Model**: Direct operator requests for real-time data
-- **Push Model**: Consume cached results for high-throughput applications  
-- **Hybrid Model**: Optimize for both latency and freshness
-- **Custom Verification**: Implement business-specific verification logic around standard interfaces
-
-**Migration Path:**
-
-1. **Interface Update**: Replace custom verification with `CertificateVerifier` calls
-2. **Chain Deployment**: Deploy same contract logic to target chains
-3. **Certificate Handling**: Update front-end to handle standardized certificate formats
-4. **Monitoring Integration**: Add stake table freshness monitoring
-
-**Cost Optimization Opportunities:**
-
-- **L2 Gas Savings**: 10-100x gas cost reduction on Layer 2s vs Ethereum L1
-- **Batched Verification**: Verify multiple certificates in single transaction
-- **Selective Verification**: Choose verification frequency based on application requirements
-
-## Staker and Operator Set Impact
-
-### Enhanced Security and Transparency
-
-**Security Enhancements:**
-
-- **Ethereum-Rooted Security**: All stake originates and is secured on Ethereum L1
-- **Cryptographic Verification**: Merkle proofs ensure stake table integrity across chains
-- **Configurable Staleness**: AVSs set appropriate freshness requirements
-
-**Transparency Improvements:**
-
-- **Public Verification**: Stake table generation is cryptographically verifiable
-- **Monitoring Tools**: Real-time visibility into stake distribution and verification activity
-- **Emergency Procedures**: Clear escalation paths for operator ejection and key rotation
-
-## Infrastructure Provider Impact
-
-### New Business Models and Opportunities
-
-**EigenLabs (Preview Period):**
-
-- **Infrastructure Development**: Build and operate initial stake table generation and transport
-- **Standards Creation**: Establish patterns for future decentralized operation
-- **Community Building**: Support ecosystem adoption through tooling and documentation
-
-**Future Decentralized Providers:**
-
-- **Transport Services**: Generate revenue from stake table transport across chains
-- **Specialized Infrastructure**: Offer enhanced SLAs, faster updates, or premium features
-- **Integration Services**: Provide AVS migration and optimization consulting
-
-## Network Effects and Ecosystem Benefits
-
-### Compounding Value Creation
-
-**Immediate Network Effects:**
-
-- **Standard Interfaces**: Each new AVS increases value for app developers familiar with `CertificateVerifier`
-- **Cross-Chain Liquidity**: Stake efficiency improves as operators serve multiple chains
-- **Developer Ecosystem**: Shared tooling, documentation, and best practices
-
-**Long-Term Ecosystem Impact:**
-
-- **Security Scaling**: EigenLayer security extends to broader multi-chain ecosystem
-- **Innovation Acceleration**: Developers focus on unique value rather than infrastructure
-- **Reduced Fragmentation**: Prevents incompatible multi-chain solutions
-
-**Competitive Positioning:**
-
-- **First-Mover Advantage**: EigenLayer becomes the de facto multi-chain security standard
-- **Ecosystem Lock-In**: High switching costs once applications integrate multi-chain verification
-- **Platform Expansion**: Foundation for future multi-chain features and capabilities
-
-## Breaking Changes and Migration Considerations
-
-### Technical Breaking Changes
-
-**Certificate Format Changes:**
-
-```solidity
-// OLD: Custom signature formats per AVS
-bytes memory customSignature = avs.getSignature(taskId);
-
-// NEW: Standardized certificate structures
-ECDSACertificate memory cert = ECDSACertificate({
-    referenceTimestamp: uint32(block.timestamp),
-    messageHash: taskHash,
-    sig: concatenatedSignatures
-});
-```
-
-**Verification Interface Changes:**
-
-```solidity
-// OLD: AVS-specific verification
-bool valid = customAVS.verifyResult(result, signatures);
-
-// NEW: Standardized verification
-bool valid = certificateVerifier.verifyCertificateProportion(
-    operatorSet, certificate, [6600] // 66% threshold
-);
-```
-
-**Key Management Migration:**
-
-- **From**: AVS-specific key registries
-- **To**: Centralized `KeyRegistrar` with rotation support
-- **Benefits**: Reduced trust assumptions, standard key rotation procedures
-
-### Migration Timeline and Support
-
-**Phase 1 - Preparation:**
-
-- AVS deploys `OperatorTableCalculator`
-- Operators register keys in `KeyRegistrar`
-- Application developers review integration changes
-
-**Phase 2 - Parallel Operation:**
-
-- Run both legacy and multi-chain systems
-- Test certificate generation and verification
-- Monitor performance and debugging
-
-**Phase 3 - Full Migration:**
-
-- Cut over to multi-chain verification
-- Deprecate legacy systems
-- Optimize for multi-chain operation
-
-**Support Resources:**
-
-- Migration guides and best practices documentation
-- Developer support channels and office hours
-- Testing infrastructure and debugging tools
-- Reference implementations for common patterns
+Existing Stakers will be unaffected. Over time, the acceleration of AVS development may make new staking opportunities available.
 
 # Action Plan
 
-This section outlines the comprehensive implementation strategy for EigenLayer Multi-Chain Verification, including development phases, testing protocols, security measures, and long-term evolution plans.
+Development:
 
-## Implementation Phases
+- Code: Complete  
+- Testnet: deployed to Ethereum Sepolia and Base Sepolia.  
+- Audit: In progress
 
-- **Phase 1: Foundation and Preview Launch (2025)**: Support initial chains, enable integrations, gather feedback from the ecosystem. This includes the use of some trusted infrastructure during the preview period. Audit and ship on and offchain components. 
-- **Phase 2: Ecosystem Expansion and Optimization (Late 2025,early 2026)**: Expand the number of supported chains, make modular components of the architecture permissionless, iterate features and experience.
-- **Phase 3: Decentralization and Scaling (2026)**: Incorporate decentralized and/or staked operation of stake table generation and transport, optimize for cost and usability, consider expansion beyond the EVM.
+Multi-chain Support:
 
-## Risk Mitigation Strategies
+- Testnets: Ethereum Sepolia (L1, source chain), Base Sepolia (destination chain)  
+- Initial Chains: Ethereum (L1, source chain), Base (destination chain)  
+- Additional chains will be evaluated and added over time.
 
-**Centralization Risks (Preview Period):**
-
-- **Risk**: EigenLabs controls stake table generation
-- **Mitigation**: Public verification of all generated roots, open-source generation code, public challenges
-- **Timeline**: Decentralization by 2026
-
-**Cross-Chain Security Risks:**
-
-- **Risk**: Stake table corruption or manipulation
-- **Mitigation**: Cryptographic commitments, third party consensus mechanisms, emergency pausing
-- **Monitoring**: Real-time root verification, operator set monitoring
-
-**Key Management Risks:**
-
-- **Risk**: Operator key compromise affecting multiple chains and verification of malicious data
-- **Mitigation**: Key rotation procedures, emergency ejection mechanisms, forced stake table updates
-- **Best Practices**: Hardware security module requirements, multi-sig operator patterns
-
-## Testing and Quality Assurance
-
-**Testnet Validation:**
-
-- Comprehensive testing on Sepolia and Base Sepolia
-- Partner AVS integration testing with real workloads
-- Operator onboarding and training programs
-- Performance benchmarking and optimization
-
-**Mainnet Preview:**
-
-- Gradual rollout with limited AVS participation
-- Real economic incentives with constrained risk exposure
-- Continuous monitoring and feedback collection
-- Iterative improvements based on operational data
-
-# References & Relevant Discussions
+For the initial release, Global Operator Table Generation and Transport will be handled in-house by EigenLabs. In addition, access will initially be restricted to a whitelist of public preview participants. Over time, these limitations will be relaxed, including the decentralization of the Generator and Transporter roles.
