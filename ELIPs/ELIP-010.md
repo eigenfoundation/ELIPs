@@ -2,13 +2,13 @@
 | :---- | :---- | :---- | :---- | :---- |
 | [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [Rajath Alex](mailto:rajath@eigenlabs.org) | 2025-07-25 | `Draft` | [PR #1543](https://github.com/Layr-Labs/eigenlayer-contracts/pull/1543), [PR #515](https://github.com/Layr-Labs/eigenlayer-middleware/pull/515) | TBD |
 
-# ELIP-010: Hourglass, a Task-Based AVS Framework
+# ELIP-010: Mailbox for Hourglass, a Task-Based AVS Framework
 
 ---
 
 # Executive Summary
 
-**Hourglass** is a comprehensive framework and set of enabling contracts for the creation of task-based AVSs on EigenLayer. A task based AVS is one where Operator work is initiated, distributed, and completed in discrete tasks. This proposal introduces the `TaskMailbox` contract and supporting infrastructure that standardize how AVSs can create tasks, have operators execute them, and submit verified results on-chain.
+**Hourglass** is a comprehensive framework and set of enabling contracts for the creation of task-based AVSs on EigenLayer. A task based AVS is one where Operator work is initiated, distributed, and completed in discrete tasks. This proposal specifically introduces the `TaskMailbox` contract and supporting infrastructure that standardize how AVSs can create tasks, have Operators execute them, and submit verified results on-chain.
 
 The framework leverages the `CertificateVerifier` contracts and standards introduced in [ELIP-008](./ELIP-008.md#certificates--verification) to enable stake-weighted verification of operator outputs across multiple chains. By providing a unified interface for task lifecycle management, this framework dramatically simplifies the development of task-based AVSs while maintaining the security guarantees of EigenLayer.
 
@@ -28,33 +28,61 @@ Currently, AVS developers face significant complexity when building task-based s
 1. **Task creation and management system** - Handling task lifecycle, storage, and state transitions
 2. **Result submission and verification logic** - Validating operator outputs and managing consensus
 3. **Fee distribution mechanisms** - Collecting fees from task creators and distributing to operators
-4. **Multi-signature aggregation** - Combining operator signatures to verify consensus
+4. **Multi-signature aggregation** - Combining Operator signatures to verify consensus
 
 This leads to:
 
 - **Duplicated effort** across AVS teams implementing similar functionality
 - **Security risks** from custom implementations of critical components
-- **Limited composability** between different AVS implementations
+- **Limited composability** between different AVS implementations, with difficult integration patterns
 - **High barrier to entry** for developers wanting to build task-based AVSs
 
-The Hourglass framework addresses these challenges by providing a standardized, battle-tested infrastructure for task-based AVS execution. By abstracting common patterns into reusable contracts, AVS developers can focus on their core business logic while leveraging proven infrastructure for task management, result verification, and fee distribution.
+The Hourglass framework addresses these challenges by providing a standardized framework and infrastructure for task-based AVS execution. By abstracting common patterns into reusable contracts or EigenLayer's core contracts, AVS developers can focus on their core business logic instead of task management, result verification, and fee distribution.
 
 # Features & Specification
 
 ## Overview
 
-The Hourglass framework consists of several key components:
+To support the Hourglass framework, a few components are needed:
 
-1. **TaskMailbox Contract** - Core infrastructure for task lifecycle management
+1. **`TaskMailbox` Contract** - Core infrastructure for task lifecycle management
 2. **AVS Task Hooks** - Customization points for AVS-specific logic
-3. **Certificate Verification** - Integration with ELIP-008's multi-chain verification system
-4. **Fee Management** - Built-in support for task fees with configurable splits
+3. **Certificate Verification** - Integration with [ELIP-008's](./ELIP-008.md) multi-chain verification system
+4. **Fee Management** - Built-in support for task fees with configurable splits between AVS's and their Operators and Stakers
+
+This specification lays out the mailbox contract and how it interacts with a templated AVS framework for task-based services, called Hourglass. This is the only on-chain architecture that is needed to support Hourglass architecture, outside of what is covered in ELIP-008. This Mailbox contract is *not limited* to use by task-based AVSs, and is provided as open-infrastructure of the protocol. It is, however, intended to work with developer tools like the EigenCloud DevKit.
 
 ## Core Components
 
 ### TaskMailbox
 
-The TaskMailbox serves as the central coordinator for task-based AVS operations:
+The `TaskMailbox` serves as the central coordinator for task-based AVS operations. The mailbox stores some configuration parameters for each enrolled Operator Set:
+
+```solidity
+/**
+    * @notice Configuration for the executor operator set
+    * @param taskHook Address of the AVS task hook contract
+    * @param taskSLA Time (in seconds) within which the task must be completed
+    * @param feeToken ERC20 token used for task fees
+    * @param curveType The curve type used for signature verification
+    * @param feeCollector Address to receive AVS fees
+    * @param consensus Consensus configuration for task verification
+    * @param taskMetadata Additional metadata for task execution
+    */
+struct ExecutorOperatorSetTaskConfig {
+    IAVSTaskHook taskHook;
+    uint96 taskSLA;
+    IERC20 feeToken;
+    IKeyRegistrarTypes.CurveType curveType;
+    address feeCollector;
+    Consensus consensus;
+    bytes taskMetadata;
+}
+```
+
+These parameters define logic for how long tasks live, how they are paid for, what verification scheme is used, and so on. Consensus is left as an open ended typing so that it may be expanded upon later. At the moment, stake weighted consensus is supported out of the box(`m of n` aggregation). A `none` type is provided as well so an AVS can define consensus elsewhere. Task hooks enable further customization in AVS contracts.
+
+The mailbox itself, after configured with the Operator Sets parameters, allows for origination and lifecycle management of a task. It provides functions for the AVS to start and end the lifecycle within the EigenLayer core contracts:
 
 ```solidity
 contract TaskMailbox {
@@ -75,9 +103,9 @@ contract TaskMailbox {
 
 ### Task Lifecycle
 
-Tasks follow a well-defined state machine:
+Tasks follow a well-defined state machine. Operator are intended to pick up tasks from the mailbox and execute the requests. Results are either posted or the task expires, following the `taskSLA` timer set above. The states are as follows:
 
-```solidity
+```mermaid
 NONE → CREATED → VERIFIED
          ↓
       EXPIRED
@@ -87,9 +115,11 @@ NONE → CREATED → VERIFIED
 2. **VERIFIED**: Result submitted and verified through consensus
 3. **EXPIRED**: Task SLA exceeded without valid result submission
 
+The 
+
 ### AVS Integration
 
-AVSs integrate through the IAVSTaskHook interface:
+AVSs integrate through the `IAVSTaskHook` interface:
 
 ```solidity
 interface IAVSTaskHook {
@@ -155,7 +185,9 @@ The TaskMailbox currently supports the following consensus types: `STAKE_PROPORT
 
 ## Fee Management
 
-The TaskMailbox implements a sophisticated fee system that handles collection, distribution, and refunds:
+The `TaskMailbox` implements a fee system that handles collection, distribution, and refunds. The fee is one-dimensional and tied to tasks. The AVS can set a fee, fee token, and parameters.
+
+There is a `feeSplit` that is left unused. This is a governed parameter for capturing protocol level fees, but, as of this proposal, is left at 0. This is implemented for forward comparability. Given the impact of this fee, any protocol-level fees will need their own proposals and consideration. Fee collection begins, if its implemented, with task creation.
 
 ### Fee Collection (Task Creation)
 
@@ -163,7 +195,7 @@ When a task is created:
 
 1. The AVS-specific `taskHook.calculateTaskFee()` determines the fee amount based on task parameters
 2. If a fee token is configured and fee > 0, the fee is transferred from the task creator to the TaskMailbox
-3. The current global `feeSplit` percentage is captured and stored with the task
+3. The current global `feeSplit` percentage (if any) is captured and stored with the task
 
 ```solidity
 // During task creation
@@ -175,10 +207,10 @@ if (taskConfig.feeToken != IERC20(address(0)) && avsFee > 0) {
 
 ### Fee Distribution (Task Verification)
 
-When a task result is successfully verified:
+When a task result is successfully verified (reaches the `VERIFIED` status):
 
 1. The fee is split based on the task's captured `feeSplit` percentage
-2. The split amount is sent to the global `feeSplitCollector` (protocol revenue)
+2. The split amount is sent to the global, governed `feeSplitCollector` (protocol revenue)
 3. The remaining amount is sent to the AVS's configured `feeCollector`
 
 ```solidity
@@ -195,7 +227,7 @@ if (avsAmount > 0) {
 
 ### Fee Refunds (Task Expiration)
 
-If a task expires without being completed:
+If a task expires (`EXPIRED` status) without being completed:
 
 1. Only the designated `refundCollector` can request a refund
 2. The full fee amount is refunded (no fee split applied)
@@ -210,18 +242,6 @@ function refundFee(bytes32 taskHash) external {
     task.isFeeRefunded = true;
     feeToken.safeTransfer(task.refundCollector, task.avsFee);
 }
-```
-
-### Global Fee Configuration
-
-The contract owner can configure global fee parameters:
-
-```solidity
-// Set protocol fee split percentage (0-10000 basis points)
-function setFeeSplit(uint16 _feeSplit) external onlyOwner;
-
-// Set protocol fee collector address
-function setFeeSplitCollector(address _feeSplitCollector) external onlyOwner;
 ```
 
 ## Multi-Chain Architecture
@@ -252,7 +272,7 @@ graph TD
 
 ### Reentrancy Protection
 
-All state-changing functions use OpenZeppelin's ReentrancyGuardUpgradeable to prevent reentrancy attacks.
+All state-changing functions use OpenZeppelin's `ReentrancyGuardUpgradeable` to prevent reentrancy attacks.
 
 ### Certificate Validation
 
@@ -303,7 +323,7 @@ The framework is designed as an opt-in addition that doesn't modify existing Eig
 ## AVS Developers
 
 - **Reduced Development Time**: Focus on core logic instead of infrastructure
-- **Proven Security**: Battle-tested components reduce vulnerability risks
+- **Core Protocol Security**: Audited common components reduce vulnerability risks in bespoke implementations
 - **Multi-Chain Ready**: Automatic support for cross-chain deployments
 
 ## Operators
@@ -334,4 +354,4 @@ TBD
 - [ELIP-008: Multi-Chain Verification](./ELIP-008.md)
 - [Hourglass Framework Repository](https://github.com/Layr-Labs/hourglass-monorepo)
 - [PR #1543: Core Contracts](https://github.com/Layr-Labs/eigenlayer-contracts/pull/1543)
-- [PR #515: Middleware Integration](https://github.com/Layr-Labs/eigenlayer-middleware/pull/515) 
+- [PR #515: Middleware Integration](https://github.com/Layr-Labs/eigenlayer-middleware/pull/515)
