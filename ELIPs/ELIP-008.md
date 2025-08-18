@@ -754,7 +754,7 @@ sequenceDiagram
 
 The `OperatorTableUpdater` is a contract deployed by EigenLabs to each destination chain to facilitate the transportation and rehydration Operator Tables. It maintains a set of valid `globalTableRoots` that are confirmed by a designated generator (using the certificate verification methods described below) along with the `referenceTimestamp` at which they were generated, and allows updating individual operator tables by providing merkle proofs against these roots. Both functions are permissionless.
 
-After the `globalTableRoot` is generated, a Transporter must provide the valid globalTableRoot certificate to the contract, then make calls to update each individual Operator Table in the `CertificateVerifier`. EigenLabs will perform this on a weekly cadence for all Operator Sets. In the case of forced updates, only the triggering Operator Sets will have their Operator Table updated. Other AVSs may permissionlessly update their Operator Table by submitting a valid proof if desired.
+After the `globalTableRoot` is generated, a Transporter must provide the valid `globalTableRoot` certificate to the contract, then make calls to update each individual Operator Table in the `CertificateVerifier`. EigenLabs will perform this on a weekly cadence for all Operator Sets. In the case of forced updates, only the triggering Operator Sets will have their Operator Table updated. Other AVSs may permissionlessly update their Operator Table by submitting a valid proof if desired.
 
 ```mermaid
 sequenceDiagram  
