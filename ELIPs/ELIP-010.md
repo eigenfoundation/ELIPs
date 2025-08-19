@@ -142,7 +142,7 @@ contract TaskMailbox {
 
 Tasks follow a well-defined state machine. Operator are intended to pick up tasks from the mailbox and execute the requests. Results are either posted or the task expires, following the `taskSLA` timer set above. The states are as follows:
 
-```mermaid
+```
 NONE → CREATED → VERIFIED
          ↓
       EXPIRED
