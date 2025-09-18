@@ -1,19 +1,14 @@
----
-title: EIP-011
-
----
-
-# EigenLayer Improvement Proposal ELIP-011: Programmatic Incentives v2.0
-
 | Author(s) | Created | Status | References | Discussions |
 |-------------|-----------|---------|------|----------|
-| [Robert Drost](mailto:robert@eigenfoundation.org),  [Brandon Curtis](mailto:brandon@eigenlabs.org) | 2025-09-17 | Draft | Listed at end of proposal |  |
+| [Robert Drost](mailto:robert@eigenfoundation.org),  [Brandon Curtis](mailto:brandon@eigenlabs.org) | 2025-09-18 | Draft | Listed at end of proposal |  |
+
+# EigenLayer Improvement Proposal ELIP-011: Programmatic Incentives v2.0
 
 ## Executive Summary
 
 This proposal builds upon the original programmatic incentives released in 2024, beginning in August of that year. Under the initial scheme, 3% EIGEN incentives were directed to ETH stakers, and 1% to EIGEN stakers, following the eligibility requirements outlined in [rewards v2 (ELIP-001)](https://github.com/eigenfoundation/ELIPs/blob/main/ELIPs/ELIP-001.md). Although the initial programmatic incentives were not explicitly versioned and preceded the ELIP process overall, for clarity we retroactively refer to them as **Programmatic Incentives v1 (PIv1)**.
 
-This ELIP proposes a single, focused modification to IIv1: increasing the programmatic incentives allocated to EIGEN stakers from **1%** to **4%**, while leaving eligibility requirements unchanged. This would mark the release of **Programmatic Incentives v2.0 (PIv2.0)**. The versioning indicates our expectation that additional refinements in the v2.x family will follow with no or only minor changes to the overall reward rate.
+This ELIP proposes a single, focused modification to PIv1: increasing the programmatic incentives allocated to EIGEN stakers from **1%** to **4%**, while leaving eligibility requirements unchanged. This would mark the release of **Programmatic Incentives v2.0 (PIv2.0)**. The versioning indicates our expectation that additional refinements in the v2.x family will follow with no or only minor changes to the overall reward rate.
 
 ## Motivation
 
@@ -39,19 +34,33 @@ The implementation of Programmatic Incentives v1 can be found in this commit 9cf
 
 [Deploy_ProgrammaticIncentives_Mainnet.s.sol](https://github.com/Layr-Labs/EigenHopper/commit/9cf6f41c936e4b524aa3e6c8e5441a719a6262a7)
 
-Lines 46 an 47 show the weekly token mint amounts that are currently directed to ETH and EIGEN stakers. 
+Lines 45 to 51 show the weekly token mint amounts that are directed to ETH and EIGEN stakers. 
 
-This ELIP introduces in effect a one-line change to line 46 the file, from
+This ELIP updates the EIGEN rewards for the new 4% rate, plus updates the token supply to include the first year of rewards, 
+
+from
 ```solidty
-uint256 public constant EIGEN_stakers_weekly_distribution = 321_855_128_516_280_769_230_770;
+// weekly amounts
+    uint256 public constant EIGEN_stakers_weekly_distribution = 321_855_128_516_280_769_230_770;
+    uint256 public constant ETH_stakers_weekly_distribution = 965_565_385_548_842_307_692_308;
+
+    uint256 public constant totalEigenSupply = 1673646668284660000000000000;
+    uint256 public constant yearlyPercentageEigenStakers = 1;
+    uint256 public constant yearlyPercentageEthStakers = 3;
 ```
 
 to 
 ```solidty
-uint256 public constant EIGEN_stakers_weekly_distribution = 1_287_420_514_065_123_076_923_080;
+// weekly amounts
+    uint256 public constant EIGEN_stakers_weekly_distribution = 1_346_839_922_406_590_295_857_988;
+    uint256 public constant ETH_stakers_weekly_distribution = 1_010_129_941_804_942_721_893_491;
+
+    uint256 public constant totalEigenSupply = 1_750_891_899_128_567_384_615_384_680;
+    uint256 public constant yearlyPercentageEigenStakers = 4;
+    uint256 public constant yearlyPercentageEthStakers = 3;
 ```
 
-This proposal is deliberately minimal. It adjusts only one parameter in the reward rate of incentives system, requiring no broader design or contract changes.
+This proposal is deliberately minimal. It adjusts only these parameters in the reward rate of incentives system, requiring no broader design or contract changes.
 
 ## Security Considerations
 Both internal and external security teams will be consulted to confirm that this change introduces no new vulnerabilities or attack vectors. Since it is purely a numerical update, no risks are currently expected.
@@ -99,6 +108,3 @@ Both internal and external security teams will be consulted to confirm that this
 [Twitter post of proposal outline announcement](https://x.com/eigenfoundation/status/1952400791693897896)
 
 [Forum post: Introducing Programmatic Incentives v2](https://forum.eigenlayer.xyz/t/introducing-programmatic-incentives-v2/14690)
-
-
-
