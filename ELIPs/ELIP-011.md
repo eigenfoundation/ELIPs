@@ -24,9 +24,7 @@ This proposal seeks to correct the imbalance by raising EIGEN staking incentives
 
 We note that at least one more follow-up proposal is anticipated in the v2 family, likely termed **PIv2.1**. While that proposal will not alter reward percentages, it will likely aim to adjust distribution criteria to further optimize staker and operator behavior through targeted incentives that improve EigenLayer and AVS capabilities.
 
-
 ## Features & Specification
-
 
 ### Modified code
 
@@ -79,7 +77,6 @@ Both internal and external security teams will be consulted to confirm that this
 
 ## Action Plan
 
-
 1. Implementation Phase
 - Modify contract parameters
 - Add and adapt tests
@@ -97,7 +94,6 @@ Both internal and external security teams will be consulted to confirm that this
 - Mainnet deployment
 
 ## References & Relevant Discussions
-
 
 [Programmatic Incentives v1](https://blog.eigencloud.xyz/introducing-programmatic-incentives-v1) and [v1 FAQs](https://docs.eigenfoundation.org/programmatic-incentives/programmatic-incentives-faq?utm_source=chatgpt.com)
 
