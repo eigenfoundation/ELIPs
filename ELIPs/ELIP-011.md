@@ -2,15 +2,17 @@
 |-------------|-----------|---------|------|----------|
 | [Robert Drost](mailto:robert@eigenfoundation.org),  [Brandon Curtis](mailto:brandon@eigenlabs.org) | 2025-09-18 | Draft | Listed at end of proposal |  |
 
-# EigenLayer Improvement Proposal ELIP-011: Programmatic Incentives v2.0
+# ELIP-011: Programmatic Incentives v2.0
 
-## Executive Summary
+---
+
+# Executive Summary
 
 This proposal builds upon the original programmatic incentives released in 2024, beginning in August of that year. Under the initial scheme, 3% EIGEN incentives were directed to ETH stakers, and 1% to EIGEN stakers, following the eligibility requirements outlined in [rewards v2 (ELIP-001)](https://github.com/eigenfoundation/ELIPs/blob/main/ELIPs/ELIP-001.md). Although the initial programmatic incentives were not explicitly versioned and preceded the ELIP process overall, for clarity we retroactively refer to them as **Programmatic Incentives v1 (PIv1)**.
 
 This ELIP proposes a single, focused modification to PIv1: increasing the programmatic incentives allocated to EIGEN stakers from **1%** to **4%**, while leaving eligibility requirements unchanged. This would mark the release of **Programmatic Incentives v2.0 (PIv2.0)**. The versioning indicates our expectation that additional refinements in the v2.x family will follow with no or only minor changes to the overall reward rate.
 
-## Motivation
+# Motivation
 
 Feedback around PIv1 indicated that the combined 4% reward rate effectively supported ETH staking through it 3% rewards, but was insufficient for EIGEN staking with only 1% rewards. 
 
@@ -24,9 +26,9 @@ This proposal seeks to correct the imbalance by raising EIGEN staking incentives
 
 We note that at least one more follow-up proposal is anticipated in the v2 family, likely termed **PIv2.1**. While that proposal will not alter reward percentages, it will likely aim to adjust distribution criteria to further optimize staker and operator behavior through targeted incentives that improve EigenLayer and AVS capabilities.
 
-## Features & Specification
+# Features & Specification
 
-### Modified code
+## Modified code
 
 The implementation of Programmatic Incentives v1 can be found in this commit 9cf6f41 of the EigenHopper repository:
 
@@ -60,10 +62,10 @@ to
 
 This proposal is deliberately minimal. It adjusts only these parameters in the reward rate of incentives system, requiring no broader design or contract changes.
 
-## Security Considerations
+# Security Considerations
 Both internal and external security teams will be consulted to confirm that this change introduces no new vulnerabilities or attack vectors. Since it is purely a numerical update, no risks are currently expected.
 
-## Impact Summary
+# Impact Summary
 
 **EIGEN Token Holders:** Stronger incentives and higher rewards for staking.
 
@@ -75,7 +77,7 @@ Both internal and external security teams will be consulted to confirm that this
 
 **Other Effects:** Total reward incentives rise from 4% to 7%, increasing the circulating supply more rapidly and potentially impacting market dynamics.
 
-## Action Plan
+# Action Plan
 
 1. Implementation Phase
 - Modify contract parameters
@@ -93,7 +95,7 @@ Both internal and external security teams will be consulted to confirm that this
 - Community testing period
 - Mainnet deployment
 
-## References & Relevant Discussions
+# References & Relevant Discussions
 
 [Programmatic Incentives v1](https://blog.eigencloud.xyz/introducing-programmatic-incentives-v1) and [v1 FAQs](https://docs.eigenfoundation.org/programmatic-incentives/programmatic-incentives-faq?utm_source=chatgpt.com)
 
