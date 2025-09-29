@@ -1,6 +1,6 @@
 | Author(s) | Created | Status | References | Discussions |
 |-------------|-----------|---------|------|----------|
-| [Robert Drost](mailto:robert@eigenfoundation.org),  [Brandon Curtis](mailto:brandon@eigenlabs.org) | 2025-09-18 | Draft | Listed at end of proposal |  |
+| [Robert Drost](mailto:robert@eigenfoundation.org),  [Brandon Curtis](mailto:brandon@eigenlabs.org), Matt Curtis | 2025-09-18 | Draft | Listed at end of proposal |  |
 
 # ELIP-011: Programmatic Incentives v2.0
 
@@ -28,39 +28,88 @@ We note that at least one more follow-up proposal is anticipated in the v2 famil
 
 # Features & Specification
 
-## Modified code
+## Contract Changes
 
-The implementation of Programmatic Incentives v1 can be found in this commit 9cf6f41 of the EigenHopper repository:
+A single change to the token hopper contracts is required to deploy this upgrade: the original constructor of the `ActionGenerator` read the value of `CALCULATION_INTERVAL_SECONDS` from the `RewardsCoordinator` to use as the 1 week distribution period. Since the deployment of PI V1, the `RewardsCoordinator` was upgraded to allow rewards distributions at a resolution of 1 day. To maintain the original functionality and weekly cadence of emissions, this value was hard-coded into the contract as 1 week.
 
-[Deploy_ProgrammaticIncentives_Mainnet.s.sol](https://github.com/Layr-Labs/EigenHopper/commit/9cf6f41c936e4b524aa3e6c8e5441a719a6262a7)
+## Configuration
 
-Lines 45 to 51 show the weekly token mint amounts that are directed to ETH and EIGEN stakers. 
+The implementation of Programmatic Incentives v1 can be found in this commit a3be1de of the EigenHopper repository:
 
-This ELIP updates the EIGEN rewards for the new 4% rate, plus updates the token supply to include the first year of rewards, 
+[Deploy_ProgrammaticIncentives_Mainnet.s.sol](https://github.com/Layr-Labs/EigenHopper/blob/a3be1de22fb450d1ceeacda6b0d8d1515acd7eeb/script/Deploy_ProgrammaticIncentives_Mainnet.s.sol)
 
-from
-```solidty
-// weekly amounts
-    uint256 public constant EIGEN_stakers_weekly_distribution = 321_855_128_516_280_769_230_770;
-    uint256 public constant ETH_stakers_weekly_distribution = 965_565_385_548_842_307_692_308;
+### Timestamps:
 
-    uint256 public constant totalEigenSupply = 1673646668284660000000000000;
-    uint256 public constant yearlyPercentageEigenStakers = 1;
-    uint256 public constant yearlyPercentageEthStakers = 3;
+The original hopper deployment included a single-time retrospective reward payment between August 15, 2024 and October 3, 2024\. Because this functionality is not needed for this timestamp, the `FIRST_SUBMISSION_TRIGGER_CUTOFF` has been set to 0\. While this logic could have been removed entirely, it was retained to minimize modifications of smart contracts.  
+
+The `FIRST_SUBMISSION_START_TIMESTAMP` has been updated to October 9, 2025, and is used as the startTime of the hopper, signifying the date that this token hopper will become functional and a rewards submission can be created. 
+
+```solidity
+    /// @dev The unix start timestamp of the first submission.
+    /// Rewards submissions are prevented before this date.
+    /// Must be a multiple of `CALCULATION_INTERVAL_SECONDS` (1 week).
+    uint32 internal constant FIRST_SUBMISSION_START_TIMESTAMP = 1759968000; // Thu Oct 09 2025 00:00:00 GMT+0000
+
+    /// @dev The cutoff unix timestamp of the first submission.
+    /// Before this cutoff, the `RewardAllStakersActionGenerator` uses special "catch-up" logic that allows
+    /// multiple weeks of rewards to be distributed in a single submission. This handles the case where
+    /// the rewards distribution might start late (e.g., if deployed after `FIRST_SUBMISSION_START_TIMESTAMP`).
+    /// After this cutoff, normal weekly distribution logic applies (one week of rewards per submission).
+    /// NOTE: PIV2 DOES NOT USE "CATCH-UP" LOGIC. Hence, this value is set to 0.
+    uint256 internal constant FIRST_SUBMISSION_TRIGGER_CUTOFF = 0; // Thu Jan 01 1970 00:00:00 GMT+0000
 ```
 
-to 
-```solidty
-// weekly amounts
-    uint256 public constant EIGEN_stakers_weekly_distribution = 1_346_839_922_406_590_295_857_988;
-    uint256 public constant ETH_stakers_weekly_distribution = 1_010_129_941_804_942_721_893_491;
+As with the V1 implementation, V2 will be launched with no explicit expiration date, and will be rendered inoperable by the removal of minting rights by the Protocol Council.
 
-    uint256 public constant totalEigenSupply = 1_750_891_899_128_567_384_615_384_680;
-    uint256 public constant yearlyPercentageEigenStakers = 4;
-    uint256 public constant yearlyPercentageEthStakers = 3;
+### Reward Amounts:
+
+The V1 token hopper used the total EIGEN supply at launch as the basis for the weekly minted EIGEN. The total inflation rate was 4% with EIGEN receiving 1/4 and ETH receiving 3/4 of that inflation on a weekly basis. 
+
+V1 Emissions:
+
+- Total Supply \= 1,673,646.66828466   
+- Weekly Emissions to EIGEN stakers \= 321,855.128516280769230770  
+- Weekly Emissions to ETH stakers \= 965,565.385548842307692308
+
+With this deployment the total supply will be updated to the total supply on October 9, 2025, with the weekly amounts derived from that value. The total inflation rate has been updated to 7% with EIGEN receiving 4/7 and ETH receiving 3/7 of that value.
+
+V2 Emissions
+
+- Total Supply \= 1,750,891,899.128567384615384679  
+- Weekly Emissions to EIGEN stakers \= 1,346,839.922406590295857988  
+- Weekly Emissions to ETH stakers \= 1,010,129.941804942721893491
+
+### Multipliers:
+
+Over the past year, the relative value of LSTs qualifying for PI have changed. Since Strategy multipliers are set in the ActionGenerator on deployment, they will be updated to reflect their relative values as of ethereum block 23426354\. At this time, there will be no change to the Strategies that qualify for programmatic incentives.
+
+The full changes to the deployment and testing methodology can be viewed [here](https://github.com/Layr-Labs/EigenHopper/pull/10).
+
+# Architecture: 
+
+The architecture of PIV2 remains the same as V1. We deploy an immutable tokenHopper contract which contains a rewards submission that will programmatically be sent every week to the RewardsCoordinator.
+
+```mermaid
+flowchart TD
+    N[Nethermind] -->|1. pressButton| TH[tokenHopper]
+    TH -->|2. mint| BE[bEIGEN]
+    BE -->|3. sends bEIGEN| TH
+    TH -->|4. Wraps bEIGEN into EIGEN| BE
+    TH -->|5. rewardAllEarners| RC[RewardsCoordinator]
 ```
 
-This proposal is deliberately minimal. It adjusts only these parameters in the reward rate of incentives system, requiring no broader design or contract changes.
+# Upgrade Script
+
+The upgrade script proceeds in four phases
+
+1. Friday, September 26th: Deploy TokenHopper: `1-eoa.s.sol`  
+2. Friday, September 26th: Queue Granting Minting Rights: `2-queueGrantMintingRights.s.sol‎`  
+   * Remove the old token hopper as a minter of `bEIGEN`  
+   * Add the new token hopper as a minter of `bEIGEN`  
+3. Friday, October 3rd: Set rewards permissions. *Note: This step will be completed after the final PIV1 submission has been executed.*  
+   * Remove the old hopper from sending rewards for all earners  
+   * Allow the new hopper to send rewards for all earners  
+4. Monday, October 6th \- Wednesday October 9th. Execute granting minting rights from step 2
 
 # Security Considerations
 Both internal and external security teams will be consulted to confirm that this change introduces no new vulnerabilities or attack vectors. Since it is purely a numerical update, no risks are currently expected.
