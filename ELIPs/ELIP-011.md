@@ -109,7 +109,9 @@ The upgrade script proceeds in four phases
 3. Friday, October 3rd: Set rewards permissions. *Note: This step will be completed after the final PIV1 submission has been executed.*  
    * Remove the old hopper from sending rewards for all earners  
    * Allow the new hopper to send rewards for all earners  
-4. Monday, October 6th \- Wednesday October 9th. Execute granting minting rights from step 2
+4. Monday, October 6th \- Wednesday October 8th. Execute granting minting rights from step 2.
+5. Thursday, October 9th: Begin PI v2 staking rate.
+6. Tuesday, October 14th: First PI v2 rewards distribution.
 
 # Security Considerations
 Both internal and external security teams will be consulted to confirm that this change introduces no new vulnerabilities or attack vectors. Since it is purely a numerical update, no risks are currently expected.
