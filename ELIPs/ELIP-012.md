@@ -86,7 +86,7 @@ The Incentive Council multi-sig has a few contract calls for which it is permiss
 Incentive Council Functions:
 
 ```solidity
-* addDistribution(weight{/*proportion of emissions, weekly*/}, distribution-type{/*see below*/}, strategiesAndMultipliers(/*assets incentivized*/))  
+* addDistribution(weight{/*proportion of emissions, weekly*/}, distributionType{/*see below*/}, strategiesAndMultipliers(/*assets incentivized*/))  
   * Manual distributions need to go to the multisig.  
 * updateDistribution(index)  
 * //External to EigenLayer Core: Add or remove members of the Incentive Council multi-sig
