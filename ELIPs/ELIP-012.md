@@ -61,9 +61,9 @@ The Council’s mandates and responsibilities will evolve over time as it conduc
 
 ## Specifications
 
-The Incentive Council will operate within the existing EigenLayer contract architecture and build upon the programmatic incentives framework already deployed. Today’s Programmatic Incentives contract structure and architecture consist of the Hopper → ActionGenerator → RewardsCoordinator pipeline, which mints and distributes EIGEN according to predefined lists of qualifying assets and fixed distribution parameters.
+The Incentive Council will operate within the existing EigenLayer contract architecture and build upon the programmatic incentives framework already deployed. Today’s Programmatic Incentives contract structure and architecture consist of the `Hopper` → `ActionGenerator` → `RewardsCoordinator` pipeline, which mints and distributes EIGEN according to predefined lists of qualifying assets and fixed distribution parameters.
 
-Under the current programmatic incentives framework, the Hopper triggers the ActionGenerator weekly. When invoked, the ActionGenerator mints new EIGEN based on a fixed inflation schedule and calls createRewardsForAllEarners on the RewardsCoordinator. Rewards are then distributed to any Operator registered to at least one AVS. The set of incentivized assets and amounts is hardcoded into the ActionGenerator. There were anticipated enhancements which would have required follow-on ELIPs to create and later modify any new incentive programs.
+Under the current programmatic incentives framework, the `Hopper` triggers the `ActionGenerator` weekly. When invoked, the `ActionGenerator` mints new EIGEN based on a fixed inflation schedule and calls `createRewardsForAllEarners` on the `RewardsCoordinator`. Rewards are then distributed to any Operator registered to at least one AVS. The set of incentivized assets and amounts is hardcoded into the `ActionGenerator`. There were anticipated enhancements which would have required follow-on ELIPs to create and later modify any new incentive programs.
 
 ![Current Programmatic Incentives Architecture](../assets/elip-012/figure-01.png)
 
@@ -86,7 +86,7 @@ The Incentive Council multi-sig has a few contract calls for which it is permiss
 Incentive Council Functions:
 
 ```solidity
-* addDistribution (weight{int}, distribution-type{see below}, strategiesAndMultipliers())  
+* addDistribution(weight{/*proportion of emissions, weekly*/}, distribution-type{/*see below*/}, strategiesAndMultipliers(/*assets incentivized*/))  
   * Manual distributions need to go to the multisig.  
 * updateDistribution(index)  
 * //External to EigenLayer Core: Add or remove members of the Incentive Council multi-sig
@@ -97,14 +97,14 @@ The Protocol Council retains or gains certain functions with regard to EigenLaye
 Protocol Council Functions:
 
 ```solidity
-* Upgrade the Action Generator under time-lock  
-* Set Incentive Council multisig address that can interface with the `ActionGenerator` using the above functions.   
-* Modification of the top level token emission as a proportion of supply annually (set to the full announced annual emission for PIv2 of 8% by this ELIP) on a time-lock
+* Upgrade(actionGenerator) // upgrade the Action Generator under time-lock  
+* SetCouncil(addr) // Sets the Incentive Council multisig address that can interface with the `ActionGenerator` using the above functions   
+* Update EIGEN Supply Emitted // Modification of the top level token emission as a proportion of supply annually (set to the full announced annual emission for PIv2 of 8% by this ELIP) on a time-lock
 ```
 
 ### Action Generator
 
-The `ActionGenerator` today is a contract with EIGEN minting privileges that is triggered by the Hopper. When triggered, it mints new EIGEN tokens and calls `createRewardsForAllEarners` on the `RewardsCoordinator` to distribute supply side incentives that require only that an Operator is registered to at least one AVS. This process is currently run weekly. The amounts minted and list of assets that qualify for Programmatic Incentives are hard coded into the contract.
+The `ActionGenerator` today is a contract with EIGEN minting privileges that is triggered by the `Hopper`. When triggered, it mints new EIGEN tokens and calls `createRewardsForAllEarners` on the `RewardsCoordinator` to distribute supply side incentives that require only that an Operator is registered to at least one AVS. This process is currently run weekly. The amounts minted and list of assets that qualify for Programmatic Incentives are hard coded into the contract.
 
 This ELIP proposes extending the `ActionGenerator` to include additional functionality and gauge weighting to more precisely direct incentives.
 
@@ -115,7 +115,7 @@ This ELIP makes the Incentive Council responsible for generating a set of weight
 A Distribution consists of N fields:
 
 * Weight: numerical weight used to calculate the proportion of the category that will be sent to this distribution.  
-* Distribution-type: selector indicating the function calls that will be used on the RewardsCoordinator.  
+* Distribution-type: selector indicating the function calls that will be used on the `RewardsCoordinator`.  
 * Strategies and Multipliers: Assets and relative values that are receiving incentives. These are needed for constructing the calldata of [a rewards distribution](https://github.com/Layr-Labs/eigenlayer-contracts/blob/main/docs/core/RewardsCoordinator.md#createavsrewardssubmission).
 
 Distribution Submission types may include:
@@ -162,7 +162,7 @@ To streamline the future implementation of rewards, these contracts will be depl
 
 ## Gauge Weighting
 
-To ensure a seamless transition to this incentive distribution mechanism, the minting and distribution of rewards will be controlled by the same `hopper` and `ActionGenerator` mechanism that was used for Programmatic Incentives. The default instantiation of incentive weights will match the current PI V2 exactly when the council and any contract changes go live. Any subsequent changes will require Incentive Council weight updates.
+To ensure a seamless transition to this incentive distribution mechanism, the minting and distribution of rewards will be controlled by the same `Hopper` and `ActionGenerator` mechanism that was used for Programmatic Incentives. The default instantiation of incentive weights will match the current PI V2 exactly when the council and any contract changes go live. Any subsequent changes will require Incentive Council weight updates.
 
 The gauge weighting system creates an on-chain observable commitment to future rewards flows that are not dependent upon ongoing liveness of the Incentive Council. The weekly minting cadence also strikes a balance between the amount of work the Incentive Council must do to update distributions and the amount of freshly minted EIGEN it controls at any given time.
 
@@ -204,7 +204,7 @@ Mitigations:
 
 * Such behavior would be immediately visible on-chain and carries severe reputational consequences, including removal from allowlists, loss of future incentives, and community-Protocol Council action  
 * The Incentive Council will maintain public eligibility criteria to discourage gaming  
-* AVSs must explicitly grant permission for ActionGenerator or the multisig to submit on their behalf, limiting accidental or unsolicited submissions
+* AVSs must explicitly grant permission for `ActionGenerator` or the multisig to submit on their behalf, limiting accidental or unsolicited submissions
 
 ## Misconfiguration or Malicious Use of Gauge Weights
 
@@ -213,7 +213,7 @@ Incorrect weights (e.g., 100% of a category allocated to a single AVS or a nonex
 Mitigations:
 
 * All top-level commitments (weekly minted tokens) remain hard-coded and cannot be changed without a new ELIP and Protocol Council approval.  
-* The ActionGenerator enforces weight normalization and fallback behavior (e.g., revert-to-default submissions if all weights are zero).  
+* The `ActionGenerator` enforces weight normalization and fallback behavior (e.g., revert-to-default submissions if all weights are zero).  
 * Council transparency reports and community monitoring help detect and challenge misaligned configurations.
 
 ## Abuse of Manual Distributions
@@ -254,7 +254,7 @@ Select the initial M-of-N membership per Charter. Deploy the Gnosis Safe, verify
 Coordinate comms across Labs, Foundation, and the Incentive Council. Explain the rationale, new incentive flow, timelines, and migration from current programmatic incentives. Update docs for AVSs, operators, and stakers.
 
 **5. Contract Changes: Testnet → Audit → Mainnet**  
-Implement ActionGenerator / Hopper upgrades and required permissioning changes. Deploy to testnet and run full end-to-end flows. Complete external audits, address findings, and schedule a time-locked mainnet upgrade. Publish final addresses and integration docs for AVSs.
+Implement `ActionGenerator` / `Hopper` upgrades and required permissioning changes. Deploy to testnet and run full end-to-end flows. Complete external audits, address findings, and schedule a time-locked mainnet upgrade. Publish final addresses and integration docs for AVSs.
 
 **6. Continuous Reporting & Oversight**  
 Council publishes regular transparency updates on weights, decisions, and observed outcomes. Community and Protocol Council monitor performance against success criteria and introduce follow-up ELIPs as needed.
