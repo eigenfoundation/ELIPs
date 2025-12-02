@@ -12,7 +12,7 @@ EigenLayer has reached a moment where it can expand its incentive architecture t
 
 As the protocol matures, the programmatic nature of the current approach limits optionality and speed for iterating on incentives and we must evolve how we deploy EIGEN emissions to encourage the productive use of stake and the generation of meaningful organic AVS yield.
 
-This proposal establishes a new Incentives Council, a focused, governance-accountable body empowered to direct how emissions are allocated while remaining firmly within limits defined by the Protocol Council and the underlying ELIP-approved inflation schedule. The council will help maintain the liveness of rewards distribution, encourage the continued growth of the EigenCloud ecosystem with agility and careful stewardship, and introduce fees that harness the value created across EigenCloud and AVSs that pass value to the EIGEN token to benefit the entire EigenCloud ecosystem.
+This proposal establishes a new Incentives Council, a focused, governance-accountable body empowered to direct how emissions are allocated while remaining firmly within limits defined by the Protocol Council and the underlying ELIP-approved inflation schedule. The Council will help maintain the liveness of rewards distribution, encourage the continued growth of the EigenCloud ecosystem with agility and careful stewardship, and introduce fees that harness the value created across EigenCloud and AVSs that pass value to the EIGEN token being used to operate in EigenLayer.
 
 # Motivation
 
@@ -28,7 +28,7 @@ There are a number of blockers to expanding Programmatic Incentives in this way:
 4. The immutability of Programmatic Incentives prevents rapid iteration targeting new forms of participation.  
 5. Modifications to Programmatic Incentives require extensive security and governance review (i.e. ELIP) by the Protocol Council, which was not designed or staffed with discretionary incentives in mind.
 
-This proposal seeks to resolve these issues by creating a new Incentives Council with the mission to direct the distribution of freshly minted EIGEN to incentivize behaviors aligned with ecosystem growth and token value accrual. The first of many challenges this council will address is how to ensure incentives motivate capital allocators to make productive stake allocations, unblocking mainnet AVS teams who need slashable stake to justify paying fees.
+This proposal seeks to resolve these issues by creating a new Incentive Council with the mission to direct the distribution of freshly minted EIGEN to incentivize behaviors aligned with ecosystem growth and protocol tokenonmics. The first of many challenges this council will address is how to ensure incentives motivate capital allocators to make productive stake allocations, unblocking mainnet AVS teams who need slashable stake to justify paying fees.
 
 The Incentives Council will have the discretion to evaluate participation, consider options and make updates without being forced to rely strictly on on-chain measurements. Utilizing the mechanisms described below, the Incentives Council will have the freedom to experiment with incentive distributions to best drive the growth of the Eigen Ecosystem.
 
@@ -47,7 +47,7 @@ This Council would be stood up with an ecosystem mandate to support…
 * AVSs to attract slashable and redistributable stake and incentive AVSs to pay rewards against that stake (unique staking incentives and discretionary rewards matching);  
 * New incentives programs that can experiment with distribution criteria that may include subjective elements or elements otherwise impossible to encode on-chain;  
 * New incentive programs to encourage and bootstrap Apps building, deploying, and scaling on EigenCloud and its ecosystem of AVSs and their operators and stakers;  
-* Establishing mechanisms to direct fees from EigenCloud usage back to EIGEN token holders.
+* Establish mechanisms using EigenCloud fees to pay participants who use the EIGEN token to run services and do the network’s operational work.
 
 The Council’s ongoing responsibilities will include…
 
