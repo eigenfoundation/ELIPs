@@ -8,7 +8,7 @@
 
 # Executive Summary
 
-**Slashing UX Improvements** is a tech debt-focused release that improves key parts of the EigenLayer Core user experience.
+**Slashing UX Improvements** is a tech debt-focused proposal that improves key parts of the EigenLayer Core user experience.
 
 These changes are fully backwards compatible and require no action from existing integrations unless they wish to take advantage of new functionality.
 
@@ -26,7 +26,7 @@ Since the launch of slashing ([ELIP-002](./ELIP-002.md)), several UX pain points
 
 ## Overview
 
-This release spans changes across EigenLayer Core contracts. As part of this release, we are upgrading *all* core contracts to take advantage of size savings from deprecating the `SemverMixin.sol` across the Core Protocol. The EIGEN and bEIGEN token will *not* be upgraded. 
+This proposal spans changes across EigenLayer Core contracts. As part of this proposal, we are upgrading *all* core contracts to take advantage of size savings from deprecating the `SemverMixin.sol` across the Core Protocol. The EIGEN and bEIGEN token will *not* be upgraded. 
 
 As part of this upgrade, we are also updating the `MerkleLib` used by several contracts in the core that check signatures. Refer to the [audit report](https://github.com/Layr-Labs/eigenlayer-contracts/blob/main/audits/EigenLayer%20Merkle%20-%20Certora%20-%20Security%20Assessment%20Final%20Report%20-%20July%202025.pdf) and [PR](https://github.com/Layr-Labs/eigenlayer-contracts/pull/1606) for more information. 
 
@@ -90,7 +90,7 @@ function getSlasher(OperatorSet memory operatorSet) external view returns (addre
 
 ### Migration for Existing Operator Sets
 
-Operator sets created prior to this release will have their slasher migrated based on the following rules:
+Operator sets created prior to this proposal will have their slasher migrated based on the following rules:
 
 1. If there is no slasher set or the slasher in the `PermissionController` is the zero address, the AVS address will be set as the slasher.
 2. If there are multiple slashers set in the `PermissionController`, the first address will be set as the slasher.
@@ -164,7 +164,7 @@ Previously, newly registered operators had to wait for the `ALLOCATION_CONFIGURA
 
 Now, when an operator registers via `DelegationManager.registerAsOperator`, their allocation delay now takes effect immediately. This allows operators to allocate slashable stake immediately after registration.
 
-For operators that existed prior to this release or for subsequent allocation delay changes, the `ALLOCATION_CONFIGURATION_DELAY` still applies.
+For operators that existed prior to this proposal or for subsequent allocation delay changes, the `ALLOCATION_CONFIGURATION_DELAY` still applies.
 
 ## Slashing Logic Consolidation
 
