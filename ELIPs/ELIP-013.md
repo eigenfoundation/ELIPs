@@ -18,7 +18,7 @@ Since the launch of slashing ([ELIP-002](./ELIP-002.md)), several UX pain points
 
 1. **Contract Size Limitations**: The `AllocationManager` has grown in complexity, approaching EVM bytecode size limits. This prevents adding new functionality and complicates maintenance.
 
-2. **Lack of Slashing Commitments**: AVSs cannot make credible commitments about who can slash their operator sets. The address that can slash can be instantaneously updated via the `PermissionController`, creating uncertainty for Operators and Stakers about slashing risk.
+2. **Lack of Slashing Commitments**: AVSs cannot make credible commitments about who can slash their operator sets. The address that can slash can be instantaneously updated via the `PermissionController`, creating uncertainty for Operators and Stakers about slashing risk. This can lead to a situation where an AVS may be able to instantly change the slashing logic without informing stakers and operators who may not wish to be subject to new slashing risks (or exploits, in the worst case).
 
 3. **Delayed Allocation for New Operators**: Newly registered operators must wait for the `ALLOCATION_CONFIGURATION_DELAY` (17.5 days) before they can allocate slashable stake. This creates unnecessary friction for new operators entering the ecosystem.
 
@@ -51,7 +51,7 @@ The main contract, `AllocationManager`, contains all state-mutating functions an
 
 A key pain point for AVSs is that they are unable to make credible commitments on the address that can slash an operator set. Previously, the address that could slash could be instantaneously updated in the `PermissionController`.
 
-Slasher permissions are now set and stored in the `AllocationManager` instead of the `PermissionController`. An operator set can have **at most one slasher**. Changing this slasher is subject to the `ALLOCATION_CONFIGURATION_DELAY` (17.5 days on mainnet).
+Slasher permissions are now set and stored in the `AllocationManager` instead of the `PermissionController`. An operator set can have **at most one slasher**. Changing this slasher is subject to the `ALLOCATION_CONFIGURATION_DELAY` (17.5 days on mainnet). This is to give stakers and operators time to withdraw or deallocate in the case that new slashing contracts are not aligned with their objectives. This also protects from exposed AVS configuration keys being able to immediately update slashing contracts to something that may be malicious.
 
 ### New Interfaces
 
