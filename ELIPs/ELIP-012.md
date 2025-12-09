@@ -12,7 +12,7 @@ EigenLayer has reached a moment where it can expand its incentive architecture t
 
 As the protocol matures, the programmatic nature of the current approach limits optionality and speed for iterating on incentives and we must evolve how we deploy EIGEN emissions to encourage the productive use of stake and the generation of meaningful organic AVS yield.
 
-This proposal establishes a new Incentives Council, a focused, governance-accountable body empowered to direct how emissions are allocated while remaining firmly within limits defined by the Protocol Council and the underlying ELIP-approved inflation schedule. The Council will help maintain the liveness of rewards distribution, encourage the continued growth of the EigenCloud ecosystem with agility and careful stewardship, and introduce fees that harness the value created across EigenCloud and AVSs that pass value to the EIGEN token being used to operate in EigenLayer.
+This proposal establishes a new Incentives Council, a focused, governance-accountable body empowered to direct how emissions are allocated while remaining firmly within limits defined by the Protocol Council and the underlying ELIP-approved inflation schedule. The Council will help maintain the liveness of rewards distribution and encourage the continued growth of the EigenCloud ecosystem with agility and careful stewardship.
 
 # Motivation
 
@@ -46,8 +46,7 @@ This Council would be stood up with an ecosystem mandate to support…
 
 * AVSs to attract slashable and redistributable stake and incentive AVSs to pay rewards against that stake (unique staking incentives and discretionary rewards matching);  
 * New incentives programs that can experiment with distribution criteria that may include subjective elements or elements otherwise impossible to encode on-chain;  
-* New incentive programs to encourage and bootstrap Apps building, deploying, and scaling on EigenCloud and its ecosystem of AVSs and their operators and stakers;  
-* Establish mechanisms using EigenCloud fees to pay participants who use the EIGEN token to run services and do the network’s operational work.
+* New incentive programs to encourage and bootstrap Apps building, deploying, and scaling on EigenCloud and its ecosystem of AVSs and their operators and stakers.
 
 The Council’s ongoing responsibilities will include…
 
