@@ -12,7 +12,7 @@ EigenLayer has reached a moment where it can expand its incentive architecture t
 
 As the protocol matures, the programmatic nature of the current approach limits optionality and speed for iterating on incentives and we must evolve how we deploy EIGEN emissions to encourage the productive use of stake and the generation of meaningful organic AVS yield.
 
-This proposal establishes a new Incentives Committee, a focused body empowered to direct how emissions are allocated while remaining firmly within limits defined by the Protocol Council and the underlying ELIP-approved inflation schedule. The Committee will help maintain the liveness of rewards distribution and encourage the continued growth of the EigenCloud ecosystem with agility and careful stewardship from Labs and Foundation employees.
+This proposal establishes a new Incentives Committee, a focused body empowered to direct how emissions are allocated while remaining firmly within limits defined by the Protocol Council and the underlying ELIP-approved inflation schedule. The Committee will help maintain the liveness of rewards distribution and encourage the continued growth of the EigenCloud ecosystem with agility and careful stewardship from Eigen Labs and Foundation employees.
 
 # Motivation
 
