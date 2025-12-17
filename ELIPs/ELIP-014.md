@@ -1,10 +1,10 @@
-# EigenLayer Improvement Proposal-014: Rewards v2.2 - Operator Set Rewards with Unique & Total Stake
+| Author(s) | Created | Status | References | Discussions |
+|-------------|-----------|---------|------|----------|
+| [Seri Choi](mailto:seri.choi@eigenlabs.org), [Matt Nelson](mailto:matt.nelson@eigenlabs.org) | 2025-12-12 | `Draft` | [Eigenlayer-contracts PR #1659](https://github.com/Layr-Labs/eigenlayer-contracts/pull/1659), [Sidecar PR #474](https://github.com/Layr-Labs/sidecar/pull/474), [Sidecar PR #476](https://github.com/Layr-Labs/sidecar/pull/476), [Sidecar PR #481](https://github.com/Layr-Labs/sidecar/pull/481) | N/A |
 
-| Author(s) | [Seri Choi](mailto:seri.choi@eigenlabs.org) |
-| :---- | :---- |
-| Created | December 12, 2025 |
-| Status | Draft |
-| References | [Eigenlayer-contracts PR #1659](https://github.com/Layr-Labs/eigenlayer-contracts/pull/1659), [Sidecar PR #474](https://github.com/Layr-Labs/sidecar/pull/474), [Sidecar PR #476](https://github.com/Layr-Labs/sidecar/pull/476), [Sidecar PR #481](https://github.com/Layr-Labs/sidecar/pull/481) |
+# ELIP-014: Rewards v2.2 - Operator Set Rewards with Unique & Total Stake
+
+---
 
 # Executive Summary
 
