@@ -8,7 +8,7 @@
 
 # Executive Summary
 
-This proposal introduces **Rewards v2.2**, a comprehensive extension to EigenLayer's Rewards v2 system that brings **automatic stake-weighted distribution** to operator sets. Building upon the foundation established in ELIP-001, this upgrade enables AVSs using AllocationManager to create both retroactive and forward-looking reward distributions (up to 2 years) based on **unique stake** or **total stake** within operator sets.
+This proposal introduces **Rewards v2.2**, a comprehensive extension to EigenLayer's Rewards v2 system that brings **automatic stake-weighted distribution** to Operator Sets. Building upon the foundation established in [ELIP-001](./ELIP-001.md), this upgrade enables AVSs using Operator Sets via the `AllocationManager` to create both retroactive and forward-looking reward distributions (up to 2 years) based on **unique stake** or **total stake** within Operator Sets.
 
 Rewards v2.2 introduces two new reward mechanisms:
 
@@ -22,21 +22,21 @@ Rewards v2.2 introduces two new reward mechanisms:
    - Distributes based on total delegated stake within operator sets
    - Supports both retroactive and future commitments (up to 2 years)
 
-This enhancement maintains full backward compatibility with existing Rewards v2 functionality while enabling AllocationManager-based AVSs to offer predictable, multi-period incentive structures.
+This enhancement maintains full backward compatibility with existing Rewards v2 functionality while enabling `AllocationManager`-based AVSs to offer predictable, multi-period incentive structures.
 
 # Motivation
 
-EigenLayer's current rewards architecture has a significant limitation: **AVSs using AllocationManager (required for operator sets) cannot create prospective, auto-weighted rewards.**
+EigenLayer's current rewards architecture has a significant limitation: **AVSs using the `AllocationManager` (required for Operator Sets) cannot create prospective, auto-weighted rewards.**
 
-While Rewards v1 provides forward-looking capabilities (up to 30 days) with automatic distribution, it only works for AVSDirectory-registered AVSs and distributes AVS-wide. Rewards v2.1 supports operator sets but only retroactively, requiring AVSs to manually calculate per-operator amounts without stake-weight indexing.
+While Rewards v1 provides forward-looking capabilities (up to 30 days) with automatic distribution, it only works with `AVSDirectory`-registered AVSs and distributes to the total stake weight of the AVS, ignoring factors like Operator performance or slashing risk. Rewards v2.1 supports Operator Sets but only retroactively, requiring AVSs to manually calculate per-operator amounts without stake-weight indexing.
 
-This creates significant limitations for operator sets:
+This creates significant limitations for Operator Sets:
 
-**Operator Investment Risk**: Without committed revenue streams, operators cannot justify infrastructure investments for long-term commitments, particularly problematic for AllocationManager-based AVSs with no alternative.
+**Operator Investment Risk**: Without committed revenue streams, operators cannot justify infrastructure investments for long-term commitments, which can be particularly problematic for AVSs needing Unique Stake or with costly operations.
 
-**Constrained Incentive Design**: AVSs cannot reward unique or total stake automatically, align with quarterly/annual cycles, or support insurance use cases requiring 1+ year commitments (v1's 30-day limit is insufficient).
+**Constrained Incentive Design**: AVSs cannot reward unique or total stake automatically, align with quarterly/annual cycles, or support insurance use cases longer duration commitments (v1's 30-day limit is insufficient).
 
-**Competitive Disadvantage**: Platforms offering predictable, auto-distributed rewards attract higher-quality operators and capital, while EigenLayer's modern AllocationManager AVSs lack this capability.
+**Competitive Disadvantage**: Platforms offering predictable, auto-distributed rewards attract higher-quality operators and capital, while EigenLayer's modern `AllocationManager` AVSs lack this capability.
 
 This impacts all AVSs seeking sustainable operator relationships, especially those with longer business cycles (quarterly planning, insurance markets, seasonal demand).
 
@@ -54,7 +54,11 @@ Rewards v2.2 is designed as an additive upgrade to Rewards v2 with the following
 
 5. **Backward Compatibility**: All existing v2/v2.1 functionality remains unchanged, enabling seamless integration without migration.
 
-6. **Queue-Aware Rewards**: Account for withdrawal and deregistration queues, ensuring fair compensation during slashable periods.
+6. **Queue-Aware Rewards**: Account for withdrawal and deregistration queues when distributing rewards, ensuring fair compensation during slashable periods.
+
+> 📚  **Note**
+>
+> If you need to familiarize yourself with concepts related to slashing like Operator Sets, Unique stake, and the `AllocationManager`, refer to [ELIP-002](./ELIP-002.md)
 
 # Features & Specification
 
@@ -66,11 +70,11 @@ Rewards v2.2 adds two new reward distribution mechanisms to the existing Rewards
 
 The high level flow is as follows:
 
-1. **AVS creates operator set rewards submission**:
+1. **AVS creates Operator Set rewards submission**:
    1. AVS gives an ERC20 token approval to the `RewardsCoordinator` for the total `amount` across all `rewardsSubmissions[]`.
    2. AVS calls either `createOperatorSetUniqueStakeRewardsSubmission()` or `createOperatorSetTotalStakeRewardsSubmission()` on the `RewardsCoordinator` with:
       - `operatorSet`: The operator set (AVS address + operator set ID)
-      - `rewardsSubmissions[]`: Array containing token, amount, duration, startTimestamp, strategiesAndMultipliers, and description
+      - `rewardsSubmissions[]`: Array containing `token`, `amount`, `duration`, `startTimestamp`, `strategiesAndMultipliers`, and `description`
    3. The `RewardsCoordinator` performs submission-time validation:
       - Validates timing constraints (`startTimestamp` can be retroactive or up to 2 years future, must be multiple of `CALCULATION_INTERVAL_SECONDS`)
       - Validates `duration` is non-zero and multiple of `CALCULATION_INTERVAL_SECONDS`
@@ -105,8 +109,9 @@ The high level flow is as follows:
    4. Claimed tokens are transferred to the specified recipient address.
 
 **Key Behavioral Notes**:
+
 - **Dynamic Weighting**: Stake weights are queried daily at execution time, not locked at submission. Individual operator shares fluctuate as relative stake changes; total daily rate (`amount/duration`) remains fixed.
-- **Refunds**: If operators are not registered to the operator set during the reward period, their allocated amounts are refunded to the AVS as distribution leaves (claimable via standard process).
+- **Refunds**: If operators are not registered to the Operator Set during the reward period, their allocated amounts are refunded to the AVS as distribution leaves (claimable via standard process).
 - **No Cancellation**: Once submitted, commitments are binding. Tokens are immediately escrowed and cannot be cancelled.
 - **Integration with Rewards v2**: Operator set rewards integrate with existing Rewards v2 infrastructure, including per-AVS operator splits set via `setOperatorAVSSplit()`.
 
@@ -215,7 +220,7 @@ struct RewardsSubmission {
 
 ### EigenLayer Sidecar
 
-The sidecar has been extended to support operator set rewards distribution with the following capabilities:
+The sidecar has been extended to support Operator Set rewards distribution with the following capabilities:
 
 - **Operator Set Rewards Distribution**: Six new tables (15-20) handle unique stake and total stake reward calculations at the operator set level, including operator distribution, staker distribution, and AVS refunds.
 
@@ -393,6 +398,7 @@ rewardsCoordinator.createOperatorSetUniqueStakeRewardsSubmission(
 **Token Escrow**: Tokens are immediately escrowed upon submission, guaranteeing distribution regardless of later AVS solvency. No cancellation - commitments are binding.
 
 **Slashing Risk Management**:
+
 - Unique stake is always slashable by definition
 - Operators remain slashable during 14-day deregistration queue with proportional reward adjustments
 - Stakers earn rewards during 14-day withdrawal queue (commensurate with risk)
@@ -422,7 +428,7 @@ rewardsCoordinator.createOperatorSetUniqueStakeRewardsSubmission(
 
 5. **Full Backward Compatibility**: All existing v2/v2.1 functionality preserved with seamless integration.
 
-6. **Incentivizes Security**: Unique stake rewards directly encourage slashable stake allocation to AVS operator sets.
+6. **Incentivize Security**: Unique stake rewards directly encourage slashable stake allocation to AVS operator sets.
 
 ## Cons
 
@@ -440,9 +446,9 @@ rewardsCoordinator.createOperatorSetUniqueStakeRewardsSubmission(
 
 The implementation of this ELIP will follow these key steps:
 
-1. **Upgrade EigenLayer Protocol**: Upgrade the `RewardsCoordinator` Transparent Proxy to implement `createOperatorSetUniqueStakeRewardsSubmission()` and `createOperatorSetTotalStakeRewardsSubmission()` with UAM compliance, increase `MAX_FUTURE_LENGTH` from 30 days to 365 days, and introduce logic specified [here](#eigenlayer-protocol).
+1. **Upgrade EigenLayer Protocol**: Upgrade the `RewardsCoordinator` Transparent Proxy to implement `createOperatorSetUniqueStakeRewardsSubmission()` and `createOperatorSetTotalStakeRewardsSubmission()` with UAM compliance, increase `MAX_FUTURE_LENGTH` from 30 days to 365 days, and introduce logic specified [for the Eigen Layer Protocol](#eigenlayer-protocol).
 
-2. **Update EigenLayer Sidecar**: Cut a new release for the [EigenLayer Sidecar](https://github.com/Layr-Labs/sidecar) implementing Tables 15-20 for operator set rewards calculation, `magnitude/max_magnitude` snapshot tracking, withdrawal queue integration with slashing adjustments, and Sabine fork allocation/deallocation rounding logic specified [here](#eigenlayer-sidecar). All parties running rewards calculation MUST upgrade before the protocol upgrade block height.
+2. **Update EigenLayer Sidecar**: Cut a new release for the [EigenLayer Sidecar](https://github.com/Layr-Labs/sidecar) implementing Tables 15-20 for operator set rewards calculation, `magnitude/max_magnitude` snapshot tracking, withdrawal queue integration with slashing adjustments, and Sabine fork allocation/deallocation rounding logic specified [by the Sidecar](#eigenlayer-sidecar). All parties running rewards calculation MUST upgrade before the protocol upgrade block height.
 
 3. **Testing and Deployment**: Conduct security audits of contract extensions and sidecar logic, perform testnet deployment on Holesky/Sepolia with AVS partner testing, and validate performance with large operator sets and multiple submissions.
 
