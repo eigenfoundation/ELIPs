@@ -228,7 +228,7 @@ The sidecar has been extended to support Operator Set rewards distribution with 
 
 - **Withdrawal Queue Integration**: Extends rewards to stakers during the 14-day withdrawal period, with cumulative slashing multipliers applied to queued withdrawals.
 
-- **Fork Management**: Implements Sabine fork allocation/deallocation rounding logic (allocations round UP to next day, deallocations round DOWN to current day) with backward compatibility for pre-Sabine behavior.
+- **Fork Management**: Implements allocation/deallocation rounding logic (allocations round UP to next day, deallocations round DOWN to current day) with backward compatibility for pre-Rewards v2.2 behavior.
 
 The implementation merges all reward types (v1, v2, v2.1, v2.2 unique & total) in staging tables before generating final cumulative rewards for merkle tree distribution.
 
