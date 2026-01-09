@@ -1,6 +1,6 @@
 | Author(s) | Created | Status | References | Discussions |
 | :---- | :---- | :---- | :---- | :---- |
-| [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [Mike Muehl](mailto:michael.muehl@eigenlabs.org) | 2025-01-10 | Draft | [Duration Vault Strategy Implementation](https://github.com/Layr-Labs/eigenlayer-contracts/blob/7fdc1826845e814dc8999acab621017c44d08176/docs/core/DurationVaultStrategy.md) | [Forum discussion link] |
+| [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [Mike Muehl](mailto:michael.muehl@eigenlabs.org) | 2026-01-09 | Draft | [Duration Vault Strategy Implementation](https://github.com/Layr-Labs/eigenlayer-contracts/blob/7fdc1826845e814dc8999acab621017c44d08176/docs/core/DurationVaultStrategy.md) | [Forum discussion link] |
 
 # ELIP-015: Duration Vault Strategies
 
