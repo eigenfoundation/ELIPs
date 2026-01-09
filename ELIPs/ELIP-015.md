@@ -26,12 +26,39 @@ Without duration vaults, AVSs must rely on continuous Operator participation and
 
 # Features & Specification
 
+The full specification can be found in the [contract documentation](https://github.com/eigenfoundation/ELIPs/pull/new/elip-015).
+
 ## Core Architecture
 
 Duration Vault Strategy extends `StrategyBase` and introduces lifecycle-aware strategies through two new hooks:
 
 - `beforeAddShares`: Controls deposit acceptance based on vault state
 - `beforeRemoveShares`: Controls withdrawal queuing based on vault state
+
+```mermaid
+flowchart TB
+    subgraph Deployment
+        SF[StrategyFactory] -->|deploys| DVS
+    end
+
+    subgraph DurationVaultStrategy
+        DVS[DurationVaultStrategy]
+        DVS -->|inherits| SB[StrategyBase]
+        DVS -->|storage| DVSS[DurationVaultStrategyStorage]
+    end
+
+    subgraph Core["EigenLayer Core"]
+        SM[StrategyManager]
+        DM[DelegationManager]
+        AM[AllocationManager]
+        RC[RewardsCoordinator]
+    end
+
+    SM <-->|hooks| DVS
+    DVS -->|registers as operator| DM
+    DVS -->|allocates magnitude| AM
+    DVS -->|sets 0% split| RC
+```
 
 ## Vault Lifecycle
 
@@ -40,6 +67,36 @@ Duration vaults progress through three forward-only states:
 1. **DEPOSITS**: Vault accepts deposits up to configured caps. Stakers must delegate to the vault before depositing.
 2. **ALLOCATIONS**: Vault is locked, deposits/withdrawal queuing blocked. Full magnitude allocated to configured operator set.
 3. **WITHDRAWALS**: Duration elapsed, stake deallocated. Stakers can withdraw principal minus any slashing.
+
+```mermaid
+stateDiagram-v2
+    direction LR
+    
+    DEPOSITS: DEPOSITS
+    ALLOCATIONS: ALLOCATIONS  
+    WITHDRAWALS: WITHDRAWALS
+    
+    DEPOSITS --> ALLOCATIONS: lock()<br/>vaultAdmin only
+    ALLOCATIONS --> WITHDRAWALS: markMatured()<br/>anyone, after duration
+    
+    note right of DEPOSITS
+        ✓ Deposits
+        ✓ Queue withdrawals
+        ✗ Slashable
+    end note
+    
+    note right of ALLOCATIONS
+        ✗ Deposits
+        ✗ Queue withdrawals
+        ✓ Slashable*
+    end note
+    
+    note right of WITHDRAWALS
+        ✗ Deposits
+        ✓ Queue withdrawals
+        ✓ Slashable**
+    end note
+```
 
 ## Key Features
 
