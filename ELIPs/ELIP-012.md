@@ -114,13 +114,21 @@ The amount of EIGEN minted weekly (inflation rate) is set by governance and cann
 
 This ELIP makes the Incentives Committee responsible for generating a set of weighted Rewards Submissions (gauge weights).
 
+**Distribution Parameters:**
+
 A Distribution consists of the following fields:
 
-* Weight: numerical weight used to calculate the proportion of the total emissions that will be sent to this distribution.  
-* Distribution-type: selector indicating the function calls that will be used on the `RewardsCoordinator`.
-* OperatorSet: the specific operator set to reward (for operator set distributions).  
-* Strategies and Multipliers: Arrays of assets and relative values that are receiving incentives. These are needed for constructing the calldata of rewards distributions.
-* Start Epoch and Total Epochs: control the timing and duration of distributions.
+* **Weight** (`uint64`): A bips-denominated (basis points) weight used to calculate the proportion of total emissions allocated to this distribution. The sum of all active distribution weights cannot exceed `MAX_TOTAL_WEIGHT` (10,000 bips = 100%). The actual emission amount is calculated as: `EMISSIONS_INFLATION_RATE * weight / MAX_TOTAL_WEIGHT`.
+
+* **Distribution Type** (`DistributionType` enum): Selector that determines which `RewardsCoordinator` function will be invoked.
+
+* **Operator Set** (`OperatorSet` struct): Required only for `OperatorSetTotalStake` and `OperatorSetUniqueStake` distribution types. Must be registered with the `AllocationManager` before the distribution can be added.
+
+* **Strategies and Multipliers** (`IRewardsCoordinatorTypes.StrategyAndMultiplier[][]`): A 2D array of strategy addresses and their relative multiplier values that specify which assets receive incentives. Each inner array corresponds to a separate `RewardsSubmission` to the `RewardsCoordinator`. The emission amount is divided equally across all inner arrays. Not required for `Manual` distribution types.
+
+* **Start Epoch** (`uint64`): The epoch number when this distribution begins. Must be set to a future epoch (greater than the current epoch) when adding or updating distributions, preventing immediate processing and ensuring weight changes don't affect ongoing epochs.
+
+* **Total Epochs** (`uint64`): Controls the duration of the distribution. A value of `0` means infinite/perpetual distribution, `1` means a single epoch, and `N` means the distribution runs for exactly N epochs starting from `startEpoch`.
 
 Distribution Submission types include:
 
