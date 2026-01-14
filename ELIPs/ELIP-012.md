@@ -62,7 +62,7 @@ The Committee’s mandates and responsibilities will evolve over time as it cond
 
 The Incentives Committee will operate within the existing EigenLayer contract architecture and build upon the programmatic incentives framework already deployed. The previous Programmatic Incentives architecture used a `TokenHopper` → `ActionGenerator` → `RewardsCoordinator` pipeline. This has been replaced by the new `EmissionsController` contract, which consolidates the functionality of both the `TokenHopper` and `ActionGenerator` into a single contract with added gauge weighting capabilities.
 
-Under the new framework, the `EmissionsController` is triggered permissionlessly via the `pressButton()` function on a weekly epoch basis. When invoked, it mints new EIGEN based on a fixed inflation schedule and distributes rewards according to the configured distributions, calling various functions on the `RewardsCoordinator`. The Incentives Committee configures the gauge weights and distribution types, enabling flexible allocation of emissions across different AVSs and operator sets.
+Under the new framework, the `EmissionsController` is triggered permissionlessly via the `pressButton()` function on a weekly epoch basis. When invoked, the `EmissionsController` mints new EIGEN based on a fixed inflation schedule and distributes rewards according to the configured distributions, calling various functions on the `RewardsCoordinator`. The Incentives Committee configures the gauge weights and distribution types, enabling flexible allocation of emissions across different AVSs and operator sets.
 
 ![Current Programmatic Incentives Architecture](../assets/elip-012/figure-01.png)
 
@@ -108,7 +108,7 @@ Protocol Council Functions:
 
 The `EmissionsController` is a new unified contract that replaces the previous `TokenHopper` and `ActionGenerator` contracts. It consolidates their functionality and adds gauge weighting capabilities to enable more precise direction of incentives.
 
-The `EmissionsController` is triggered permissionlessly via the `pressButton()` function on a weekly epoch basis. When invoked, it mints new EIGEN tokens and distributes them according to configured distributions, calling various functions on the `RewardsCoordinator`.
+The `EmissionsController` is triggered permissionlessly via the `pressButton()` function on a weekly epoch basis. When invoked, the `EmissionsController` mints new EIGEN tokens and distributes them according to configured distributions, calling various functions on the `RewardsCoordinator`.
 
 The amount of EIGEN minted weekly (inflation rate) is set by governance and cannot be altered without the approval of the Protocol Council. Currently, as of [PIv2](https://github.com/eigenfoundation/ELIPs/blob/main/ELIPs/ELIP-011.md), the inflation rate is 7%, a subset of the full 8% announced for ongoing PI to include a flexible additional 1% for ecosystems initiative programs.
 
