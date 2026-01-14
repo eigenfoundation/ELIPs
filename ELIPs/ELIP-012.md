@@ -60,7 +60,7 @@ The Committee’s mandates and responsibilities will evolve over time as it cond
 
 ## Specifications
 
-The Incentives Committee will operate within the existing EigenLayer contract architecture and build upon the programmatic incentives framework already deployed. The previous Programmatic Incentives architecture used a `TokenHopper` → `ActionGenerator` → `RewardsCoordinator` pipeline. This has been replaced by the new `EmissionsController` contract, which consolidates the functionality of both the TokenHopper and ActionGenerator into a single contract with added gauge weighting capabilities.
+The Incentives Committee will operate within the existing EigenLayer contract architecture and build upon the programmatic incentives framework already deployed. The previous Programmatic Incentives architecture used a `TokenHopper` → `ActionGenerator` → `RewardsCoordinator` pipeline. This has been replaced by the new `EmissionsController` contract, which consolidates the functionality of both the `TokenHopper` and `ActionGenerator` into a single contract with added gauge weighting capabilities.
 
 Under the new framework, the `EmissionsController` is triggered permissionlessly via the `pressButton()` function on a weekly epoch basis. When invoked, it mints new EIGEN based on a fixed inflation schedule and distributes rewards according to the configured distributions, calling various functions on the `RewardsCoordinator`. The Incentives Committee configures the gauge weights and distribution types, enabling flexible allocation of emissions across different AVSs and operator sets.
 
@@ -100,7 +100,7 @@ Protocol Council Functions:
 ```solidity
 * Upgrade(EmissionsController) // upgrade the Emissions Controller under time-lock
 * setIncentiveCouncil(address newIncentiveCouncil) // Sets the Incentives Committee multisig address that can interface with the `EmissionsController` using the above functions
-* setFeeRecipient(address _feeRecipient) // Sets the fee recipient for RewardsCoordinator protocol fees
+* setFeeRecipient(address _feeRecipient) // Sets the fee recipient for `RewardsCoordinator` protocol fees
 * Update EIGEN Supply Emitted // Modification of the top level token emission as a proportion of supply annually (set to the full announced annual emission for PIv2 of 8% by this ELIP) on a time-lock
 ```
 
