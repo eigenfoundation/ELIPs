@@ -60,9 +60,9 @@ The Committee’s mandates and responsibilities will evolve over time as it cond
 
 ## Specifications
 
-The Incentives Committee will operate within the existing EigenLayer contract architecture and build upon the programmatic incentives framework already deployed. Today’s Programmatic Incentives contract structure and architecture consist of the `Hopper` → `ActionGenerator` → `RewardsCoordinator` pipeline, which mints and distributes EIGEN according to predefined lists of qualifying assets and fixed distribution parameters.
+The Incentives Committee will operate within the existing EigenLayer contract architecture and build upon the programmatic incentives framework already deployed. The previous Programmatic Incentives architecture used a `TokenHopper` → `ActionGenerator` → `RewardsCoordinator` pipeline. This has been replaced by the new `EmissionsController` contract, which consolidates the functionality of both the TokenHopper and ActionGenerator into a single contract with added gauge weighting capabilities.
 
-Under the current programmatic incentives framework, the `Hopper` triggers the `ActionGenerator` weekly. When invoked, the `ActionGenerator` mints new EIGEN based on a fixed inflation schedule and calls `createRewardsForAllEarners` on the `RewardsCoordinator`. Rewards are then distributed to any Operator registered to at least one AVS. The set of incentivized assets and amounts is hardcoded into the `ActionGenerator`. There were anticipated enhancements which would have required follow-on ELIPs to create and later modify any new incentive programs.
+Under the new framework, the `EmissionsController` is triggered permissionlessly via the `pressButton()` function on a weekly epoch basis. When invoked, it mints new EIGEN based on a fixed inflation schedule and distributes rewards according to the configured distributions, calling various functions on the `RewardsCoordinator`. The Incentives Committee configures the gauge weights and distribution types, enabling flexible allocation of emissions across different AVSs and operator sets.
 
 ![Current Programmatic Incentives Architecture](../assets/elip-012/figure-01.png)
 
@@ -80,14 +80,16 @@ This ELIP aligns protocol-level expectations with this charter, ensuring the Com
 
 #### Contract Function Calls
 
-The Incentives Committee multi-sig has a few contract calls for which it is permissioned. These functions are exposed on the `ActionGenerator` contract and are explained more thoroughly in the next section.
+The Incentives Committee multi-sig has a few contract calls for which it is permissioned. These functions are exposed on the `EmissionsController` contract and are explained more thoroughly in the next section.
 
 Incentives Committee Functions:
 
 ```solidity
-* addDistribution(weight{/*proportion of emissions, weekly*/}, distributionType{/*see below*/}, strategiesAndMultipliers(/*assets incentivized*/))  
-  * Manual distributions need to go to the multisig.  
-* updateDistribution(index)  
+* addDistribution(Distribution calldata distribution) returns (uint256 distributionId)
+  * Adds a new distribution with weight, type, operator set, and strategies/multipliers
+  * Manual distributions send EIGEN directly to the Incentives Committee multisig
+* updateDistribution(uint256 distributionId, Distribution calldata distribution)
+  * Updates an existing distribution's configuration
 * //External to EigenLayer Core: Add or remove members of the Incentives Committee multi-sig
 ```
 
@@ -96,38 +98,41 @@ The Protocol Council retains or gains certain functions with regard to EigenLaye
 Protocol Council Functions:
 
 ```solidity
-* Upgrade(actionGenerator) // upgrade the Action Generator under time-lock  
-* SetCommittee(addr) // Sets the Incentives Committee multisig address that can interface with the `ActionGenerator` using the above functions   
+* Upgrade(EmissionsController) // upgrade the Emissions Controller under time-lock
+* setIncentiveCouncil(address newIncentiveCouncil) // Sets the Incentives Committee multisig address that can interface with the `EmissionsController` using the above functions
+* setFeeRecipient(address _feeRecipient) // Sets the fee recipient for RewardsCoordinator protocol fees
 * Update EIGEN Supply Emitted // Modification of the top level token emission as a proportion of supply annually (set to the full announced annual emission for PIv2 of 8% by this ELIP) on a time-lock
 ```
 
-### Action Generator
+### EmissionsController
 
-The `ActionGenerator` today is a contract with EIGEN minting privileges that is triggered by the `Hopper`. When triggered, it mints new EIGEN tokens and calls `createRewardsForAllEarners` on the `RewardsCoordinator` to distribute supply side incentives that require only that an Operator is registered to at least one AVS. This process is currently run weekly. The amounts minted and list of assets that qualify for Programmatic Incentives are hard coded into the contract.
+The `EmissionsController` is a new unified contract that replaces the previous `TokenHopper` and `ActionGenerator` contracts. It consolidates their functionality and adds gauge weighting capabilities to enable more precise direction of incentives.
 
-This ELIP proposes extending the `ActionGenerator` to include additional functionality and gauge weighting to more precisely direct incentives.
+The `EmissionsController` is triggered permissionlessly via the `pressButton()` function on a weekly epoch basis. When invoked, it mints new EIGEN tokens and distributes them according to configured distributions, calling various functions on the `RewardsCoordinator`.
 
 The amount of EIGEN minted weekly (inflation rate) is set by governance and cannot be altered without the approval of the Protocol Council. Currently, as of [PIv2](https://github.com/eigenfoundation/ELIPs/blob/main/ELIPs/ELIP-011.md), the inflation rate is 7%, a subset of the full 8% announced for ongoing PI to include a flexible additional 1% for ecosystems initiative programs.
 
 This ELIP makes the Incentives Committee responsible for generating a set of weighted Rewards Submissions (gauge weights).
 
-A Distribution consists of N fields:
+A Distribution consists of the following fields:
 
-* Weight: numerical weight used to calculate the proportion of the category that will be sent to this distribution.  
-* Distribution-type: selector indicating the function calls that will be used on the `RewardsCoordinator`.  
-* Strategies and Multipliers: Assets and relative values that are receiving incentives. These are needed for constructing the calldata of [a rewards distribution](https://github.com/Layr-Labs/eigenlayer-contracts/blob/main/docs/core/RewardsCoordinator.md#createavsrewardssubmission).
+* Weight: numerical weight used to calculate the proportion of the total emissions that will be sent to this distribution.  
+* Distribution-type: selector indicating the function calls that will be used on the `RewardsCoordinator`.
+* OperatorSet: the specific operator set to reward (for operator set distributions).  
+* Strategies and Multipliers: Arrays of assets and relative values that are receiving incentives. These are needed for constructing the calldata of rewards distributions.
+* Start Epoch and Total Epochs: control the timing and duration of distributions.
 
-Distribution Submission types may include:
+Distribution Submission types include:
 
 1. `createRewardsForAllEarners` - supply side incentives requiring only delegation to an operator registered to at least one AVS via the AVSRegistry or AllocationManager.  
-2. `createOperatorSetTotalStakeRewardsSubmission` - Rewards distributed against Total Stake across Operators and their Stakers registered to a specific AVS in the `AllocationManager`.  
-3. `createOperatorSetUniqueStakeRewardsSubmission` - Rewards distributed against Unique Stake Allocations across Operators and their Stakers allocated to a specific AVS in the AllocationManager.  
-4. EigenDA Distribution - special case for EigenDA before OperatorSets are implemented.  
-5. `Manual Distribution` - Rewards that are sent directly to the Incentives Committee multisig for manual distribution.
+2. `createTotalStakeRewardsSubmission` - Rewards distributed against Total Stake across Operators and their Stakers registered to a specific operator set in the `AllocationManager`.  
+3. `createUniqueStakeRewardsSubmission` - Rewards distributed against Unique Stake Allocations across Operators and their Stakers allocated to a specific operator set in the AllocationManager.  
+4. `createAVSRewardsSubmission` - EigenDA Distribution - special case for EigenDA before OperatorSets are fully adopted.  
+5. `Manual` - Rewards that are sent directly to the Incentives Committee multisig for manual distribution.
 
-Gauges are weighted by percentage such that 100% of the minted EIGEN is distributed as configured. When minting is triggered, the `ActionGenerator` iterates through and submits each of these submissions on-chain.
+Gauges are weighted such that 100% of the minted EIGEN is distributed as configured. When minting is triggered via `pressButton()`, the `EmissionsController` iterates through active distributions and submits each of these submissions on-chain.
 
-AVSs receiving gauge weighted incentives must give the `ActionGenerator` permission to create the rewardsSubmission on their behalf via the `PermissionController`.
+AVSs receiving gauge weighted incentives must give the `EmissionsController` permission to create the rewardsSubmission on their behalf via the `PermissionController`.
 
 AVSs receiving manually distributed rewards must give the Incentives Committee permission to create the rewardsSubmission on their behalf via the `PermissionController`.
 
@@ -161,7 +166,7 @@ To streamline the future implementation of rewards, these contracts will be depl
 
 ## Gauge Weighting
 
-To ensure a seamless transition to this incentive distribution mechanism, the minting and distribution of rewards will be controlled by the same `Hopper` and `ActionGenerator` mechanism that was used for Programmatic Incentives. The default instantiation of incentive weights will match the current PI V2 exactly when the Committee and any contract changes go live. Any subsequent changes will require Incentives Committee weight updates.
+To ensure a seamless transition to this incentive distribution mechanism, the minting and distribution of rewards will be controlled by the new `EmissionsController` contract, which replaces the previous `TokenHopper` and `ActionGenerator` with a single unified contract that includes gauge weighting. The default instantiation of incentive weights will match the current PI V2 exactly when the Committee and any contract changes go live. Any subsequent changes will require Incentives Committee weight updates.
 
 The gauge weighting system creates an on-chain observable commitment to future rewards flows that are not dependent upon ongoing liveness of the Incentives Committee. The weekly minting cadence also strikes a balance between the amount of work the Incentives Committee must do to update distributions and the amount of freshly minted EIGEN it controls at any given time.
 
@@ -203,7 +208,7 @@ Mitigations:
 
 * Such behavior would be immediately visible on-chain and carries severe reputational consequences, including removal from allowlists, loss of future incentives, and community or Protocol Council action  
 * The Incentives Committee will maintain public eligibility criteria to discourage gaming  
-* AVSs must explicitly grant permission for `ActionGenerator` or the multisig to submit on their behalf, limiting accidental or unsolicited submissions
+* AVSs must explicitly grant permission for `EmissionsController` or the multisig to submit on their behalf, limiting accidental or unsolicited submissions
 
 ## Misconfiguration or Malicious Use of Gauge Weights
 
@@ -212,7 +217,7 @@ Incorrect weights (e.g., 100% of a category allocated to a single AVS or a nonex
 Mitigations:
 
 * All top-level commitments (weekly minted tokens) remain hard-coded and cannot be changed without a new ELIP and Protocol Council approval.  
-* The `ActionGenerator` enforces weight normalization and fallback behavior (e.g., revert-to-default submissions if all weights are zero).  
+* The `EmissionsController` enforces weight validation and continues processing distributions even if individual submissions fail.  
 * Committee transparency reports and community monitoring help detect and challenge misaligned configurations.
 
 ## Abuse of Manual Distributions
@@ -253,7 +258,7 @@ Select the initial M-of-N membership per Charter. Deploy the Gnosis Safe, verify
 Coordinate comms across Labs, Foundation, and the Incentives Committee. Explain the rationale, new incentive flow, timelines, and migration from current programmatic incentives. Update docs for AVSs, operators, and stakers.
 
 **5. Contract Changes: Testnet → Audit → Mainnet**  
-Implement `ActionGenerator` / `Hopper` upgrades and required permissioning changes. Deploy to testnet and run full end-to-end flows. Complete external audits, address findings, and schedule a time-locked mainnet upgrade. Publish final addresses and integration docs for AVSs.
+Deploy the new `EmissionsController` contract (which replaces the previous `TokenHopper` and `ActionGenerator`) along with `RewardsCoordinator` fee system upgrades and required permissioning changes. Deploy to testnet and run full end-to-end flows. Complete external audits, address findings, and schedule a time-locked mainnet upgrade. Publish final addresses and integration docs for AVSs.
 
 **6. Continuous Reporting & Oversight**  
 Committee publishes regular transparency updates on weights, decisions, and observed outcomes. Community and Protocol Council monitor performance against success criteria and introduce follow-up ELIPs as needed.
