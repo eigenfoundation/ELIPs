@@ -106,7 +106,7 @@ Protocol Council Functions:
 
 ### EmissionsController
 
-The `EmissionsController` is a new unified contract that replaces the previous `TokenHopper` and `ActionGenerator` contracts. It consolidates their functionality and adds gauge weighting capabilities to enable more precise direction of incentives.
+The `EmissionsController` is a new unified contract that replaces the previous `TokenHopper` and `ActionGenerator` contracts. It consolidates their functionality and adds gauge weighting capabilities to enable more precise direction of emissions.
 
 The `EmissionsController` is triggered permissionlessly via the `pressButton()` function on a weekly epoch basis. When invoked, the `EmissionsController` mints new EIGEN tokens and distributes them according to configured distributions, calling various functions on the `RewardsCoordinator`.
 
