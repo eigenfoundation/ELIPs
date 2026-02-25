@@ -1,6 +1,6 @@
 | Author(s) | Created | Status | References | Discussions |
 |-------------|-----------|---------|------|----------|
-| [Seri Choi](mailto:seri.choi@eigenlabs.org), [Matt Nelson](mailto:matt.nelson@eigenlabs.org) | 2025-12-12 | `Draft` | [Eigenlayer-contracts PR #1659](https://github.com/Layr-Labs/eigenlayer-contracts/pull/1659), [Sidecar PR #474](https://github.com/Layr-Labs/sidecar/pull/474), [Sidecar PR #476](https://github.com/Layr-Labs/sidecar/pull/476), [Sidecar PR #481](https://github.com/Layr-Labs/sidecar/pull/481) | N/A |
+| [Seri Choi](mailto:seri.choi@eigenlabs.org), [Matt Nelson](mailto:matt.nelson@eigenlabs.org) | 2025-12-12 | `Draft` | [Eigenlayer-contracts PR #1659](https://github.com/Layr-Labs/eigenlayer-contracts/pull/1659), [Sidecar PR #500](https://github.com/Layr-Labs/sidecar/pull/500) | N/A |
 
 # ELIP-014: Rewards v2.2 - Operator Set Rewards with Unique & Total Stake
 
@@ -12,12 +12,12 @@ This proposal introduces **Rewards v2.2**, a comprehensive extension to EigenLay
 
 Rewards v2.2 introduces two new reward mechanisms:
 
-1. **Unique Stake Weighted Rewards** (`createOperatorSetUniqueStakeRewardsSubmission()`):
+1. **Unique Stake Weighted Rewards** (`createUniqueStakeRewardsSubmission()`):
    - Distributes based on allocated unique stake within operator sets
    - First prospective reward mechanism for AllocationManager-based AVSs
    - Supports both retroactive and future commitments (up to 2 years)
 
-2. **Total Stake Weighted Rewards** (`createOperatorSetTotalStakeRewardsSubmission()`):
+2. **Total Stake Weighted Rewards** (`createTotalStakeRewardsSubmission()`):
    - Operator set analog to Rewards v1 (scoped instead of AVS-wide)
    - Distributes based on total delegated stake within operator sets
    - Supports both retroactive and future commitments (up to 2 years)
@@ -54,8 +54,6 @@ Rewards v2.2 is designed as an additive upgrade to Rewards v2 with the following
 
 5. **Backward Compatibility**: All existing v2/v2.1 functionality remains unchanged, enabling seamless integration without migration.
 
-6. **Queue-Aware Rewards**: Account for withdrawal and deregistration queues when distributing rewards, ensuring fair compensation during slashable periods.
-
 > 📚  **Note**
 >
 > If you need to familiarize yourself with concepts related to slashing like Operator Sets, Unique stake, and the `AllocationManager`, refer to [ELIP-002](./ELIP-002.md)
@@ -72,9 +70,9 @@ The high level flow is as follows:
 
 1. **AVS creates Operator Set rewards submission**:
    1. AVS gives an ERC20 token approval to the `RewardsCoordinator` for the total `amount` across all `rewardsSubmissions[]`.
-   2. AVS calls either `createOperatorSetUniqueStakeRewardsSubmission()` or `createOperatorSetTotalStakeRewardsSubmission()` on the `RewardsCoordinator` with:
+   2. AVS calls either `createUniqueStakeRewardsSubmission()` or `createTotalStakeRewardsSubmission()` on the `RewardsCoordinator` with:
       - `operatorSet`: The operator set (AVS address + operator set ID)
-      - `rewardsSubmissions[]`: Array containing `token`, `amount`, `duration`, `startTimestamp`, `strategiesAndMultipliers`, and `description`
+      - `rewardsSubmissions[]`: Array containing `token`, `amount`, `duration`, `startTimestamp`, and `strategiesAndMultipliers`
    3. The `RewardsCoordinator` performs submission-time validation:
       - Validates timing constraints (`startTimestamp` can be retroactive or up to 2 years future, must be multiple of `CALCULATION_INTERVAL_SECONDS`)
       - Validates `duration` is non-zero and multiple of `CALCULATION_INTERVAL_SECONDS`
@@ -82,23 +80,20 @@ The high level flow is as follows:
       - For **Unique Stake**: Validates operators have allocated unique stake to the operator set
       - For **Total Stake**: Validates operators are registered to the operator set
    4. Tokens are immediately transferred from AVS to `RewardsCoordinator` and escrowed (no cancellation possible).
-   5. An `OperatorSetRewardsSubmissionCreated` event is emitted with the operator set, submission nonce, submission hashes, and full submission details.
+   5. A `UniqueStakeRewardsSubmissionCreated` or `TotalStakeRewardsSubmissionCreated` event is emitted per submission with the caller, submission hash, operator set, submission nonce, and full submission details.
 
 2. **Off-chain infrastructure processes rewards**:
-   1. The [Sidecar](https://github.com/Layr-Labs/sidecar) listens for `OperatorSetRewardsSubmissionCreated` events and stores them.
+   1. The [Sidecar](https://github.com/Layr-Labs/sidecar) listens for `UniqueStakeRewardsSubmissionCreated` and `TotalStakeRewardsSubmissionCreated` events and stores them.
    2. The Sidecar generates reward roots on a **daily basis** (aligned to `CALCULATION_INTERVAL_SECONDS` = 1 day) taking into account:
       - Operator set rewards submissions (both unique and total stake variants)
-      - Per-AVS operator splits (if set via `setOperatorAVSSplit()` in Rewards v2)
+      - Per-operator-set operator splits (if set via `setOperatorSetSplit()`) with fallback to global default split
       - Operator registration status to the operator set during each daily snapshot
       - Stake snapshots:
         - **Unique Stake**: Queries `magnitude / max_magnitude` from `operator_allocation_snapshots` via AllocationManager
         - **Total Stake**: Queries total delegated shares from `operator_share_snapshots` via DelegationManager
-      - Withdrawal queue adjustments (stakers earn during 14-day withdrawal period)
-      - Deregistration queue handling (operators eligible during 14-day deregistration via `slashable_until`)
-      - Slashing adjustments (cumulative multipliers applied to queued withdrawals)
    3. For each daily snapshot during the reward `duration`:
       - Calculate: `operator_share = (operator_stake / total_operator_set_stake) × (amount / duration)`
-      - Distribute operator share according to per-AVS split (default 10%)
+      - Distribute operator share according to per-operator-set split (default 10%)
       - Distribute remaining share to stakers proportional to `strategiesAndMultipliers`
    4. The Root Updater retrieves the latest root from the sidecar and posts the root on a **weekly basis** by calling `submitRoot()` on the `RewardsCoordinator`.
 
@@ -113,7 +108,7 @@ The high level flow is as follows:
 - **Dynamic Weighting**: Stake weights are queried daily at execution time, not locked at submission. Individual operator shares fluctuate as relative stake changes; total daily rate (`amount/duration`) remains fixed.
 - **Refunds**: If operators are not registered to the Operator Set during the reward period, their allocated amounts are refunded to the AVS as distribution leaves (claimable via standard process).
 - **No Cancellation**: Once submitted, commitments are binding. Tokens are immediately escrowed and cannot be cancelled.
-- **Integration with Rewards v2**: Operator set rewards integrate with existing Rewards v2 infrastructure, including per-AVS operator splits set via `setOperatorAVSSplit()`.
+- **Integration with Rewards v2**: Operator set rewards integrate with existing Rewards v2 infrastructure, using per-operator-set splits set via `setOperatorSetSplit()` (distinct from the per-AVS `setOperatorAVSSplit()` used in v2 operator-directed rewards). The split lookup chain is: operator set split > global default split > 10% fallback.
 
 ## Low Level Specification
 
@@ -133,10 +128,10 @@ The `RewardsCoordinator` contract is extended with two new functions for operato
  * @param operatorSet The operator set to create rewards for
  * @param rewardsSubmissions Array of rewards submissions (can be retroactive or forward-looking up to 2 years)
  */
-function createOperatorSetUniqueStakeRewardsSubmission(
+function createUniqueStakeRewardsSubmission(
     OperatorSet calldata operatorSet,
     RewardsSubmission[] calldata rewardsSubmissions
-) external onlyWhenNotPaused(PAUSED_OPERATOR_SET_UNIQUE_STAKE_REWARDS) checkCanCall(operatorSet.avs) nonReentrant;
+) external onlyWhenNotPaused(PAUSED_UNIQUE_STAKE_REWARDS_SUBMISSION) checkCanCall(operatorSet.avs) nonReentrant;
 
 /**
  * @notice Create rewards for an operator set based on total delegated stake weight
@@ -145,23 +140,41 @@ function createOperatorSetUniqueStakeRewardsSubmission(
  * @param operatorSet The operator set to create rewards for
  * @param rewardsSubmissions Array of rewards submissions (can be retroactive or forward-looking up to 2 years)
  */
-function createOperatorSetTotalStakeRewardsSubmission(
+function createTotalStakeRewardsSubmission(
     OperatorSet calldata operatorSet,
     RewardsSubmission[] calldata rewardsSubmissions
-) external onlyWhenNotPaused(PAUSED_OPERATOR_SET_TOTAL_STAKE_REWARDS) checkCanCall(operatorSet.avs) nonReentrant;
+) external onlyWhenNotPaused(PAUSED_TOTAL_STAKE_REWARDS_SUBMISSION) checkCanCall(operatorSet.avs) nonReentrant;
 
 /**
- * @notice Emitted when operator set rewards submission is created
+ * @notice Emitted when a unique stake rewards submission is created
+ * @param caller The address calling the function (indexed)
+ * @param rewardsSubmissionHash Hash of the rewards submission (indexed)
  * @param operatorSet The operator set receiving rewards
  * @param submissionNonce Current nonce for this AVS
- * @param rewardsSubmissionHashes Array of hashes for each submission
- * @param rewardsSubmissions Array of reward submission details
+ * @param rewardsSubmission The reward submission details
  */
-event OperatorSetRewardsSubmissionCreated(
-    OperatorSet indexed operatorSet,
-    uint256 indexed submissionNonce,
-    bytes32[] rewardsSubmissionHashes,
-    RewardsSubmission[] rewardsSubmissions
+event UniqueStakeRewardsSubmissionCreated(
+    address indexed caller,
+    bytes32 indexed rewardsSubmissionHash,
+    OperatorSet operatorSet,
+    uint256 submissionNonce,
+    RewardsSubmission rewardsSubmission
+);
+
+/**
+ * @notice Emitted when a total stake rewards submission is created
+ * @param caller The address calling the function (indexed)
+ * @param rewardsSubmissionHash Hash of the rewards submission (indexed)
+ * @param operatorSet The operator set receiving rewards
+ * @param submissionNonce Current nonce for this AVS
+ * @param rewardsSubmission The reward submission details
+ */
+event TotalStakeRewardsSubmissionCreated(
+    address indexed caller,
+    bytes32 indexed rewardsSubmissionHash,
+    OperatorSet operatorSet,
+    uint256 submissionNonce,
+    RewardsSubmission rewardsSubmission
 );
 ```
 
@@ -174,7 +187,6 @@ struct RewardsSubmission {
     uint256 amount;
     uint32 startTimestamp;
     uint32 duration;
-    string description;
 }
 ```
 
@@ -182,7 +194,7 @@ struct RewardsSubmission {
 
 1. **Submission Time Validation**:
    - `startTimestamp` can be in the past (retroactive) or up to 2 years in the future
-   - `startTimestamp` cannot exceed `MAX_FUTURE_LENGTH` (upgraded from 30 days to 365 days)
+   - `startTimestamp` cannot exceed `MAX_FUTURE_LENGTH` (upgraded from 30 days to 2 years)
    - `duration` must be non-zero and reasonable
    - `amount` must be > 0
 
@@ -216,17 +228,13 @@ struct RewardsSubmission {
 
 3. **Slashable Stake**: Unique stake is always slashable by definition. Operators must have allocated unique stake to the operator set to be eligible for unique stake rewards.
 
-4. **14-Day Deregistration Queue**: For unique stake rewards, operators remain eligible during the 14-day deregistration queue period (tracked via `slashable_until` field), with rewards adjusted for any slashing events during this period.
-
 ### EigenLayer Sidecar
 
 The sidecar has been extended to support Operator Set rewards distribution with the following capabilities:
 
-- **Operator Set Rewards Distribution**: Six new tables (15-20) handle unique stake and total stake reward calculations at the operator set level, including operator distribution, staker distribution, and AVS refunds.
+- **Operator Set Rewards Distribution**: Seven new tables (15-21) handle unique stake and total stake reward calculations at the operator set level, including operator distribution, staker distribution, and AVS refunds.
 
-- **Snapshot Generation**: Captures `magnitude/max_magnitude` ratios for unique stake calculations and tracks operator registration periods with `slashable_until` field for 14-day deregistration queue handling.
-
-- **Withdrawal Queue Integration**: Extends rewards to stakers during the 14-day withdrawal period, with cumulative slashing multipliers applied to queued withdrawals.
+- **Snapshot Generation**: Captures `magnitude/max_magnitude` ratios for unique stake calculations and tracks operator registration periods within operator sets.
 
 - **Rounding Management**: Implements allocation/deallocation rounding logic (allocations round UP to next day, deallocations round DOWN to current day) with backward compatibility for pre-Rewards v2.2 behavior.
 
@@ -263,13 +271,12 @@ submissions[0] = RewardsSubmission({
     token: IERC20(rewardToken),
     amount: 100000e18,  // Total pool: 100,000 tokens
     startTimestamp: 1743465600,  // April 1st, 2025
-    duration: 90 days,
-    description: "Q2 2025 Unique Stake Rewards"
+    duration: 90 days
 });
 
 // AVS creates the submission - tokens are immediately escrowed
 // System will automatically calculate per-operator distribution based on unique stake weight
-rewardsCoordinator.createOperatorSetUniqueStakeRewardsSubmission(
+rewardsCoordinator.createUniqueStakeRewardsSubmission(
     operatorSet,
     submissions
 );
@@ -302,12 +309,11 @@ submissions[0] = RewardsSubmission({
     token: IERC20(rewardToken),
     amount: 50000e18,
     startTimestamp: 1704067200,  // January 1st, 2025 (in the past)
-    duration: 31 days,
-    description: "January 2025 Total Stake Rewards"
+    duration: 31 days
 });
 
 // Create retroactive rewards
-rewardsCoordinator.createOperatorSetTotalStakeRewardsSubmission(
+rewardsCoordinator.createTotalStakeRewardsSubmission(
     operatorSet,
     submissions
 );
@@ -341,8 +347,7 @@ submissions[0] = RewardsSubmission({
     token: IERC20(rewardToken),
     amount: 250000e18,
     startTimestamp: 1704067200,  // Jan 1, 2025
-    duration: 90 days,
-    description: "Insurance Rewards Q1 2025"
+    duration: 90 days
 });
 
 // Q2 2025
@@ -351,8 +356,7 @@ submissions[1] = RewardsSubmission({
     token: IERC20(rewardToken),
     amount: 250000e18,
     startTimestamp: 1711929600,  // Apr 1, 2025
-    duration: 91 days,
-    description: "Insurance Rewards Q2 2025"
+    duration: 91 days
 });
 
 // Q3 2025
@@ -361,8 +365,7 @@ submissions[2] = RewardsSubmission({
     token: IERC20(rewardToken),
     amount: 250000e18,
     startTimestamp: 1719792000,  // Jul 1, 2025
-    duration: 92 days,
-    description: "Insurance Rewards Q3 2025"
+    duration: 92 days
 });
 
 // Q4 2025
@@ -371,13 +374,12 @@ submissions[3] = RewardsSubmission({
     token: IERC20(rewardToken),
     amount: 250000e18,
     startTimestamp: 1727740800,  // Oct 1, 2025
-    duration: 92 days,
-    description: "Insurance Rewards Q4 2025"
+    duration: 92 days
 });
 
 // Create all quarterly submissions at once
 // Total: 1,000,000 tokens escrowed for full year
-rewardsCoordinator.createOperatorSetUniqueStakeRewardsSubmission(
+rewardsCoordinator.createUniqueStakeRewardsSubmission(
     operatorSet,
     submissions
 );
@@ -400,17 +402,12 @@ rewardsCoordinator.createOperatorSetUniqueStakeRewardsSubmission(
 **Slashing Risk Management**:
 
 - Unique stake is always slashable by definition
-- Operators remain slashable during 14-day deregistration queue with proportional reward adjustments
-- Stakers earn rewards during 14-day withdrawal queue (commensurate with risk)
-- Cumulative slash multipliers applied to queued withdrawals
 
 **Rate Manipulation Resistance**: While individual shares fluctuate with relative stake weight, total daily rate (`amount/duration`) is fixed at submission, preventing inflation attacks.
 
 ## System Integrity
 
 **Timing Validation**: `startTimestamp` constraints (up to 2 years, aligned to calculation intervals) prevent excessive future commitments and ensure proper alignment.
-
-**Withdrawal Queue Accounting**: Sophisticated tracking with slashing adjustments prevents double-counting or incorrect attribution during withdrawal periods.
 
 **Fork Safety**: Sabine fork introduces allocation/deallocation rounding logic with backward compatibility for consistent behavior across upgrades.
 
@@ -446,9 +443,9 @@ rewardsCoordinator.createOperatorSetUniqueStakeRewardsSubmission(
 
 The implementation of this ELIP will follow these key steps:
 
-1. **Upgrade EigenLayer Protocol**: Upgrade the `RewardsCoordinator` Transparent Proxy to implement `createOperatorSetUniqueStakeRewardsSubmission()` and `createOperatorSetTotalStakeRewardsSubmission()` with UAM compliance, increase `MAX_FUTURE_LENGTH` from 30 days to 365 days, and introduce logic specified [for the Eigen Layer Protocol](#eigenlayer-protocol).
+1. **Upgrade EigenLayer Protocol**: Upgrade the `RewardsCoordinator` Transparent Proxy to implement `createUniqueStakeRewardsSubmission()` and `createTotalStakeRewardsSubmission()` with UAM compliance, upgrade `MAX_FUTURE_LENGTH` from 30 days to 2 years, and introduce logic specified [for the Eigen Layer Protocol](#eigenlayer-protocol).
 
-2. **Update EigenLayer Sidecar**: Cut a new release for the [EigenLayer Sidecar](https://github.com/Layr-Labs/sidecar) implementing Tables 15-20 for operator set rewards calculation, `magnitude/max_magnitude` snapshot tracking, withdrawal queue integration with slashing adjustments, and Sabine fork allocation/deallocation rounding logic specified [by the Sidecar](#eigenlayer-sidecar). All parties running rewards calculation MUST upgrade before the protocol upgrade block height.
+2. **Update EigenLayer Sidecar**: Cut a new release for the [EigenLayer Sidecar](https://github.com/Layr-Labs/sidecar) implementing Tables 15-21 for operator set rewards calculation, `magnitude/max_magnitude` snapshot tracking, and Sabine fork allocation/deallocation rounding logic specified [by the Sidecar](#eigenlayer-sidecar). All parties running rewards calculation MUST upgrade before the protocol upgrade block height.
 
 3. **Testing and Deployment**: Conduct security audits of contract extensions and sidecar logic, perform testnet deployment on Holesky/Sepolia with AVS partner testing, and validate performance with large operator sets and multiple submissions.
 
