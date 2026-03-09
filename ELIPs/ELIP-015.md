@@ -1,6 +1,6 @@
 | Author(s) | Created | Status | References | Discussions |
 | :---- | :---- | :---- | :---- | :---- |
-| [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [Mike Muehl](mailto:michael.muehl@eigenlabs.org) | 2026-01-09 | Draft | [Duration Vault Strategy Implementation](https://github.com/Layr-Labs/eigenlayer-contracts/blob/7fdc1826845e814dc8999acab621017c44d08176/docs/core/DurationVaultStrategy.md) | [Forum discussion link] |
+| [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [Mike Muehl](mailto:michael.muehl@eigenlabs.org) | 2026-01-09 | Draft | [Duration Vault Strategy Implementation](https://github.com/Layr-Labs/eigenlayer-contracts/blob/main/docs/core/DurationVaultStrategy.md) | [Forum discussion link] |
 
 # ELIP-015: Duration Vault Strategies
 
@@ -26,7 +26,7 @@ Without duration vaults, AVSs must rely on continuous Operator participation and
 
 # Features & Specification
 
-The full specification can be found in the [contract documentation](https://github.com/eigenfoundation/ELIPs/pull/new/elip-015).
+The full specification can be found in the [contract documentation](https://github.com/Layr-Labs/eigenlayer-contracts/blob/main/docs/core/DurationVaultStrategy.md).
 
 ## Core Architecture
 
@@ -287,22 +287,23 @@ The Duration Vault Strategy integrates with core EigenLayer contracts:
 - [x] Integrate with `StrategyManager` hooks
 - [x] Deploy beacon proxy pattern via `StrategyFactory`
 
-## Phase 2: Testing & Auditing
+## Phase 2: Testing & Auditing (Completed)
 
-- [ ] Comprehensive unit and integration tests
-- [ ] Security audit of vault lifecycle and state transitions
-- [ ] Testnet deployment and validation
-- [ ] Community review period
+- [x] Comprehensive unit and integration tests
+- [x] Security audit of vault lifecycle and state transitions
+- [x] Testnet deployment and validation
+- [x] Community review period
 
 ## Phase 3: Deployment
 
-- [ ] Deploy StrategyFactory with duration vault beacon
-- [ ] Documentation and integration guides for AVSs
+- [x] Deploy StrategyFactory with duration vault beacon
+- [x] Documentation and integration guides for AVSs
 - [ ] Reference implementations for common use cases
 - [ ] Monitoring and tooling support
 
 # References & Relevant Discussions
 
-- [Duration Vault Strategy Technical Documentation](https://github.com/Layr-Labs/eigenlayer-contracts/blob/7fdc1826845e814dc8999acab621017c44d08176/docs/core/DurationVaultStrategy.md)
+- [Duration Vault Strategy Technical Documentation](https://github.com/Layr-Labs/eigenlayer-contracts/blob/main/docs/core/DurationVaultStrategy.md)
 - [StrategyFactory Implementation](https://github.com/Layr-Labs/eigenlayer-contracts/blob/main/src/contracts/strategies/StrategyFactory.sol)
 - [StrategyBase with Hooks](https://github.com/Layr-Labs/eigenlayer-contracts/blob/main/src/contracts/strategies/StrategyBase.sol)
+- [Audit Report](https://github.com/Layr-Labs/eigenlayer-contracts/blob/main/audits/Certora%20-%20Eigenlayer%20Duration%20Vaults.pdf)
