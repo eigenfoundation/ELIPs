@@ -1,6 +1,6 @@
 | Author(s) | Created | Status | References | Discussions |
 |-------------|-----------|---------|------|----------|
-| [Seri Choi](mailto:seri.choi@eigenlabs.org), [Matt Nelson](mailto:matt.nelson@eigenlabs.org) | 2025-12-12 | `Draft` | [Eigenlayer-contracts PR #1659](https://github.com/Layr-Labs/eigenlayer-contracts/pull/1659), [Sidecar PR #500](https://github.com/Layr-Labs/sidecar/pull/500) | N/A |
+| [Seri Choi](mailto:seri.choi@eigenlabs.org), [Matt Nelson](mailto:matt.nelson@eigenlabs.org) | 2025-12-12 | `merged` | [Eigenlayer-contracts PR #1659](https://github.com/Layr-Labs/eigenlayer-contracts/pull/1659), [Sidecar PR #500](https://github.com/Layr-Labs/sidecar/pull/500) | [Forum Post](https://forum.eigenlayer.xyz/t/merged-elip-14-operator-set-rewards-with-unique-and-total-stake/14783) |
 
 # ELIP-014: Rewards v2.2 - Operator Set Rewards with Unique & Total Stake
 
