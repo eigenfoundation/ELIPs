@@ -1,4 +1,4 @@
-# EigenLayer Improvement Proposal-001: Rewards v2
+# EigenLayer Improvement Proposal-016: Redistribution Delay
 
 | Author(s) | [Matt Curtis](mailto:matt.curtis@eigenlabs.org) |
 | :---- | :---- |
@@ -22,7 +22,7 @@ The existing implementation of slashing and burning/redistribution already invol
 - an operator is first slashed by calling `slashOperator` on the `AllocationManager`  
 - the assets are redistributed by calling `clearBurnOrRedistributableShares` on the `StrategyManager`. 
 
-As presently implemented, these functions can be called atomically. This proposal adds a 7-day (50,400 block) slash resolution delay before slashed shares can be burned or redistributed. A dedicated pause flag (PAUSED\_BURN\_OR\_REDISTRIBUTABLE\_SHARES) allows burn/redistribution to be paused independently of other flows.
+As presently implemented, these functions can be called atomically. This proposal adds a 7-day (50,400 block) slash resolution delay before slashed shares can be burned or redistributed. A dedicated pause flag (`PAUSED_BURN_OR_REDISTRIBUTABLE_SHARES`) allows burn/redistribution to be paused independently of other flows.
 
 In the `increaseBurnOrRedistributableShares` function of the StrategyManager called by the DelegationManager during slashing, a resolution block is set `SLASH_RESOLUTION_DELAY_BLOCKS` (set to 50,400) beyond the current block number for the first strategy a new slashId is recorded. Slashes initiated before this upgrade are grandfathered with a resolution block of 0 such that they all remain immediately clearable.
 
