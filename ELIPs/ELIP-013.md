@@ -1,6 +1,6 @@
 | Author(s) | Created | Status | References | Discussions |
 |-------------|-----------|---------|------|----------|
-| [0xClandestine](https://github.com/0xClandestine), [Yash Patil](ypatil12@gmail.com), [Mike Muehl](mailto:michael.muehl@eigenlabs.org), [Matt Nelson](mailto:matt.nelson@eigenlabs.org) | 2025-12-3 | `Draft` | [PR #1670](https://github.com/Layr-Labs/eigenlayer-contracts/pull/1670), [Release Notes](https://github.com/Layr-Labs/eigenlayer-contracts/blob/main/CHANGELOG/CHANGELOG-1.9.0.md)  | N/A |
+| [0xClandestine](https://github.com/0xClandestine), [Yash Patil](ypatil12@gmail.com), [Mike Muehl](mailto:michael.muehl@eigenlabs.org), [Matt Nelson](mailto:matt.nelson@eigenlabs.org) | 2025-12-3 | `merged` | [PR #1670](https://github.com/Layr-Labs/eigenlayer-contracts/pull/1670), [Release Notes](https://github.com/Layr-Labs/eigenlayer-contracts/blob/main/CHANGELOG/CHANGELOG-1.9.0.md)  | [Forum Post](https://forum.eigenlayer.xyz/t/protocol-council-evaluation-elip-013/14773) |
 
 # ELIP-013: Slashing UX Improvements
 

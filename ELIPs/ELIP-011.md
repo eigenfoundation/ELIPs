@@ -1,6 +1,6 @@
 | Author(s) | Created | Status | References | Discussions |
 |-------------|-----------|---------|------|----------|
-| [Robert Drost](mailto:robert@eigenfoundation.org),  [Brandon Curtis](mailto:brandon@eigenlabs.org), Matt Curtis | 2025-09-18 | Draft | Listed at end of proposal |  |
+| [Robert Drost](mailto:robert@eigenfoundation.org),  [Brandon Curtis](mailto:brandon@eigenlabs.org), Matt Curtis | 2025-09-18 | `merged` | Listed at end of proposal |  |
 
 # ELIP-011: Programmatic Incentives v2.0
 

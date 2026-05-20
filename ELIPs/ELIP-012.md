@@ -1,6 +1,6 @@
 | Author(s) | Created | Status | References | Discussions |
 |-------------|-----------|---------|------|----------|
-| [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [Matt Curtis](mailto:matt.curtis@eigenlabs.org), [Robert Drost](mailto:robert@eigenfoundation.org), [JT Rose](mailto:jt@eigenlabs.org) | 2025-12-1 | Draft | Listed at end of proposal |  |
+| [Matt Nelson](mailto:matt.nelson@eigenlabs.org), [Matt Curtis](mailto:matt.curtis@eigenlabs.org), [Robert Drost](mailto:robert@eigenfoundation.org), [JT Rose](mailto:jt@eigenlabs.org) | 2025-12-1 | Draft | Listed at end of proposal | [Forum Post](https://forum.eigenlayer.xyz/t/merged-elip-012-incentive-council/14753/3) |
 
 # ELIP-012: The Incentives Committee
 
