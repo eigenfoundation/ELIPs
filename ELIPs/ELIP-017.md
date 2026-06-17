@@ -1,11 +1,8 @@
 # EigenLayer Improvement Proposal-017: Duration Vault Fixes
 
-| Author(s) | [Matt Curtis](mailto:matt.curtis@eigenlabs.org) |
-| :---- | :---- |
-| Created | May 20, 2026 |
-| Status | `draft` |
-| References | [EigenLayer Protocol PR](https://github.com/Layr-Labs/eigenlayer-contracts/pull/1753) |
-| Discussions | [Forum Post](https://forum.eigenlayer.xyz/t/draft-elip-017-duration-vault-fixes/14830) |
+| Author(s) | Created | Status | References | Discussions |
+| :---- | :---- | :---- | :---- | :---- |
+| [Matt Curtis](mailto:matt.curtis@eigenlabs.org) | 2026-05-20 | `merged` | [EigenLayer Protocol PR](https://github.com/Layr-Labs/eigenlayer-contracts/pull/1753) | [[Forum discussion link]](https://forum.eigenlayer.xyz/t/draft-elip-017-duration-vault-fixes/14830) |
 
 # Executive Summary
 This minor proposal aims to correct an oversight that presently prevents the creation of Duration Vaults for multiple ETH LSTs.
