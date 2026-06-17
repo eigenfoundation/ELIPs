@@ -1,11 +1,8 @@
 # EigenLayer Improvement Proposal-016: Redistribution Delay
 
-| Author(s) | [Matt Curtis](mailto:matt.curtis@eigenlabs.org) |
-| :---- | :---- |
-| Created | May 20, 2026 |
-| Status | `draft` |
-| References | [EigenLayer Protocol PR](https://github.com/Layr-Labs/eigenlayer-contracts/pull/1753) |
-| Discussions | [Forum Post](https://forum.eigenlayer.xyz/t/draft-elip-16-redistribution-delay/14829) |
+| Author(s) | Created | Status | References | Discussions |
+| :---- | :---- | :---- | :---- | :---- |
+| [Matt Curtis](mailto:matt.curtis@eigenlabs.org) | 2026-05-20 | `merged` | [EigenLayer Protocol PR](https://github.com/Layr-Labs/eigenlayer-contracts/pull/1753) | [[Forum discussion link]](https://forum.eigenlayer.xyz/t/draft-elip-16-redistribution-delay/14829) |
 
 # Executive Summary
 
