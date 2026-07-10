@@ -21,6 +21,8 @@ Once proposals have passed through the ELIP process, they are submitted to the P
 
 In the early stages, ideas for ELIPs and early drafts are discussed in the "ELIP" category on [forum.eigenlayer.xyz](https://forum.eigenlayer.xyz/). After the design and scope of an ELIP has been finalized, it is submitted to this repository as a pull request. To submit an ELIP, open a [pull request](https://github.com/eigenfoundation/ELIPs/pulls). Ongoing and accepted proposals can be found in /elips. 
 
+New ELIP files should be named `ELIP-<number>_<Title>.md` (e.g. `ELIP-XYZ_TITLE.md`), where the Title matches the proposal's title, so the contents are identifiable from the filename. 
+
 As the ELIP is developed, the corresponding PR is tracked publicly on the repository using **tags**. Each tag designates a stage of ELIP development. To move from stage to stage, ELIPs must meet specific requirements laid out below. Maintainers of the ELIP repository are responsible for 1) verifying that ELIPs meet the set requirements and 2) updating the PR tags as such. 
 
 * `idea`: *pre-ELIP proposal is ready for ecosystem feedback*
