@@ -1,16 +1,14 @@
-
+# ELIP-018: RETIRE - Retirement Enabling Terminal, Irreversible Restaking Exit
 
 | Author(s) | Created | Status | References | Discussions |
 | :---- | :---- | :---- | :---- | :---- |
 | [Matt Curtis](mailto:matt.curtis@eigenlabs.org) | 2026-07-10 | `draft` | EigenLayer Contracts: TODO | Forum: TODO |
 
-# ELIP-018: RETIRE - Retirement Enabling Terminal, Irreversible Restaking Exit
-
 ---
 
 # Executive Summary
 
-`RETIRE` is an `EigenPod` upgrade that lets a Pod Owner **permanently and irreversibly disable restaking** on their pod via a new `disablePod` method on the `EigenPodManager`. Once disabled, the pod is retired from EigenLayer's share accounting: no new shares can be minted, all ETH the pod holds is treated as non-restaked and is fully sweepable, and the [external consolidation](#external-consolidation) restriction introduced in [ELIP-009 (MOOCOW)](http://./ELIP-009.md) is lifted so the owner may consolidate their validators to **any** target — including validators in other pods or outside EigenLayer entirely.
+`RETIRE` is an `EigenPod` upgrade that lets a Pod Owner **permanently and irreversibly disable restaking** on their pod via a new `disablePod` method on the `EigenPodManager`. Once disabled, the pod is retired from EigenLayer's share accounting: no new shares can be minted, all ETH the pod holds is treated as non-restaked and is fully sweepable, and the [external consolidation](#external-consolidation) restriction introduced in [ELIP-009 (MOOCOW)](./ELIP-009.md) is lifted so the owner may consolidate their validators to **any** target — including validators in other pods or outside EigenLayer entirely.
 
 This unlocks two capabilities that EigenPods have historically lacked: a way to **rotate the keys** controlling a pod's validators (by consolidating their balance into freshly-keyed validators) without exiting and re-entering the (presently multi-week) beacon-chain entry queue, and a **low-friction exit** from EigenLayer that does not require completing a final checkpoint.
 
@@ -22,7 +20,7 @@ EigenPods are keyed to the staker address that creates them, deterministically v
 
 More broadly, native ETH in EigenPods is the most illiquid and lowest-value-to-protocol capital locked in EigenLayer, and it is also the hardest to remove. Redistribution of native ETH without creating perverse incentives to abandon it to slashing on the BeaconChain is difficult due to the unbounded nature of the withdrawal queue, and the same illiquidity is the chief barrier to native ETH leaving the protocol when restakers wish to exit. Fully exiting a pod today is onerous — requiring the restaker to exit the beaconchain entirely and choose between forgoing validation rewards for the escrow period by fully exiting the validators before queuing EigenLayer withdrawals or completing additional checkpoints and withdrawals to handle rewards accrued during escrow.
 
-[ELIP-009 (MOOCOW)](http://./ELIP-009.md) introduced execution-layer-triggerable validator consolidation, by which the balance of one validator (`source`) is transferred in its entirety to another (`target`). This is a promising mechanism to transfer the ownership of a validator; however, the accounting mechanisms of the pod require the `target` to have verified withdrawal credentials pointed at the **same** pod — the sole barrier preventing consolidation to validators in other pods or outside EigenLayer. That check exists to keep **restaked** assets in the pod's custody.
+[ELIP-009 (MOOCOW)](./ELIP-009.md) introduced execution-layer-triggerable validator consolidation, by which the balance of one validator (`source`) is transferred in its entirety to another (`target`). This is a promising mechanism to transfer the ownership of a validator; however, the accounting mechanisms of the pod require the `target` to have verified withdrawal credentials pointed at the **same** pod — the sole barrier preventing consolidation to validators in other pods or outside EigenLayer. That check exists to keep **restaked** assets in the pod's custody.
 
 The root cause of all of these pain points is the pod's share accounting. So long as any assets entering the EigenPod must be considered for possible beaconchain or EigenLayer slashing, stringent accounting checks must remain in place to ensure that penalties can be properly applied. However, assets that have completed the escrow period and are ready to withdraw are no longer considered restaked, and no longer subject to modification by slashing on the beaconchain or EigenLayer. As a result, it is already possible for an EigenPod to enter a state in which it is not actively participating in EigenLayer, yet the stringent accounting checks remain in place.
 
@@ -50,7 +48,7 @@ Secondly, the Pod Owner MUST have exactly zero deposit shares in the `EigenPodMa
 
 Thirdly, every queued withdrawal that includes the beacon-chain-ETH strategy MUST be pure beacon-chain ETH (`MixedWithdrawalPending`) and MUST have remained slashable for the full withdrawal delay (`block.number > startBlock + minWithdrawalDelayBlocks`, else `WithdrawalStillSlashable`). Waiting out the delay locks the withdrawal's slashing factor before the freeze, so any beacon-chain or EigenLayer slashing that applies to the pod's value has already been priced into the queued amount.
 
-Finally, the pod's total restaked balance MUST NOT exceed the value already queued for withdrawal. `disablePod` computes the pod's restaked balance (`withdrawableRestakedExecutionLayerGwei` plus the most recent checkpoint's `prevBeaconBalanceGwei` and `balanceDeltasGwei`) and requires it to be less than or equal to the summed completion value of the staker's queued beacon-chain-ETH withdrawals, with **1 gwei of slack** to absorb rounding in the `DelegationManager` (`PodValueExceedsQueuedWithdrawals`). This value-conservation check is the core safety invariant: it guarantees the owner cannot disable while the pod still custodies restaked value that has not been priced through the slashing-aware withdrawal queue.
+Finally, the pod's total restaked balance MUST NOT exceed the value already queued for withdrawal. `disablePod` computes the pod's restaked balance (`withdrawableRestakedExecutionLayerGwei` plus the most recent checkpoint's `prevBeaconBalanceGwei` and `balanceDeltasGwei`) and requires it to be less than or equal to the summed completion value of the staker's queued beacon-chain-ETH withdrawals, with **1 gwei of slack** to absorb rounding in the `DelegationManager` (`PodValueExceedsQueuedWithdrawals`). Note that the beacon-chain component is read from the pod's *last completed* checkpoint: finalization clears only `currentCheckpointTimestamp`, leaving the checkpoint struct itself in storage, so `currentCheckpoint()` returns that retained snapshot when — as `disablePod` requires — no checkpoint is active. This value-conservation check is the core safety invariant: it guarantees the owner cannot disable while the pod still custodies restaked value that has not been priced through the slashing-aware withdrawal queue.
 
 ### Limitation: AVS-Slashed Pods Cannot Currently Disable
 
@@ -146,7 +144,9 @@ Disablement is permanent by design. A reversible flag would allow a Pod Owner to
 
 ## Value Conservation
 
-Disablement is gated on a single **value-conservation invariant**: the pod's tracked restaked balance must not exceed the completion value of its queued beacon-chain-ETH withdrawals (with 1 gwei of slack for rounding). Combined with the requirement that every such withdrawal has remained slashable for the full delay — locking its slashing factor before the freeze — this guarantees the owner cannot walk away with more than the slashing-adjusted value already committed to the queue. The invariant is strictly tied to what the owner can actually withdraw. Beacon-chain slashing is handled correctly, since it is reflected in the pod's balance through checkpoints. AVS slashing, however, is priced into the queued value but not into the pod's tracked balance, so AVS-slashed pods cannot satisfy the invariant — see [Limitation: AVS-Slashed Pods Cannot Currently Disable](#limitation-avs-slashed-pods-cannot-currently-disable).
+Disablement is gated on a single **value-conservation invariant**: the pod's tracked restaked balance must not exceed the completion value of its queued beacon-chain-ETH withdrawals (with 1 gwei of slack for rounding). Combined with the requirement that every such withdrawal has remained slashable for the full delay — locking its slashing factor before the freeze — this guarantees the owner cannot walk away with more than the slashing-adjusted value already committed to the queue.
+
+The check exists to stop a pod owner from recollecting funds an AVS has slashed from them. When beacon-chain-ETH shares are AVS-slashed, the burn is recorded in `burnableETHShares` but never removed from the pod, so an AVS-slashed pod holds more ETH than it is owed — which a disabled owner could recollect by sweeping the pod or consolidating its validators to external targets. Rather than build machinery to burn slashed shares out of a pod, RETIRE keeps disable strictly safe by refusing to freeze any pod whose tracked balance exceeds its queued value. (Beacon-chain slashing needs no such handling — it settles on the beacon chain itself, so a slashed validator simply delivers less ETH to the pod.) The trade is deliberate: AVS-slashed pods cannot yet retire, but no disable can ever release an un-burned slash — see [Limitation: AVS-Slashed Pods Cannot Currently Disable](#limitation-avs-slashed-pods-cannot-currently-disable).
 
 ## Inert REL and Full-Balance Sweep
 
@@ -209,7 +209,7 @@ The terminal state is intentionally minimal and self-contained, leaving room for
 
 * **Risk:** Reentrancy across the `EigenPodManager` → `EigenPod` → `DelegationManager` call chain during disable.
 
-  * **Mitigation:** `disablePod`, `disableRestaking`, and `clearQueuedWithdrawalsForDisabledPod` are all `nonReentrant`, and the pod's flag is set before the queue-clearing call. The `RestakingDisabled` guard makes any re-entry into `disableRestaking` a no-op revert. No callback to attacker-controlled code occurs in the flow.
+  * **Mitigation:** No step in the disable flow hands control to attacker-controlled code — every call is to a trusted protocol contract (`EigenPodManager` → `EigenPod`, `EigenPodManager` → `DelegationManager`). `disablePod` and `clearQueuedWithdrawalsForDisabledPod` are additionally `nonReentrant`. `disableRestaking` is `onlyEigenPodManager` and reachable only through `disablePod`, so it inherits that guard and cannot be re-entered; the flag is set before the queue-clearing call, so the pod is already frozen for the remainder of the flow.
 
 
 * **Risk:** The disabled-pod sweep could withdraw value reserved for the share-withdrawal flow.
@@ -255,7 +255,7 @@ The terminal state is intentionally minimal and self-contained, leaving room for
 
 # References & Relevant Discussions
 
-* [ELIP-009: MOOCOW — Massively Optimized Operations for Consolidation and Withdrawals](http://./ELIP-009.md)
+* [ELIP-009: MOOCOW — Massively Optimized Operations for Consolidation and Withdrawals](./ELIP-009.md)
 * [EIP-7251: Increase the MAX\_EFFECTIVE\_BALANCE](https://eips.ethereum.org/EIPS/eip-7251)
 * [EIP-170: Contract code size limit](https://eips.ethereum.org/EIPS/eip-170)
 * Forum discussion — TODO
