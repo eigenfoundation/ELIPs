@@ -2,7 +2,7 @@
 
 | Author(s) | Created | Status | References | Discussions |
 | :---- | :---- | :---- | :---- | :---- |
-| [Matt Curtis](mailto:matt.curtis@eigenlabs.org) | 2026-07-10 | `draft` | [PR #1758](https://github.com/Layr-Labs/eigenlayer-contracts/pull/1758) | Forum: TODO |
+| [Matt Curtis](mailto:matt.curtis@eigenlabs.org) | 2026-07-10 | `draft` | [PR #1758](https://github.com/Layr-Labs/eigenlayer-contracts/pull/1758) | [Forum Discussion](https://forum.eigenlayer.xyz/t/draft-elip-018-retire-retirement-enabling-terminal-irreversible-restaking-exit/14844) |
 
 ---
 
@@ -293,4 +293,4 @@ The terminal state is intentionally minimal and self-contained, leaving room for
 * [EIP-7251: Increase the MAX\_EFFECTIVE\_BALANCE](https://eips.ethereum.org/EIPS/eip-7251)
 * [EIP-170: Contract code size limit](https://eips.ethereum.org/EIPS/eip-170)
 * [EigenLayer Contracts PR #1758 — v1.14.0: permanent EigenPod retirement](https://github.com/Layr-Labs/eigenlayer-contracts/pull/1758)
-* Forum discussion — TODO
+* [Forum discussion: [DRAFT] ELIP-018: RETIRE](https://forum.eigenlayer.xyz/t/draft-elip-018-retire-retirement-enabling-terminal-irreversible-restaking-exit/14844)
